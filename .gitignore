@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+/node_modules
+/.pnp
+.pnp.js
+
+# Next.js Build Output and Cache
+.next/
+/out/
+build/
+
+# Express / Node.js Runtime & Build Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Security & Environment Variables (NEVER commit these)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+
+# Testing frameworks & Coverage reports
+coverage/
+.nyc_output/
+
+# IDEs, Editors, and OS-Specific System Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Deployment and Tooling Caches
+.vercel
+.turbo
+.eslintcache
+*.tsbuildinfo

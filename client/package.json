@@ -1,0 +1,35 @@
+{
+  "name": "blog",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "oxlint --typescript --react --nextjs && next lint"
+  },
+  "dependencies": {
+    "@typescript-eslint/parser": "^8.71.0",
+    "antd": "^6.6.5",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.48.0",
+    "next": "16.3.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-error-boundary": "^6.1.6",
+    "tailwind-merge": "^3.7.0",
+    "use-debounce": "^10.1.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.6",
+    "eslint-plugin-oxlint": "^1.86.0",
+    "oxlint": "^1.86.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
