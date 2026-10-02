@@ -21,7 +21,7 @@ pids
 *.seed
 *.pid.lock
 
-# Security & Environment Variables (NEVER commit these)
+# Security & Environment Variables
 .env
 .env.local
 .env.development.local
