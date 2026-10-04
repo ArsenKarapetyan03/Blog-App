@@ -1,24 +1,13 @@
 "use server"
 
 import { revalidatePath } from "next/cache";
-import { PostType } from "@/types/types";
+import { PostType } from "@shared/types/types";
 import { DATA_URL } from "@/utils/endpoint";
+import { validatePostForm } from "@shared/utils/validatePostForm";
 
 export type ActionResponse = { success: boolean; msg: string };
 
-function validatePostForm(formData: FormData) {
-	const title = formData.get("title")?.toString().trim();
-	const excerpt = formData.get("excerpt")?.toString().trim();
-	const description = formData.get("description")?.toString().trim();
-
-	if (!title || !excerpt || !description) {
-		return null;
-	}
-
-	return {title, excerpt, description};
-}
-
-export async function createPost(formData: FormData): Promise<ActionResponse> {
+export const createPost = async (formData: FormData): Promise<ActionResponse> => {
 	const validatedData = validatePostForm(formData);
 
 	if (!validatedData) {
@@ -52,7 +41,7 @@ export async function createPost(formData: FormData): Promise<ActionResponse> {
 	}
 }
 
-export async function updatePost(formData: FormData): Promise<ActionResponse> {
+export const updatePost = async (formData: FormData): Promise<ActionResponse> => {
 	const id = formData.get("id")?.toString();
 	const validatedData = validatePostForm(formData);
 
@@ -81,7 +70,7 @@ export async function updatePost(formData: FormData): Promise<ActionResponse> {
 	}
 }
 
-export async function deletePost(id: string): Promise<ActionResponse> {
+export const deletePost = async (id: string): Promise<ActionResponse> => {
 	if (!id) {
 		return {success: false, msg: "Invalid post ID."};
 	}

@@ -2,7 +2,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { BriefPost } from "@/components/BriefPost";
 import { Pagination } from "@/components/Pagination/Pagination";
 import { DATA_URL } from "@/utils/endpoint";
-import type { PostType } from "@/types/types";
+import type { PostType } from "../../../../types/types";
 
 interface PageProps {
 	searchParams: Promise<{

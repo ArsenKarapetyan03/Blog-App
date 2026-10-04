@@ -1,6 +1,6 @@
 import { PostActions } from "@/components/ui/PostActions";
 import { DATA_URL } from "@/utils/endpoint";
-import type { PostType } from "@/types/types";
+import type { PostType } from "../../../../../types/types";
 import { Metadata } from "next";
 
 export async function generateMetadata({params}: {params: Promise<{id: string}>}): Promise<Metadata> {
