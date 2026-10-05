@@ -1,8 +1,8 @@
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BriefPost } from "@/components/BriefPost";
 import { Pagination } from "@/components/Pagination/Pagination";
-import { DATA_URL } from "@/utils/endpoint";
-import type { PostType } from "../../../../types/types";
+import type { PostType } from "@/types/types";
+import { DATA_URL } from "@/config/api";
 
 interface PageProps {
 	searchParams: Promise<{
@@ -18,7 +18,7 @@ const Page = async ({searchParams}: PageProps) => {
 	const query = resolvedParams?.query || "";
 	const currentPage = Number(resolvedParams?.page) || 1;
 
-	const response = await fetch(DATA_URL);
+	const response = await fetch(`${DATA_URL}posts`);
 	const posts: PostType[] = await response.json();
 
 	const filteredByQuery = query

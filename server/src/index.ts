@@ -8,7 +8,8 @@ app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
 
 app.get("/", (req, res) => {
-	res.json({ message: "Hello from Node.js Backend!" });
+	res.json({ message: "Hello from Backend!" });
 });
+app.use("/blog", blogRoutes);
 
 app.listen(process.env.PORT, () => console.log(`Server started on port ${process.env.PORT}`));

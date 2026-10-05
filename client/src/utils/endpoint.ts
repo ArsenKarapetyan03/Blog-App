@@ -1,1 +1,0 @@
-export const DATA_URL = `https://${process.env.DB_TOKEN}.mockapi.io/api/posts`;

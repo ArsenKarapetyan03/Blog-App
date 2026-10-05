@@ -3,9 +3,10 @@ import { Router } from "express";
 
 const router = Router();
 
-router.get('/get', controllers.getPosts);
-router.post('/add', controllers.createPost)
-router.put('/edit', controllers.updatePost)
-router.delete('/delete', controllers.deletePost)
+router.get("/posts", controllers.getPosts);
+router.get("/posts/:id", controllers.getPost);
+router.post("/add", controllers.createPost);
+router.put("/edit/:id", controllers.updatePost);
+router.delete("/delete/:id", controllers.deletePost);
 
 export default router;

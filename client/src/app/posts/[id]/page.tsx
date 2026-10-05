@@ -1,18 +1,19 @@
-import { PostActions } from "@/components/ui/PostActions";
-import { DATA_URL } from "@/utils/endpoint";
-import type { PostType } from "../../../../../types/types";
 import { Metadata } from "next";
+import { DATA_URL } from "@/config/api"
+import { PostActions } from "@/components/ui/PostActions";
+import type { PostType } from "@/types/types";
 
 export async function generateMetadata({params}: {params: Promise<{id: string}>}): Promise<Metadata> {
 	const {id} = await params;
-	const response = await fetch(`${DATA_URL}/${id}`);
-	const post = await response.json();
+	const response = await fetch(`${DATA_URL}posts/${id}`);
 
-	if (!post) {
+	if (!response.ok) {
 		return {
 			title: "No post found",
 		};
 	}
+
+	const post: PostType = await response.json();
 
 	return {
 		title: post.title,
@@ -29,7 +30,8 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 
 const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 	const {id} = await params;
-	const response = await fetch(`${DATA_URL}/${id}`);
+
+	const response = await fetch(`${DATA_URL}posts/${id}`);
 	const post: PostType = await response.json();
 
 	return (
