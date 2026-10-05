@@ -1,116 +1,74 @@
 import type { Request, Response } from "express";
 import type { PostType } from "@/types/types";
-import { DATA_URL } from "./endpoint";
-import { validatePostForm } from "@/utils/dataValidation";
-
+import { getValidatedPost } from "@/utils/dataValidation";
+import { sendError } from "@/utils/apiHelpers";
+import { sql } from "@/config/db.js";
 
 export const getPosts = async (req: Request, res: Response) => {
 	try {
-		const response = await fetch(DATA_URL);
+		const posts: PostType[] = await sql`SELECT * FROM posts`;
 
-		if (!response.ok) {
-			throw new Error(`Failed to get posts: ${response.statusText}`);
-		}
-
-		const posts: PostType[] = (await response.json());
-		res.json(posts);
+		return res.status(200).json(posts);
 	} catch (error) {
-		console.error(error);
-		const errorMessage = error instanceof Error ? error.message : "Unknown error";
-		res.status(500).json({success: false, message: errorMessage});
+		return sendError(res, error, 500);
 	}
 };
 
 export const getPost = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
-		const response = await fetch(`${DATA_URL}${req.params.id}`);
+		const post =
+			await sql`
+          SELECT *
+          FROM posts
+          WHERE id = ${id}
+			`;
 
-		if (!response.ok) {
-			throw new Error(`Failed to get post: ${response.statusText}`);
-		}
-
-		const post: PostType = await response.json();
-
-		res.json(post);
+		return res.status(200).json(post[0]);
 	} catch (error) {
-		console.error(error);
-		const errorMessage = error instanceof Error ? error.message : "Unknown error";
-		res.status(500).json({success: false, message: errorMessage});
+		return sendError(res, error, 500);
 	}
-}
+};
 
 export const createPost = async (req: Request, res: Response) => {
 	try {
-		const postData: PostType = req.body;
+		const post = req.body;
+		const {title, excerpt, description} = getValidatedPost(req);
 
-		if (!postData || Object.keys(postData).length === 0) {
-			throw new Error("Invalid Body");
+		const newPost = {
+			...post,
+			title,
+			excerpt,
+			description,
 		}
 
-		const validatedData = validatePostForm(postData);
+		await sql`
+        INSERT INTO posts (id, author, date, title, excerpt, description)
+        VALUES (${newPost.id}, ${newPost.author}, ${newPost.date}, ${newPost.title}, ${newPost.excerpt}, ${newPost.description})
+		`;
 
-		if (!validatedData) {
-			throw new Error("Invalid data");
-		}
-
-		const newPost: PostType = {
-			...postData,
-			...validatedData
-		};
-
-		const response = await fetch(DATA_URL, {
-			method: "POST",
-			body: JSON.stringify(newPost),
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to create post: ${response.statusText}`);
-		}
-
-		res.status(201).json({success: true, message: "Post created successfully."});
+		return res.status(201).json({success: true, message: "Post created successfully."});
 	} catch (error) {
-		console.error(error);
-		const errorMessage = error instanceof Error ? error.message : "Unknown error";
-		res.status(400).json({success: false, message: errorMessage});
+		return sendError(res, error, 400);
 	}
 };
 
 export const updatePost = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
-		const postData: PostType = req.body;
+		const {title, excerpt, description} = getValidatedPost(req);
 
-		if (!postData || Object.keys(postData).length === 0) {
-			throw new Error("Invalid Body");
-		}
+		await sql`
+			UPDATE posts 
+			SET title = ${title}, excerpt = ${excerpt}, description = ${description} 
+			WHERE id = ${id}
+		`;
 
-		const validatedData = validatePostForm(postData);
-
-		if (!validatedData) {
-			throw new Error("Invalid data");
-		}
-
-		const response = await fetch(`${DATA_URL}${id}`, {
-			method: "PUT",
-			body: JSON.stringify(postData),
-			headers: {"Content-Type": "application/json"},
-		});
-
-		if (!response.ok) {
-			throw new Error("Failed to update post.");
-		}
-
-		return res.json({success: true, message: "Post updated successfully!"});
+		return res.status(200).json({success: true, message: "Post updated successfully!"});
 	} catch (error) {
-		console.error("Update Post Error:", error);
-		const errorMessage = error instanceof Error ? error.message : "Unknown error";
-		return res.status(400).json({success: false, message: `Failed to update post: ${errorMessage}`});
+		return sendError(res, error, 400);
 	}
-}
+};
 
 export const deletePost = async (req: Request, res: Response) => {
 	try {
@@ -120,18 +78,13 @@ export const deletePost = async (req: Request, res: Response) => {
 			throw new Error("Post ID is required");
 		}
 
-		const response = await fetch(`${DATA_URL}${id}`, {
-			method: "DELETE",
-		});
+		await sql`
+			DELETE FROM posts 
+			WHERE id = ${id}
+		`;
 
-		if (!response.ok) {
-			throw new Error("Failed to delete post.");
-		}
-
-		return res.json({success: true, message: "Post deleted successfully!"});
+		return res.status(200).json({success: true, message: "Post deleted successfully!"});
 	} catch (error) {
-		console.error("Delete Post Error:", error);
-		const errorMessage = error instanceof Error ? error.message : "Unknown error";
-		return res.status(500).json({success: false, message: `Server error. Please try again later. ${errorMessage}`});
+		return sendError(res, error, 500, "Delete Post Error");
 	}
 };

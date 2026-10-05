@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { DATA_URL } from "@/config/api"
+import { DATA_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
 import type { PostType } from "@/types/types";
 

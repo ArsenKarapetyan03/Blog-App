@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { type PostType } from "@/types/types";
 import { validatePostForm } from "@/utils/validatePostForm";
-import { DATA_URL } from "@/config/api"
+import { DATA_URL } from "@/config/api";
 
 export type ActionResponse = {success: boolean; message: string};
 

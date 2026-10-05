@@ -1,4 +1,4 @@
-import type { PostType } from "../../../types/types";
+import type { PostType } from "@/types/types";
 
 export const BriefPost = ({post}: {post: PostType}) => (
 	<div className="flex flex-col md:flex-row md:items-start md:gap-8 px-5 py-10 rounded border-b border-slate-100 hover:bg-zinc-50 transition-colors duration-200">

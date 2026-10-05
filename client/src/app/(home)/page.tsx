@@ -1,7 +1,7 @@
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BriefPost } from "@/components/BriefPost";
 import { Pagination } from "@/components/Pagination/Pagination";
-import type { PostType } from "@/types/types";
+import { type PostType } from "@/types/types";
 import { DATA_URL } from "@/config/api";
 
 interface PageProps {
