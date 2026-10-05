@@ -15,7 +15,7 @@ interface PostModalProps {
 	postData?: PostType;
 }
 
-const initialState = { success: false, message: "" };
+const initialState = {success: false, message: ""};
 
 export const PostModal = (
 	{

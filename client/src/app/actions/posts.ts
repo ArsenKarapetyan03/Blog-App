@@ -32,7 +32,7 @@ export const createPost = async (formData: FormData): Promise<ActionResponse> =>
 			return {success: false, message: "Failed to create post."};
 		}
 
-		// revalidatePath("/");
+
 
 		return {success: true, message: "Post created successfully!"};
 	} catch (error) {
