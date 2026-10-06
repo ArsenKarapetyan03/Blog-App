@@ -15,9 +15,12 @@ const POSTS_PER_PAGE = 4;
 
 const Page = async ({searchParams}: PageProps) => {
 	const resolvedParams = await searchParams;
+
 	const query = resolvedParams?.query || "";
 	const requestedPage = Number(resolvedParams?.page);
+
 	const currentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+
 	const params = new URLSearchParams({
 		page: String(currentPage),
 		limit: String(POSTS_PER_PAGE),
@@ -27,9 +30,11 @@ const Page = async ({searchParams}: PageProps) => {
 	}
 
 	const response = await fetch(`${DATA_URL}/post?${params.toString()}`, {cache: "no-store"});
+
 	if (!response.ok) {
 		throw new Error(`Failed to load posts: ${response.status} ${response.statusText}`);
 	}
+
 	const {posts, totalPages}: {posts: PostType[]; totalPages: number} = await response.json();
 
 	if (!posts.length) {
