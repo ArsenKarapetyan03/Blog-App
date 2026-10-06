@@ -22,7 +22,7 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 			title: post.title,
 			description: post.excerpt,
 			type: "article",
-			publishedTime: post.date,
+			publishedTime: post.date.toLocaleString("eu-EU"),
 			authors: [post.author],
 		},
 	};

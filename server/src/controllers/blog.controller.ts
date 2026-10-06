@@ -32,8 +32,8 @@ export const readAll = async (req: Request, res: Response) => {
 		const requestedPage = Number(req.query.page);
 		const requestedLimit = Number(req.query.limit);
 
-		const page = Math.max(1, Number(req.query.page) || 1);
-		const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 4));
+		const page = Math.max(1, Number(requestedPage) || 1);
+		const limit = Math.min(100, Math.max(1, Number(requestedLimit) || 4));
 		const query = String(req.query.query ?? "").trim();
 
 		const {rows, count} = await Post.findAndCountAll({
