@@ -16,22 +16,23 @@ const POSTS_PER_PAGE = 4;
 const Page = async ({searchParams}: PageProps) => {
 	const resolvedParams = await searchParams;
 	const query = resolvedParams?.query || "";
-	const currentPage = Number(resolvedParams?.page) || 1;
+	const requestedPage = Number(resolvedParams?.page);
+	const currentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+	const params = new URLSearchParams({
+		page: String(currentPage),
+		limit: String(POSTS_PER_PAGE),
+	});
+	if (query) {
+		params.set("query", query);
+	}
 
-	const response = await fetch(`${DATA_URL}/post`);
-	const posts: PostType[] = await response.json();
+	const response = await fetch(`${DATA_URL}/post?${params.toString()}`, {cache: "no-store"});
+	if (!response.ok) {
+		throw new Error(`Failed to load posts: ${response.status} ${response.statusText}`);
+	}
+	const {posts, totalPages}: {posts: PostType[]; totalPages: number} = await response.json();
 
-	const filteredByQuery = query
-		? posts.filter((post: PostType) => post.description.toLowerCase().includes(query.toLowerCase()))
-		: [...posts];
-
-	const totalPages = Math.ceil(filteredByQuery.length / POSTS_PER_PAGE);
-	const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-	const endIndex = startIndex + POSTS_PER_PAGE;
-
-	const filteredByPages = filteredByQuery.slice(startIndex, endIndex);
-
-	if (!filteredByPages.length) {
+	if (!posts.length) {
 		return (
 			<EmptyState
 				message="No posts found"
@@ -42,7 +43,7 @@ const Page = async ({searchParams}: PageProps) => {
 
 	return (
 		<div className="flex flex-col gap-12">
-			{filteredByPages.map(post => <BriefPost post={post} key={post.id} />)}
+			{posts.map(post => <BriefPost post={post} key={post.id} />)}
 
 			{totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} />}
 		</div>

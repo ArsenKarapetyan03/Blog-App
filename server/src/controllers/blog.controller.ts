@@ -1,20 +1,9 @@
 import type { Request, Response } from "express";
 import type { PostType } from "@/types/types";
+import { Op } from "sequelize";
 import { getValidatedPost } from "@/utils/dataValidation";
 import { sendError } from "@/utils/apiHelpers";
-import Post from "@models/posts.js";
-
-export const readAll = async (req: Request, res: Response) => {
-	try {
-		const posts: PostType[] = await Post.findAll({
-			order: [["date", "DESC"]],
-		});
-
-		return res.status(200).json(posts);
-	} catch (error) {
-		return sendError(res, error, 500);
-	}
-};
+import { Post } from "@models/posts.js";
 
 export const readOne = async (req: Request, res: Response) => {
 	try {
@@ -35,6 +24,34 @@ export const readOne = async (req: Request, res: Response) => {
 		const isNotFound = error instanceof Error && error.message === "Post not found";
 
 		return sendError(res, error, isNotFound ? 404 : 500);
+	}
+};
+
+export const readAll = async (req: Request, res: Response) => {
+	try {
+		const requestedPage = Number(req.query.page);
+		const requestedLimit = Number(req.query.limit);
+
+		const page = Math.max(1, Number(req.query.page) || 1);
+		const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 4));
+		const query = String(req.query.query ?? "").trim();
+
+		const {rows, count} = await Post.findAndCountAll({
+			where: query ? {description: {[Op.iLike]: `%${query}%`}} : {},
+			limit,
+			offset: (page - 1) * limit,
+			order: [["date", "DESC"]],
+		});
+
+		const posts: PostType[] = rows.map(post => post.dataValues as PostType);
+
+		return res.status(200).json({
+			posts,
+			totalCount: count,
+			totalPages: Math.ceil(count / limit),
+		});
+	} catch (error) {
+		return sendError(res, error, 500);
 	}
 };
 

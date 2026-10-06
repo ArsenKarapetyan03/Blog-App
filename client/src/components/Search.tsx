@@ -16,10 +16,10 @@ const SearchInput = () => {
 	const updateUrl = useDebouncedCallback((value: string) => {
 		const params = new URLSearchParams(searchParams.toString());
 		const trimmed = value.trim();
+		params.set("page", "1");
 
 		if (trimmed) {
 			params.set("query", trimmed);
-			params.set("page", "1");
 		} else {
 			params.delete("query");
 		}
@@ -38,6 +38,7 @@ const SearchInput = () => {
 
 		const params = new URLSearchParams(searchParams);
 		params.delete("query");
+		params.set("page", "1");
 		replace(`${pathname}?${params.toString()}`, { scroll: false });
 	};
 

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PaginationButton } from "@/components/Pagination/PaginationButton";
+import { RenderPaginationItems } from "./RenderPaginationItems"
 
 interface PaginationProps {
 	currentPage: number;
@@ -33,28 +34,20 @@ export const Pagination = (
 	}
 
 	return (
-		<div className="flex justify-center gap-5">
+		<div className="flex items-center justify-center gap-5">
 			<PaginationButton
 				text="previous"
 				disabled={currentPage === 1}
 				onClick={() => handlePageChange(currentPage - 1)}
 			/>
 
-			{Array.from({length: totalPages}, (_, i) => {
-					const pageNumber = i + 1;
-
-					return (
-						<button
-							key={pageNumber}
-							disabled={currentPage === pageNumber}
-							onClick={() => handlePageChange(pageNumber)}
-							className="text-zinc-500 hover:text-zinc-900 transition cursor-pointer disabled:text-zinc-900"
-						>
-							{pageNumber}
-						</button>
-					)
-				}
-			)}
+			<div className="flex items-center gap-3">
+				<RenderPaginationItems
+					totalPages={totalPages}
+					currentPage={currentPage}
+					onPageChange={handlePageChange}
+				/>
+			</div>
 
 			<PaginationButton
 				text="next"
@@ -62,5 +55,5 @@ export const Pagination = (
 				onClick={() => handlePageChange(currentPage + 1)}
 			/>
 		</div>
-	)
-}
+	);
+};

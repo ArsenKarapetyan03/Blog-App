@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "./index.js";
 
-const Post = sequelize.define("Post", {
+export const Post = sequelize.define("Post", {
     id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
@@ -31,5 +31,3 @@ const Post = sequelize.define("Post", {
     tableName: "posts",
     timestamps: false,
 });
-
-export default Post;
