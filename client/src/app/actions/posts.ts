@@ -33,10 +33,12 @@ export const updatePost = async (formData: FormData): Promise<ActionResponse> =>
 		return { success: false, message: "Invalid or missing data for update." };
 	}
 
+	const plainFormData = Object.fromEntries(formData.entries());
+
 	try {
 		const response = await fetch(`${DATA_URL}/post/${id}`, {
 			method: "PUT",
-			body: JSON.stringify(formData),
+			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
 		});
 

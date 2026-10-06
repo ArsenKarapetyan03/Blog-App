@@ -16,7 +16,7 @@ const Post = sequelize.define("Post", {
         allowNull: true,
     },
     date: {
-        type: DataTypes.TEXT,
+        type: DataTypes.DATE,
         allowNull: true,
     },
     excerpt: {

@@ -2,7 +2,7 @@ export interface PostType {
 	id: string;
 	title: string;
 	author: string;
-	date: string;
+	date: Date;
 	excerpt: string;
 	description: string;
 }

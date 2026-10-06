@@ -6,7 +6,9 @@ import Post from "@models/posts.js";
 
 export const readAll = async (req: Request, res: Response) => {
 	try {
-		const posts: PostType[] = await Post.findAll();
+		const posts: PostType[] = await Post.findAll({
+			order: [["date", "DESC"]],
+		});
 
 		return res.status(200).json(posts);
 	} catch (error) {
@@ -64,7 +66,7 @@ export const create = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
-		const {title, excerpt, description} = getValidatedPost(req);
+		const {title, excerpt, description} = getValidatedPost(req.body);
 
 		const [affectedCount] = await Post.update(
 			{title, excerpt, description},
@@ -72,7 +74,7 @@ export const update = async (req: Request, res: Response) => {
 				where: {id},
 				returning: true
 			}
-		)
+		);
 
 		if (affectedCount === 0) {
 			throw new Error("Post not found");
