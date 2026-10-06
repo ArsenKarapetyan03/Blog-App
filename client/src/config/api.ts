@@ -1,1 +1,1 @@
-export const DATA_URL = "http://localhost:3003/blog/";
+export const DATA_URL = "http://localhost:3003";

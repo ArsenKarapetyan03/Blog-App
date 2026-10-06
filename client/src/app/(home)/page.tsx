@@ -18,11 +18,11 @@ const Page = async ({searchParams}: PageProps) => {
 	const query = resolvedParams?.query || "";
 	const currentPage = Number(resolvedParams?.page) || 1;
 
-	const response = await fetch(`${DATA_URL}posts`);
+	const response = await fetch(`${DATA_URL}/post`);
 	const posts: PostType[] = await response.json();
 
 	const filteredByQuery = query
-		? posts.filter((post: PostType) => post.title.toLowerCase().includes(query.toLowerCase()))
+		? posts.filter((post: PostType) => post.description.toLowerCase().includes(query.toLowerCase()))
 		: [...posts];
 
 	const totalPages = Math.ceil(filteredByQuery.length / POSTS_PER_PAGE);

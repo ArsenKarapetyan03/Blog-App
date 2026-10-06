@@ -22,5 +22,9 @@
     "server",
     "utils",
     "types"
-  ]
+  ],
+  "dependencies": {
+    "pg": "^8.23.1",
+    "pg-hstore": "^2.3.4"
+  }
 }

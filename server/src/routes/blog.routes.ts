@@ -1,12 +1,12 @@
-import * as blogControllers from "../controllers/blog.controller.js"
+import { readAll, readOne, create, update, remove } from "../controllers/blog.controller.js"
 import { Router } from "express";
 
 const router = Router();
 
-router.get("/", blogControllers.getPosts);
-router.get("/:id", blogControllers.getPost);
-router.post("/add", blogControllers.createPost);
-router.put("/edit/:id", blogControllers.updatePost);
-router.delete("/delete/:id", blogControllers.deletePost);
+router.get("/", readAll);
+router.get("/:id", readOne);
+router.post("/", create);
+router.put("/:id", update);
+router.delete("/:id", remove);
 
 export default router;

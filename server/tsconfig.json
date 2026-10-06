@@ -27,7 +27,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/types/*": ["../types/*"],
-//      "@/utils/*": ["../utils/*"]
+      "@models/*": ["./models/*"]
     }
   },
   "include": [
