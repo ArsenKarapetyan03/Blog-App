@@ -6,7 +6,7 @@ export const getValidatedPost = (body: Partial<PostType>): PostType => {
 	const description = body.description?.toString().trim();
 
 	if (!title || !excerpt || !description) {
-		throw new Error('Invalid data');
+		throw new Error("Invalid data");
 	}
 
 	return { title, excerpt, description} as Partial<PostType>;

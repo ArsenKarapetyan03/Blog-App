@@ -24,13 +24,11 @@ export const readOne = async (req: Request, res: Response) => {
 
 		const post = await Post.findByPk(id);
 
-		console.log(post[0]);
-
 		if (post.length === 0) {
 			throw new Error("Post not found");
 		}
 
-		return res.status(200).json(post[0]);
+		return res.status(200).json(post.dataValues);
 	} catch (error) {
 		const isNotFound = error instanceof Error && error.message === "Post not found";
 
@@ -44,21 +42,16 @@ export const create = async (req: Request, res: Response) => {
 
 		const {title, excerpt, description} = getValidatedPost(post);
 
-		const newPost = {
+		const newPost: PostType = await Post.create({
 			...post,
 			author: "user1234",
 			date: new Date(),
 			title,
 			excerpt,
 			description,
-		};
+		});
 
-		const [insertedRow] = await sql`
-        INSERT INTO posts (author, date, title, excerpt, description)
-        VALUES (${newPost.author}, ${newPost.date}, ${newPost.title}, ${newPost.excerpt}, ${newPost.description}) RETURNING id;
-		`;
-
-		if (!insertedRow) {
+		if (!newPost.id) {
 			throw new Error("Failed to create post record");
 		}
 
@@ -73,15 +66,15 @@ export const update = async (req: Request, res: Response) => {
 		const {id} = req.params;
 		const {title, excerpt, description} = getValidatedPost(req);
 
-		const result = await sql`
-        UPDATE posts
-        SET title = ${title},
-            excerpt = ${excerpt},
-            description = ${description}
-        WHERE id = ${id} RETURNING id;
-		`;
+		const [affectedCount] = await Post.update(
+			{title, excerpt, description},
+			{
+				where: {id},
+				returning: true
+			}
+		)
 
-		if (result.length === 0) {
+		if (affectedCount === 0) {
 			throw new Error("Post not found");
 		}
 
@@ -101,13 +94,11 @@ export const remove = async (req: Request, res: Response) => {
 			throw new Error("Post ID is required");
 		}
 
-		const result = await sql`
-        DELETE
-        FROM posts
-        WHERE id = ${id} RETURNING id;
-		`;
+		const result = await Post.destroy({
+			where: {id},
+		});
 
-		if (result.length === 0) {
+		if (result === 0) {
 			throw new Error("Post not found");
 		}
 
