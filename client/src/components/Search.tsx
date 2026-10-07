@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useDebouncedCallback } from 'use-debounce';
 import { X } from "lucide-react";
 import { LoadingComponent } from "@/components/ui/LoadingComponent";
@@ -24,7 +25,7 @@ const SearchInput = () => {
 			params.delete("query");
 		}
 
-		replace(`${pathname}?${params.toString()}`, { scroll: false });
+		replace(`${pathname}?${params.toString()}`, {scroll: false});
 	}, 300);
 
 	const handleChange = (text: string) => {
@@ -36,7 +37,7 @@ const SearchInput = () => {
 		updateUrl.cancel();
 		setInputValue("");
 
-		const params = new URLSearchParams(searchParams);
+		const params = new URLSearchParams(searchParams.toString());
 		params.delete("query");
 		params.set("page", "1");
 		replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -72,10 +73,8 @@ const SearchInput = () => {
 	)
 }
 
-export const Search = () => {
-	return (
-		<Suspense fallback={<LoadingComponent />}>
-			<SearchInput />
-		</Suspense>
-	);
-};
+export const Search = dynamic(() => Promise.resolve(() => (
+	<Suspense fallback={<LoadingComponent />}>
+		<SearchInput />
+	</Suspense>
+)), {ssr: false});
