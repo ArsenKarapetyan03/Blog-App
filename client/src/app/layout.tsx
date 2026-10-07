@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { Header } from "@/components/Header";
 import "./globals.css";
-import { SignLink } from "@/components/SignLink";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -19,14 +19,12 @@ export default function RootLayout({children}: LayoutProps<"/">) {
 			className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
 		>
 			<body>
-			<div>
-				{/*<SignLink text="Sign in" />*/}
-			</div>
-			<div className="flex flex-col items-center">
-				<main className="flex flex-1 w-full max-w-4xl flex-col items-center sm:items-start font-sans text-lg">
-					{children}
-				</main>
-			</div>
+			<Header />
+				<div className="flex flex-col items-center">
+					<main className="flex flex-1 w-full max-w-4xl flex-col items-center sm:items-start font-sans text-lg">
+						{children}
+					</main>
+				</div>
 			</body>
 		</html>
 	);

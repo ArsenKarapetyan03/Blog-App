@@ -1,13 +1,14 @@
-import Link from "next/link";
+import { SignLink } from "@/components/SignLink";
+import { HomeLink } from "@/components/ui/HomeLink";
 
-const Header = () => {
-	return (
-		<div className="flex justify-center bg-zinc-200">
-			<nav className="w-full max-w-4xl flex gap-5 p-4 text-2xl font-semibold">
-				<Link href="/">Home</Link>
-			</nav>
-		</div>
+export const Header = () =>
+	 (
+		 <header className="flex justify-between p-5">
+			 <HomeLink />
+
+			 <div className="flex gap-4">
+				 <SignLink text="Sign In" href="/auth/sign-in" />
+				 <SignLink text="Sign Up" href="/auth/sign-up" />
+			 </div>
+		 </header>
 	)
-}
-
-export default Header;

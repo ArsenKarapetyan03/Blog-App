@@ -1,6 +1,8 @@
-const SignInPage = async ({searchParams}: PageProps) => {
+import Link from "next/link";
+
+const SignInPage = async () => {
 	return (
-			<main className="h-screen w-full bg-white flex items-center justify-center p-6">
+			<main className="h-full w-full bg-white flex items-center justify-center p-6">
 				<div className="w-full max-w-md">
 					<div className="text-center mb-10">
 						<h1 className="text-4xl font-semibold tracking-tight text-gray-900">
@@ -63,27 +65,16 @@ const SignInPage = async ({searchParams}: PageProps) => {
 						</button>
 					</form>
 
-					<div className="my-6 flex items-center gap-4">
-						<div className="h-px flex-1 bg-gray-200" />
-						<div className="h-px flex-1 bg-gray-200" />
-					</div>
+					<div className="my-6 h-px flex-1 bg-gray-200" />
 
 					<p className="mt-8 text-center text-gray-500">
-						Don't have an account?{" "}
-						<a
-							href="#"
+						<span>Don't have an account? </span>
+						<Link
+							href="/auth/sign-up"
 							className="font-medium text-gray-900 hover:underline"
 						>
 							Sign up
-						</a>
-					</p>
-
-					<p className="mt-6 text-center text-xs leading-5 text-gray-400">
-						<span>By continuing, you agree to our </span>
-						<a href="#" className="underline hover:text-gray-600">Terms</a>
-						<span> and </span>
-						<a href="#" className="underline hover:text-gray-600">Privacy Policy</a>
-						.
+						</Link>
 					</p>
 				</div>
 			</main>
