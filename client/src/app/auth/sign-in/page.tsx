@@ -40,12 +40,12 @@ const SignInPage = async () => {
 									Password
 								</label>
 
-								<a
-									href="#"
-									className="text-sm text-gray-500 hover:text-gray-900"
-								>
-									Forgot password?
-								</a>
+								{/*<a*/}
+								{/*	href="#"*/}
+								{/*	className="text-sm text-gray-500 hover:text-gray-900"*/}
+								{/*>*/}
+								{/*	Forgot password?*/}
+								{/*</a>*/}
 							</div>
 
 							<input
