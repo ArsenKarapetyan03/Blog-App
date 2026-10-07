@@ -14,7 +14,8 @@
     "dev": "tsx watch index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "model:generate": "npx sequelize-cli model:generate --name User --attributes name:string,email:string,password:string"
+    "model:generate": "npx sequelize-cli model:generate --name User --attributes name:string,email:string,password:string",
+    "db:migrate": "npx sequelize-cli db:migrate"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
