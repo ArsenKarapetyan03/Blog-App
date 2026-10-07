@@ -8,18 +8,13 @@ import { Post } from "@models/posts.js";
 export const readOne = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
-
-		if (!id) {
-			throw new Error("Invalid id");
-		}
-
 		const post = await Post.findByPk(id);
 
-		if (post.length === 0) {
+		if (!post) {
 			throw new Error("Post not found");
 		}
 
-		return res.status(200).json(post.dataValues);
+		return res.status(200).json(post.toJSON());
 	} catch (error) {
 		const isNotFound = error instanceof Error && error.message === "Post not found";
 
@@ -43,7 +38,7 @@ export const readAll = async (req: Request, res: Response) => {
 			order: [["date", "DESC"]],
 		});
 
-		const posts: PostType[] = rows.map(post => post.dataValues as PostType);
+		const posts: PostType[] = rows.map(post => post.toJSON() as PostType);
 
 		return res.status(200).json({
 			posts,
@@ -61,7 +56,7 @@ export const create = async (req: Request, res: Response) => {
 
 		const {title, excerpt, description} = getValidatedPost(post);
 
-		const newPost: PostType = await Post.create({
+		const newPost = await Post.create({
 			...post,
 			author: "user1234",
 			date: new Date(),

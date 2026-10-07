@@ -37,7 +37,7 @@ export const updatePost = async (formData: FormData): Promise<ActionResponse> =>
 
 	try {
 		const response = await fetch(`${DATA_URL}/post/${id}`, {
-			method: "PUT",
+			method: "PATCH",
 			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
 		});
