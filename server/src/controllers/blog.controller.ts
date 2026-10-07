@@ -32,7 +32,12 @@ export const readAll = async (req: Request, res: Response) => {
 		const query = String(req.query.query ?? "").trim();
 
 		const {rows, count} = await Post.findAndCountAll({
-			where: query ? {description: {[Op.iLike]: `%${query}%`}} : {},
+			where: query ? {
+				[Op.or]: [
+					{description: {[Op.iLike]: `%${query}%`}},
+					{title: {[Op.iLike]: `%${query}%`}}
+				]
+			} : {},
 			limit,
 			offset: (page - 1) * limit,
 			order: [["date", "DESC"]],
