@@ -32,7 +32,11 @@ const Page = async ({searchParams}: PageProps) => {
 	const response = await fetch(`${DATA_URL}/post?${params.toString()}`, {cache: "no-store"});
 
 	if (!response.ok) {
-		throw new Error(`Failed to load posts: ${response.status} ${response.statusText}`);
+		console.error(`Failed to load posts: ${response.status} ${response.statusText}`);
+		return (<EmptyState
+			message="No posts found"
+			className="m-1 md:m-5 text-zinc-500"
+		/>);
 	}
 
 	const {posts, totalPages}: {posts: PostType[]; totalPages: number} = await response.json();

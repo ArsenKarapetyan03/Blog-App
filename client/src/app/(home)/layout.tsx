@@ -3,7 +3,7 @@ import { Search } from "@/components/Search";
 
 export default function RootLayout({children}: LayoutProps<"/">) {
 	return (
-		<div  className="w-full px-4 py-12">
+		<div className="w-full px-4 py-12">
 			<div className="border-b border-slate-200 py-6">
 				<h1 className="text-4xl font-serif font-bold text-slate-900">
 					Our Blog & Articles

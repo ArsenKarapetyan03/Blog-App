@@ -25,13 +25,13 @@
     "forceConsistentCasingInFileNames": true,
 
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["./*"],
       "@/types/*": ["../types/*"],
       "@models/*": ["./models/*"]
     }
   },
   "include": [
-    "src/**/*",
+    "/**/*",
     "../types/**/*",
     "../utils/**/*"
   ]
