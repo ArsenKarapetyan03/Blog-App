@@ -29,7 +29,10 @@ const Page = async ({searchParams}: PageProps) => {
 		params.set("query", query);
 	}
 
-	const response = await fetch(`${DATA_URL}/post?${params.toString()}`, {cache: "no-store"});
+	const response = await fetch(
+		`${DATA_URL}/blog?${params.toString()}`,
+		{cache: "no-store"}
+	);
 
 	if (!response.ok) {
 		console.error(`Failed to load posts: ${response.status} ${response.statusText}`);

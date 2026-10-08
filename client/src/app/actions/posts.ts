@@ -9,7 +9,7 @@ export const createPost = async (formData: FormData): Promise<ActionResponse> =>
 	try {
 		const plainFormData = Object.fromEntries(formData.entries());
 
-		const response = await fetch(`${DATA_URL}/post`, {
+		const response = await fetch(`${DATA_URL}/blog`, {
 			method: "POST",
 			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
@@ -36,7 +36,7 @@ export const updatePost = async (formData: FormData): Promise<ActionResponse> =>
 	const plainFormData = Object.fromEntries(formData.entries());
 
 	try {
-		const response = await fetch(`${DATA_URL}/post/${id}`, {
+		const response = await fetch(`${DATA_URL}/blog/${id}`, {
 			method: "PATCH",
 			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
@@ -59,7 +59,7 @@ export const deletePost = async (id: string): Promise<ActionResponse> => {
 	}
 
 	try {
-		const response = await fetch(`${DATA_URL}/post/${id}`, {
+		const response = await fetch(`${DATA_URL}/blog/${id}`, {
 			method: "DELETE",
 		});
 

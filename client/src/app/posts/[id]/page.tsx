@@ -5,7 +5,7 @@ import type { PostType } from "@/types/types";
 
 export async function generateMetadata({params}: {params: Promise<{id: string}>}): Promise<Metadata> {
 	const {id} = await params;
-	const response = await fetch(`${DATA_URL}/post/${id}`);
+	const response = await fetch(`${DATA_URL}/blog/${id}`);
 
 	if (!response.ok) {
 		return {
@@ -22,7 +22,7 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 			title: post.title,
 			description: post.excerpt,
 			type: "article",
-			publishedTime: post.date.toLocaleString("eu-EU"),
+			publishedTime: post.createdAt.toLocaleString("eu-EU"),
 			authors: [post.author],
 		},
 	};
@@ -31,7 +31,7 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 	const {id} = await params;
 
-	const response = await fetch(`${DATA_URL}/post/${id}`);
+	const response = await fetch(`${DATA_URL}/blog/${id}`);
 	const post: PostType = await response.json();
 
 	return (
@@ -52,7 +52,7 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 						<span className="font-semibold text-slate-700">{post.author}</span>
 					</div>
 					<span className="text-slate-300">•</span>
-					<time>{new Date(post.date).toISOString().split('T')[0]}</time>
+					<time>{new Date(post.createdAt).toISOString().split('T')[0]}</time>
 				</div>
 			</header>
 

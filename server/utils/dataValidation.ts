@@ -1,4 +1,4 @@
-import type { PostType } from "../../types/types";
+import type { PostType } from "@/types/types";
 
 export const getValidatedPost = (body: Partial<PostType>): PostType => {
 	const title: string = body.title?.toString().trim();
