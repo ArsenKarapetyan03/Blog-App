@@ -3,11 +3,11 @@
 import { type PostType } from "@/types/types";
 import { DATA_URL } from "@/config/api";
 
-export type ActionResponse = {success: boolean; message: string};
+type ActionResponse = {success: boolean; message: string};
 
 export const createPost = async (formData: FormData): Promise<ActionResponse> => {
 	try {
-		const plainFormData = Object.fromEntries(formData.entries());
+		const plainFormData = Object.fromEntries(formData);
 
 		const response = await fetch(`${DATA_URL}/blog`, {
 			method: "POST",
@@ -33,7 +33,7 @@ export const updatePost = async (formData: FormData): Promise<ActionResponse> =>
 		return { success: false, message: "Invalid or missing data for update." };
 	}
 
-	const plainFormData = Object.fromEntries(formData.entries());
+	const plainFormData = Object.fromEntries(formData);
 
 	try {
 		const response = await fetch(`${DATA_URL}/blog/${id}`, {

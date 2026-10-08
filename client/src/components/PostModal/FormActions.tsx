@@ -1,7 +1,7 @@
 import { useFormStatus } from "react-dom";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
-export const FormActions = ({onCancel}: { onCancel: () => void }) => {
+export const FormActions = ({onCancel}: {onCancel: () => void}) => {
 	const {pending} = useFormStatus();
 
 	return (
