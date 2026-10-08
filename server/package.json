@@ -9,9 +9,9 @@
     "#models/*": "./models/*",
     "#config/*": "./config/*"
   },
-  "main": "index.ts",
+  "main": "server.ts",
   "scripts": {
-    "dev": "tsx watch index.ts",
+    "dev": "tsx watch server.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "model:generate": "npx sequelize-cli model:generate --name User --attributes name:string,email:string,password:string",

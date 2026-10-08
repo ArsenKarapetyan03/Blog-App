@@ -4,7 +4,7 @@ import { type Dispatch, type SetStateAction, useActionState, useEffect, useRef }
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { FormActions } from "@/components/PostModal/FormActions";
-import { createPost, updatePost } from "@/app/actions/posts";
+import { createPost, updatePost } from "@/app/services/posts";
 import { type PostType } from "@/types/types";
 
 const INPUT_STYLES = "w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500";
