@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type { PostType } from "@/types/types";
 import { getValidatedPost } from "@/utils/dataValidation";
 import { sendError } from "@/utils/apiHelpers";
+import { Op } from "sequelize";
 import db from "@/models";
 
 export const readOne = async (req: Request, res: Response) => {
