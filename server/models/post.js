@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 import { Model } from "sequelize";
 
@@ -16,8 +16,8 @@ export default (sequelize, DataTypes) => {
   Post.init({
     title: DataTypes.STRING,
     author: DataTypes.STRING,
-    excerpt: DataTypes.STRING,
-    description: DataTypes.STRING
+    excerpt: DataTypes.TEXT,
+    description: DataTypes.TEXT
   }, {
     sequelize,
     modelName: 'Post',

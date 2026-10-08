@@ -7,8 +7,8 @@ export const Header = () =>
 			 <HomeLink />
 
 			 <div className="flex gap-4">
-				 <SignLink text="Sign In" href="/auth/sign-in" />
 				 <SignLink text="Sign Up" href="/auth/sign-up" />
+				 <SignLink text="Sign In" href="/auth/sign-in" />
 			 </div>
 		 </header>
 	)

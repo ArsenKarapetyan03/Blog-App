@@ -16,10 +16,10 @@ export default {
         type: Sequelize.STRING
       },
       excerpt: {
-        type: Sequelize.STRING
+        type: Sequelize.TEXT
       },
       description: {
-        type: Sequelize.STRING
+        type: Sequelize.TEXT
       },
       createdAt: {
         allowNull: false,

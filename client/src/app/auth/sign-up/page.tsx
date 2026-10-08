@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const SignInPage = async () => {
+
 	return (
 		<main className="h-full w-full bg-white flex items-center justify-center p-6">
 			<div className="w-full max-w-md">

@@ -4,27 +4,32 @@ export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('Users', {
       id: {
-        allowNull: false,
-        autoIncrement: true,
+        type: Sequelize.INTEGER,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        allowNull: false,
+        autoIncrement: true
       },
       name: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       email: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       password: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       createdAt: {
+        type: Sequelize.DATE,
         allowNull: false,
-        type: Sequelize.DATE
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       updatedAt: {
+        type: Sequelize.DATE,
         allowNull: false,
-        type: Sequelize.DATE
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
   },

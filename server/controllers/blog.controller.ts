@@ -62,9 +62,7 @@ export const create = async (req: Request, res: Response) => {
 		const {title, excerpt, description} = getValidatedPost(post);
 
 		const newPost = await db.Post.create({
-			...post,
 			author: "user1234",
-			date: new Date(),
 			title,
 			excerpt,
 			description,
