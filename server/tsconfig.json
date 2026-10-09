@@ -7,7 +7,7 @@
     "types": ["node"],
 
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
 
     "sourceMap": true,
     "declaration": true,
@@ -31,8 +31,12 @@
     }
   },
   "include": [
-    "/**/*",
+    "**/*",
     "../types/**/*",
-    "../utils/**/*"
+    "./utils/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }

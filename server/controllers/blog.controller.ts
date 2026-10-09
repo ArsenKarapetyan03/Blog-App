@@ -1,14 +1,22 @@
 import type { Request, Response } from "express";
-import type { PostType } from "@/types/types";
-import { getValidatedPost } from "@/utils/dataValidation";
-import { sendError } from "@/utils/apiHelpers";
+import type { PostType } from "@/types/types.js";
+import { getValidatedPost } from "@/utils/dataValidation.js";
+import { sendError } from "@/utils/apiHelpers.js";
 import { Op } from "sequelize";
 import db from "@/models";
 
 export const readOne = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
-		const post = await db.Post.findByPk(id);
+		const post = await db.Post.findByPk(id, {
+			include: [
+				{
+					model: db.User,
+					as: "User",
+					attributes: ["name"]
+				}
+			]
+		});
 
 		if (!post) {
 			throw new Error("Post not found");
@@ -32,6 +40,13 @@ export const readAll = async (req: Request, res: Response) => {
 		const query = String(req.query.query ?? "").trim();
 
 		const {rows, count} = await db.Post.findAndCountAll({
+			include: [
+				{
+					model: db.User,
+					as: "User",
+					attributes: ["name"]
+				}
+			],
 			where: query ? {
 				[Op.or]: [
 					{description: {[Op.iLike]: `%${query}%`}},

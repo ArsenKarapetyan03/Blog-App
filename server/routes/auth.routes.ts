@@ -1,11 +1,9 @@
 import { Router } from "express";
-import { create } from "../controllers/auth.controller";
+import { register, login } from "../controllers/auth.controller.js";
 
 const router = Router();
 
-// router.get("/:id", readOne);
-router.post("/", create);
-// router.patch("/:id", update);
-// router.delete("/:id", remove);
+router.post("/login", login);
+router.post("/register", register);
 
 export default router;

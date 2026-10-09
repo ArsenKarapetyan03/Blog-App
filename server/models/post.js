@@ -10,14 +10,20 @@ export default (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      this.belongsTo(models.User, {foreignKey: "userId", as: "User"});
     }
   }
   Post.init({
     title: DataTypes.STRING,
-    author: DataTypes.STRING,
     excerpt: DataTypes.TEXT,
-    description: DataTypes.TEXT
+    description: DataTypes.TEXT,
+    userId: DataTypes.INTEGER,
+    author: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        return this.User ? this.User.name : null;
+      }
+    },
   }, {
     sequelize,
     modelName: 'Post',

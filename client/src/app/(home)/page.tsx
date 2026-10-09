@@ -2,7 +2,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { BriefPost } from "@/components/BriefPost";
 import { Pagination } from "@/components/Pagination/Pagination";
 import { type PostType } from "@/types/types";
-import { DATA_URL } from "@/config/api";
+import { BASE_URL } from "@/config/api";
 
 interface PageProps {
 	searchParams: Promise<{
@@ -30,7 +30,7 @@ const Page = async ({searchParams}: PageProps) => {
 	}
 
 	const response = await fetch(
-		`${DATA_URL}/blog?${params.toString()}`,
+		`${BASE_URL}/blog?${params.toString()}`,
 		{cache: "no-store"}
 	);
 

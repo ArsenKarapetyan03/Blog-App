@@ -1,11 +1,11 @@
 import { Metadata } from "next";
-import { DATA_URL } from "@/config/api";
+import { BASE_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
 import type { PostType } from "@/types/types";
 
 export async function generateMetadata({params}: {params: Promise<{id: string}>}): Promise<Metadata> {
 	const {id} = await params;
-	const response = await fetch(`${DATA_URL}/blog/${id}`);
+	const response = await fetch(`${BASE_URL}/blog/${id}`);
 
 	if (!response.ok) {
 		return {
@@ -31,7 +31,7 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 	const {id} = await params;
 
-	const response = await fetch(`${DATA_URL}/blog/${id}`);
+	const response = await fetch(`${BASE_URL}/blog/${id}`);
 	const post: PostType = await response.json();
 
 	return (

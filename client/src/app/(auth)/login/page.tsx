@@ -1,6 +1,29 @@
-import Link from "next/link";
+"use client"
 
-const SignInPage = async () => {
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useActionState } from "react";
+import { login } from "@/app/services/users";
+import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
+
+const initialState = {success: false, message: ""};
+
+const LoginPage = () => {
+	const router = useRouter();
+
+	const [state, formAction, isPending] = useActionState(
+		async (prevState: any, formData: FormData) => {
+			const response = await login(formData);
+
+			if (response?.success) {
+				router.push("/");
+				return initialState;
+			}
+			return response;
+		},
+		initialState
+	);
+
 	return (
 			<main className="h-full w-full bg-white flex items-center justify-center p-6">
 				<div className="w-full max-w-md">
@@ -13,7 +36,10 @@ const SignInPage = async () => {
 						</p>
 					</div>
 
-					<form className="space-y-4">
+					<form
+						action={formAction}
+						className="space-y-4"
+					>
 						<div>
 							<label
 								htmlFor="email"
@@ -25,8 +51,10 @@ const SignInPage = async () => {
 							<input
 								id="email"
 								type="email"
+								name="email"
 								placeholder="you@example.com"
 								required={true}
+								autoComplete="email"
 								className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
 							/>
 						</div>
@@ -51,6 +79,7 @@ const SignInPage = async () => {
 							<input
 								id="password"
 								type="password"
+								name="password"
 								placeholder="••••••••"
 								required={true}
 								className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
@@ -61,7 +90,13 @@ const SignInPage = async () => {
 							type="submit"
 							className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white transition hover:bg-gray-800 active:scale-[0.99]"
 						>
-							Log in
+							{isPending ? (
+								<>
+									<CustomLoadingSpinner size="sm"/> Wait...
+								</>
+							) : (
+								"Log in"
+							)}
 						</button>
 					</form>
 
@@ -70,7 +105,7 @@ const SignInPage = async () => {
 					<p className="mt-8 text-center text-gray-500">
 						<span>Don't have an account? </span>
 						<Link
-							href="/auth/sign-up"
+							href="/register"
 							className="font-medium text-gray-900 hover:underline"
 						>
 							Sign up
@@ -81,4 +116,4 @@ const SignInPage = async () => {
 		);
 	}
 
-export default SignInPage;
+export default LoginPage;

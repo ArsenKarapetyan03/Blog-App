@@ -1,7 +1,4 @@
-"use server"
-
-import { type PostType } from "@/types/types";
-import { DATA_URL } from "@/config/api";
+import { BASE_URL } from "@/config/api";
 
 type ActionResponse = {success: boolean; message: string};
 
@@ -9,7 +6,7 @@ export const createPost = async (formData: FormData): Promise<ActionResponse> =>
 	try {
 		const plainFormData = Object.fromEntries(formData);
 
-		const response = await fetch(`${DATA_URL}/blog`, {
+		const response = await fetch(`${BASE_URL}/blog`, {
 			method: "POST",
 			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
@@ -30,13 +27,13 @@ export const updatePost = async (formData: FormData): Promise<ActionResponse> =>
 	const id = formData.get("id")?.toString();
 
 	if (!id) {
-		return { success: false, message: "Invalid or missing data for update." };
+		return {success: false, message: "Invalid or missing data for update."};
 	}
 
 	const plainFormData = Object.fromEntries(formData);
 
 	try {
-		const response = await fetch(`${DATA_URL}/blog/${id}`, {
+		const response = await fetch(`${BASE_URL}/blog/${id}`, {
 			method: "PATCH",
 			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
@@ -59,7 +56,7 @@ export const deletePost = async (id: string): Promise<ActionResponse> => {
 	}
 
 	try {
-		const response = await fetch(`${DATA_URL}/blog/${id}`, {
+		const response = await fetch(`${BASE_URL}/blog/${id}`, {
 			method: "DELETE",
 		});
 

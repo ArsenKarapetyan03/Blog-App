@@ -12,14 +12,20 @@ export default {
       title: {
         type: Sequelize.STRING
       },
-      author: {
-        type: Sequelize.STRING
-      },
       excerpt: {
         type: Sequelize.TEXT
       },
       description: {
         type: Sequelize.TEXT
+      },
+      userId: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'Users',
+          key: 'id'
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
       createdAt: {
         allowNull: false,
