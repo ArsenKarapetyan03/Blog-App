@@ -2,21 +2,17 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { useRouter } from "next/navigation";
 import { register } from "@/app/services/users";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
 const initialState = {success: false, message: ""};
 
 const RegisterPage = () => {
-	const router = useRouter();
-
 	const [state, formAction, isPending] = useActionState(
 		async (prevState: any, formData: FormData) => {
 			const response = await register(formData);
 
 			if (response?.success) {
-				router.push("/");
 				return initialState;
 			}
 			return response;

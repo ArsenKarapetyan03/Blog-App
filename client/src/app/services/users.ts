@@ -1,3 +1,7 @@
+"use server"
+
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { BASE_URL } from "@/config/api";
 
 export const register = async (formData: FormData) => {
@@ -14,12 +18,11 @@ export const register = async (formData: FormData) => {
 			const message = (await response.json()).message;
 			return {success: false, message};
 		}
-
-		return {success: true, message: "User registered successfully!"};
 	} catch (error) {
 		console.error("Registration Error:", error);
 		return {success: false, message: "Server error. Please try again later."};
 	}
+	redirect('/login');
 }
 
 export const login = async (formData: FormData) => {
@@ -34,16 +37,24 @@ export const login = async (formData: FormData) => {
 
 		if (!response.ok) {
 			const message = (await response.json()).message;
+
 			return {success: false, message};
 		}
 
 		const data = await response.json();
 
-		localStorage.setItem("token", data.token);
+		const cookieStore = await cookies();
 
-		return {success: true, message: "User login successfully!"};
+		cookieStore.set("token", data.token, {
+			httpOnly: true,
+			sameSite: "strict",
+			path: "/",
+			maxAge: 60 * 60 * 24 * 7,
+		});
 	} catch (error) {
 		console.error("Login Error:", error);
 		return {success: false, message: "Server error. Please try again later."};
 	}
+
+	redirect('/');
 }

@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { login } from "@/app/services/users";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
@@ -9,14 +8,11 @@ import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 const initialState = {success: false, message: ""};
 
 const LoginPage = () => {
-	const router = useRouter();
-
 	const [state, formAction, isPending] = useActionState(
 		async (prevState: any, formData: FormData) => {
 			const response = await login(formData);
 
 			if (response?.success) {
-				router.push("/");
 				return initialState;
 			}
 			return response;
@@ -53,7 +49,7 @@ const LoginPage = () => {
 								type="email"
 								name="email"
 								placeholder="you@example.com"
-								required={true}
+								required
 								autoComplete="email"
 								className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
 							/>
@@ -81,10 +77,14 @@ const LoginPage = () => {
 								type="password"
 								name="password"
 								placeholder="••••••••"
-								required={true}
+								required
 								className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
 							/>
 						</div>
+
+						{state?.message && (
+							<p className="text-sm text-red-600 font-medium text-center">{state.message}</p>
+						)}
 
 						<button
 							type="submit"
