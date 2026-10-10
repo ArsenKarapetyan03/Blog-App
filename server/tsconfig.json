@@ -9,6 +9,9 @@
     "outDir": "./dist",
     "rootDir": "./",
 
+    "allowJs": true,
+    "checkJs": false,
+
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
@@ -27,7 +30,6 @@
     "paths": {
       "@/*": ["./*"],
       "@/types/*": ["../types/*"],
-      "@/models/*": ["./models/*"]
     }
   },
   "include": [

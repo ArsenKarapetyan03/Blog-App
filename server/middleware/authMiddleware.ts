@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifyToken } from "@/utils/jwt";
+import { verifyToken } from "@/utils/jwt.js";
 
 export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
 	const authHeader = req.headers.authorization

@@ -3,7 +3,7 @@ import type { PostType } from "@/types/types.js";
 import { getValidatedPost } from "@/utils/dataValidation.js";
 import { sendError } from "@/utils/apiHelpers.js";
 import { Op } from "sequelize";
-import db from "@/models";
+import db from "@/models/index.js";
 
 export const readOne = async (req: Request, res: Response) => {
 	try {
