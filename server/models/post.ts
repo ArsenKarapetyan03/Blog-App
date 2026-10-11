@@ -7,7 +7,7 @@ import {
 	type Association,
 	type ForeignKey
 } from "sequelize";
-import type {User} from "./user.js";
+import type { User } from "./user.js";
 
 export class Post extends Model<
 	InferAttributes<Post>,

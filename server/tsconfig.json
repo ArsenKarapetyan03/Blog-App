@@ -29,13 +29,10 @@
 
     "paths": {
       "@/*": ["./*"],
-      "@/types/*": ["../types/*"],
     }
   },
   "include": [
     "**/*",
-    "../types/**/*",
-    "./utils/**/*"
   ],
   "exclude": [
     "node_modules",

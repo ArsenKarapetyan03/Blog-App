@@ -7,7 +7,7 @@ if (!JWT_SECRET) {
 }
 
 interface TokenPayload extends jwt.JwtPayload {
-	id: number | string;
+	id: string;
 	email: string;
 }
 
@@ -18,8 +18,8 @@ export const generateToken = (payload: TokenPayload): string => {
 export const verifyToken = (token: string): TokenPayload => {
 	const decoded = jwt.verify(token, JWT_SECRET);
 
-	if (typeof decoded === 'string') {
-		throw new Error('Invalid token payload structure');
+	if (typeof decoded === "string") {
+		throw new Error("Invalid token payload structure");
 	}
 
 	return decoded as TokenPayload;

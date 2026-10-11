@@ -1,6 +1,9 @@
+import { cookies } from "next/headers";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BriefPost } from "@/components/BriefPost";
 import { Pagination } from "@/components/Pagination/Pagination";
+import { Search } from "@/components/Search";
+import { AddPostButton } from "@/components/ui/AddPostButton";
 import { type PostType } from "@/types/types";
 import { BASE_URL } from "@/config/api";
 
@@ -15,6 +18,9 @@ const POSTS_PER_PAGE = 4;
 
 const Page = async ({searchParams}: PageProps) => {
 	const resolvedParams = await searchParams;
+
+	const token = (await cookies()).get("token");
+	const isAuthorized = !!token;
 
 	const query = resolvedParams?.query || "";
 	const requestedPage = Number(resolvedParams?.page);
@@ -54,12 +60,19 @@ const Page = async ({searchParams}: PageProps) => {
 	}
 
 	return (
-		<div className="flex flex-col gap-12">
-			{posts.map(post => <BriefPost post={post} key={post.id} />)}
+		<div>
+			<div className="py-10 flex justify-between border-b border-slate-200">
+				<AddPostButton authorized={isAuthorized} />
+				<Search />
+			</div>
 
-			{totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} />}
+			<div className="flex flex-col gap-12">
+				{posts.map(post => <BriefPost post={post} key={post.id}/>)}
+
+				{totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages}/>}
+			</div>
 		</div>
-	)
+	);
 }
 
 export default Page;

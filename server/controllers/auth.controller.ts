@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import db from "#models/index.js";
 import { generateToken } from "../utils/jwt.js";
 
-export const register = async (req: Request, res: Response) => {
+export const signUp = async (req: Request, res: Response) => {
 	try {
 		const {name, email, password} = req.body;
 
@@ -40,7 +40,7 @@ export const register = async (req: Request, res: Response) => {
 	}
 }
 
-export const login = async (req: Request, res: Response) => {
+export const signIn = async (req: Request, res: Response) => {
 	try {
 		const {email, password} = req.body;
 
@@ -69,19 +69,63 @@ export const login = async (req: Request, res: Response) => {
 			});
 		}
 
-		const token = generateToken({id: user.id, email: user.email});
+		const token = generateToken({id: String(user.id), name: user.name, email: user.email});
 
 		return res.status(200).json({
 			success: true,
 			message: "Login successful.",
-			token
+			token,
+			user: {
+				id: user.id,
+				name: user.name,
+				email: user.email
+			},
 		});
 
 	} catch (error) {
 		console.error("Login error:", error);
 		return res.status(500).json({
 			success: false,
-			message: "An error occurred during login."
+			message: "An error occurred during sign-in."
+		});
+	}
+}
+
+export const getUser = async (req: Request, res: Response) => {
+	try {
+		const user = req.user;
+
+		if (!user) {
+			return res.status(401).json({
+				success: false,
+				message: "Unauthorized. User data not found in request."
+			});
+		}
+
+
+		const foundUser = await db.User.findOne({where: {id: user.id}});
+
+		if (!foundUser) {
+			return res.status(404).json({
+				success: false,
+				message: "User not found."
+			});
+		}
+
+		return res.status(200).json({
+			success: true,
+			user: {
+				id: foundUser.id,
+				name: foundUser.name,
+				email: foundUser.email
+			},
+		});
+	} catch (error) {
+		console.error("Get user error:", error);
+
+		return res.status(500).json({
+			success: false,
+			message: "Internal server error."
 		});
 	}
 }

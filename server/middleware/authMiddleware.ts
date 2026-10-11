@@ -1,17 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "@/utils/jwt.js";
 
-export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
-	const authHeader = req.headers.authorization
-
-	if (!authHeader || !authHeader.startsWith('Bearer ')) {
-		return res.status(401).json({message: "Authentication required. Please login."});
-	}
-
-	const token = authHeader.split(' ')[1];
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+	const token = req.cookies.token;
 
 	if (!token) {
-		return res.status(401).json({message: "Authentication required. Token is missing."});
+		return res.status(401).json({message: "Authentication required. Please sign-in."});
 	}
 
 	try {

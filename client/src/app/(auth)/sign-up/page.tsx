@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { register } from "@/app/services/users";
+import { signUp } from "@/app/services/users";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
 const initialState = {success: false, message: ""};
@@ -10,7 +10,7 @@ const initialState = {success: false, message: ""};
 const RegisterPage = () => {
 	const [state, formAction, isPending] = useActionState(
 		async (prevState: any, formData: FormData) => {
-			const response = await register(formData);
+			const response = await signUp(formData);
 
 			if (response?.success) {
 				return initialState;
@@ -105,7 +105,7 @@ const RegisterPage = () => {
 
 				<p className="mt-8 text-center text-gray-500">
 					<span>Have an account? </span>
-					<Link href="/login" className="font-medium text-gray-900 hover:underline">
+					<Link href="/sign-in" className="font-medium text-gray-900 hover:underline">
 						Sign in
 					</Link>
 				</p>

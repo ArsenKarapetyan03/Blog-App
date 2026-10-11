@@ -5,4 +5,5 @@ export interface PostType {
 	createdAt: string;
 	excerpt: string;
 	description: string;
+	userId: number;
 }

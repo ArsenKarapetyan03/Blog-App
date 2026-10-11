@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-import type { PostType } from "@/types/types.js";
 import { getValidatedPost } from "@/utils/dataValidation.js";
 import { sendError } from "@/utils/apiHelpers.js";
 import { Op } from "sequelize";
@@ -8,7 +7,12 @@ import db from "@/models/index.js";
 export const readOne = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
-		const post = await db.Post.findByPk(id, {
+
+		if (!id) {
+			throw new Error("Post not found");
+		}
+
+		const post = await db.Post.findByPk(String(id), {
 			include: [
 				{
 					model: db.User,
@@ -58,7 +62,7 @@ export const readAll = async (req: Request, res: Response) => {
 			order: [["createdAt", "DESC"]],
 		});
 
-		const posts: PostType[] = rows.map(post => post.toJSON() as PostType);
+		const posts = rows.map(post => post.toJSON());
 
 		return res.status(200).json({
 			posts,
@@ -72,12 +76,12 @@ export const readAll = async (req: Request, res: Response) => {
 
 export const create = async (req: Request, res: Response) => {
 	try {
-		const post: PostType = req.body;
+		const post = req.body;
 
 		const {title, excerpt, description} = getValidatedPost(post);
 
 		const newPost = await db.Post.create({
-			author: "user1234",
+			userId: Number(req.user?.id),
 			title,
 			excerpt,
 			description,
@@ -96,12 +100,14 @@ export const create = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
+		const userId = Number(req.user?.id);
+
 		const {title, excerpt, description} = getValidatedPost(req.body);
 
 		const [affectedCount] = await db.Post.update(
 			{title, excerpt, description},
 			{
-				where: {id},
+				where: {id, userId},
 				returning: true
 			}
 		);
@@ -126,8 +132,10 @@ export const remove = async (req: Request, res: Response) => {
 			throw new Error("Post ID is required");
 		}
 
+		const userId = Number(req.user?.id);
+
 		const result = await db.Post.destroy({
-			where: {id},
+			where: {id, userId},
 		});
 
 		if (result === 0) {

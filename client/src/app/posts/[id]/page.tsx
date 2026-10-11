@@ -1,19 +1,31 @@
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { BASE_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
-import type { PostType } from "@/types/types";
+import { getSessionUser } from "@/app/services/users";
+import { type PostType } from "@/types/types";
+
+async function getPost(id: string): Promise<PostType | null> {
+	try {
+		const response = await fetch(`${BASE_URL}/blog/${id}`);
+		if (!response.ok) {
+			return null;
+		}
+		return await response.json();
+	} catch (error) {
+		return null;
+	}
+}
 
 export async function generateMetadata({params}: {params: Promise<{id: string}>}): Promise<Metadata> {
 	const {id} = await params;
-	const response = await fetch(`${BASE_URL}/blog/${id}`);
+	const post = await getPost(id);
 
-	if (!response.ok) {
+	if (!post) {
 		return {
 			title: "No post found",
 		};
 	}
-
-	const post: PostType = await response.json();
 
 	return {
 		title: post.title,
@@ -22,7 +34,7 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 			title: post.title,
 			description: post.excerpt,
 			type: "article",
-			publishedTime: post.createdAt.toLocaleString("eu-EU"),
+			publishedTime: new Date(post.createdAt).toISOString(),
 			authors: [post.author],
 		},
 	};
@@ -31,8 +43,13 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 	const {id} = await params;
 
-	const response = await fetch(`${BASE_URL}/blog/${id}`);
-	const post: PostType = await response.json();
+	const [post, user] = await Promise.all([getPost(id), getSessionUser()]);
+
+	if (!post) {
+		notFound();
+	}
+
+	const isAuthor = user && String(user.id) === String(post.userId);
 
 	return (
 		<div className="flex flex-col gap-10">
@@ -41,7 +58,8 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 					<h1 className="flex-1 text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-slate-900">
 						{post.title}
 					</h1>
-					<PostActions postData={post} />
+
+					{isAuthor && (<PostActions postData={post} />)}
 				</div>
 
 				<div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">

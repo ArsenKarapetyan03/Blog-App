@@ -21,7 +21,7 @@ export default function RootLayout({children}: LayoutProps<"/">) {
 			<body>
 			<Header />
 				<div className="flex flex-col items-center">
-					<main className="flex flex-1 w-full max-w-4xl flex-col items-center sm:items-start font-sans text-lg">
+					<main className="flex flex-1 w-full max-w-3xl lg:max-w-4xl flex-col items-center sm:items-start font-sans lg:text-lg">
 						{children}
 					</main>
 				</div>

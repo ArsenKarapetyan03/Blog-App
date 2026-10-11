@@ -4,11 +4,19 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { BASE_URL } from "@/config/api";
 
-export const register = async (formData: FormData) => {
+interface SessionUser {
+	id: string | number;
+	name: string;
+	email: string;
+}
+
+export const signUp = async (formData: FormData) => {
+	let isSuccessful = false;
+
 	try {
 		const plainFormData = Object.fromEntries(formData);
 
-		const response = await fetch(`${BASE_URL}/auth/register`, {
+		const response = await fetch(`${BASE_URL}/auth/sign-up`, {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
 			body: JSON.stringify(plainFormData)
@@ -18,18 +26,24 @@ export const register = async (formData: FormData) => {
 			const message = (await response.json()).message;
 			return {success: false, message};
 		}
+
+		isSuccessful = true;
 	} catch (error) {
 		console.error("Registration Error:", error);
 		return {success: false, message: "Server error. Please try again later."};
 	}
-	redirect('/login');
+	if (isSuccessful) {
+		redirect("/sign-in");
+	}
 }
 
-export const login = async (formData: FormData) => {
+export const signIn = async (formData: FormData) => {
+	let isSuccessful = false;
+
 	try {
 		const plainFormData = Object.fromEntries(formData);
 
-		const response = await fetch(`${BASE_URL}/auth/login`, {
+		const response = await fetch(`${BASE_URL}/auth/sign-in`, {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
 			body: JSON.stringify(plainFormData)
@@ -51,10 +65,48 @@ export const login = async (formData: FormData) => {
 			path: "/",
 			maxAge: 60 * 60 * 24 * 7,
 		});
+
+		isSuccessful = true;
 	} catch (error) {
 		console.error("Login Error:", error);
 		return {success: false, message: "Server error. Please try again later."};
 	}
 
-	redirect('/');
+	if (isSuccessful) {
+		redirect("/");
+	}
+}
+
+export const logout = async () => {
+
+	const cookieStore = await cookies();
+	cookieStore.delete("token");
+	cookieStore.delete("user");
+
+	redirect("/sign-in");
+}
+
+export async function getSessionUser() {
+	const cookieStore = await cookies();
+	const token = cookieStore.get("token")?.value;
+
+	if (!token) {
+		return null;
+	}
+
+	try {
+		const response = await fetch(`${BASE_URL}/auth/me`, {
+			headers: {Cookie: `token=${token}`},
+		});
+
+		if (!response.ok) {
+			return null;
+		}
+
+		const data: {user?: SessionUser} = await response.json();
+
+		return data.user ?? null;
+	} catch {
+		return null;
+	}
 }

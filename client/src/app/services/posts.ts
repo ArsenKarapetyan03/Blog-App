@@ -10,6 +10,7 @@ export const createPost = async (formData: FormData): Promise<ActionResponse> =>
 			method: "POST",
 			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
+			credentials: "include"
 		});
 
 		if (!response.ok) {
@@ -37,6 +38,7 @@ export const updatePost = async (formData: FormData): Promise<ActionResponse> =>
 			method: "PATCH",
 			body: JSON.stringify(plainFormData),
 			headers: {"Content-Type": "application/json"},
+			credentials: "include"
 		});
 
 		if (!response.ok) {
@@ -58,6 +60,7 @@ export const deletePost = async (id: string): Promise<ActionResponse> => {
 	try {
 		const response = await fetch(`${BASE_URL}/blog/${id}`, {
 			method: "DELETE",
+			credentials: "include"
 		});
 
 		if (!response.ok) {

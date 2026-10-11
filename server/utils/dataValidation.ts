@@ -1,9 +1,13 @@
-import type { PostType } from "@/types/types.js";
+interface RawPost {
+	title: string,
+	excerpt: string,
+	description: string
+}
 
-export const getValidatedPost = (body: Partial<PostType>) => {
-	const title = body.title?.toString().trim();
-	const excerpt = body.excerpt?.toString().trim();
-	const description = body.description?.toString().trim();
+export const getValidatedPost = (post: RawPost) => {
+	const title = post.title?.toString().trim();
+	const excerpt = post.excerpt?.toString().trim();
+	const description = post.description?.toString().trim();
 
 	if (!title || !excerpt || !description) {
 		throw new Error("Invalid data");

@@ -19,8 +19,6 @@
       }
     ],
     "paths": {
-      "@/types/*": ["../types/*"],
-//      "@/utils/*": ["../utils/*"],
       "@/*": ["./src/*"]
     }
   },
@@ -31,9 +29,7 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts",
-
-    "../types/**/*",
-    "../utils/**/*"
+    "./src/types/**/*",
   ],
   "exclude": ["node_modules"]
 }

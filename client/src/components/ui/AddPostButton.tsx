@@ -1,17 +1,22 @@
 "use client"
 
-import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {SignInModal} from "@/components/SignInModal";
 
 const PostModal = dynamic(() =>
 		import("@/components/PostModal/PostModal").then((mod) => mod.PostModal),
 	{ssr: false}
 );
 
-export const AddPostButton = () => {
+export const AddPostButton = ({authorized}: {authorized: boolean}) => {
 
 	const [isOpen, setIsOpen] = useState(false);
+	const router = useRouter();
+
 	const handleOpen = () => setIsOpen(true);
+  const handleClose = () => setIsOpen(false);
 
 	return (
 		<>
@@ -23,7 +28,17 @@ export const AddPostButton = () => {
 				Add new Post
 			</button>
 
-			{isOpen && <PostModal isOpen={isOpen} setIsOpen={setIsOpen} />}
+			{isOpen && authorized
+				? <PostModal
+						isOpen={isOpen}
+						setIsOpen={setIsOpen}
+					/>
+				: <SignInModal
+						isOpen={isOpen}
+						onClose={handleClose}
+						onContinue={()=>router.push("/sign-in")}
+				/>
+			}
 		</>
 	)
 }
