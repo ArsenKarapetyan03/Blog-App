@@ -55,6 +55,14 @@ export function initPost(sequelize: Sequelize): typeof Post {
 		{
 			sequelize,
 			modelName: "Post",
+			defaultScope: {
+				include: [
+					{
+						association: "User",
+						attributes: ["name"]
+					}
+				]
+			}
 		}
 	);
 

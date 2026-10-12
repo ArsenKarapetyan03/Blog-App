@@ -8,7 +8,6 @@ import {
   type NonAttribute,
   type Association,
 } from "sequelize";
-
 import type { Post } from "./post.js";
 
 export class User extends Model<
@@ -26,7 +25,7 @@ export class User extends Model<
     Posts: Association<User, Post>;
   };
 
-  static associate(models: { Post: typeof Post }) {
+  static associate(models: {Post: typeof Post}) {
     this.hasMany(models.Post, {
       foreignKey: "userId",
       as: "Posts",
