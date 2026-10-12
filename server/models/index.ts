@@ -1,6 +1,5 @@
 import { Sequelize } from "sequelize";
 import configJson from "../config/config.js";
-
 import { User, initUser } from "./user.js";
 import { Post, initPost } from "./post.js";
 
@@ -15,7 +14,7 @@ if (!config) {
 
 let sequelize: Sequelize;
 
-if ('use_env_variable' in config && config.use_env_variable) {
+if ("use_env_variable" in config && config.use_env_variable) {
     const connectionString = process.env[config.use_env_variable as string];
 
     if (!connectionString) {

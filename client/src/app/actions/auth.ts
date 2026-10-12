@@ -10,76 +10,68 @@ interface SessionUser {
 	email: string;
 }
 
-export const signUp = async (formData: FormData) => {
-	let isSuccessful = false;
+type ActionResponse = {success: boolean; message: string};
 
+export const signUp = async (prevState: any, formData: FormData): Promise<ActionResponse | void> => {
 	try {
 		const plainFormData = Object.fromEntries(formData);
 
 		const response = await fetch(`${BASE_URL}/auth/sign-up`, {
 			method: "POST",
-			headers: {"Content-Type": "application/json"},
+			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(plainFormData)
 		});
 
 		if (!response.ok) {
-			const message = (await response.json()).message;
-			return {success: false, message};
+			const data = await response.json();
+			return { success: false, message: data?.message || "Registration failed." };
 		}
 
-		isSuccessful = true;
 	} catch (error) {
 		console.error("Registration Error:", error);
-		return {success: false, message: "Server error. Please try again later."};
+		return { success: false, message: "Server error. Please try again later." };
 	}
-	if (isSuccessful) {
-		redirect("/sign-in");
-	}
+
+	redirect("/sign-in");
 }
 
-export const signIn = async (formData: FormData) => {
-	let isSuccessful = false;
-
+export const signIn = async (prevState: any, formData: FormData): Promise<ActionResponse | void> => {
 	try {
 		const plainFormData = Object.fromEntries(formData);
 
 		const response = await fetch(`${BASE_URL}/auth/sign-in`, {
 			method: "POST",
-			headers: {"Content-Type": "application/json"},
+			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(plainFormData)
 		});
 
 		if (!response.ok) {
-			const message = (await response.json()).message;
-
-			return {success: false, message};
+			const data = await response.json();
+			return { success: false, message: data?.message || "Invalid credentials." };
 		}
 
 		const data = await response.json();
-
 		const cookieStore = await cookies();
 
 		cookieStore.set("token", data.token, {
 			httpOnly: true,
 			sameSite: "strict",
+			secure: process.env.NODE_ENV === "production",
 			path: "/",
 			maxAge: 60 * 60 * 24 * 7,
 		});
 
-		isSuccessful = true;
 	} catch (error) {
 		console.error("Login Error:", error);
-		return {success: false, message: "Server error. Please try again later."};
+		return { success: false, message: "Server error. Please try again later." };
 	}
 
-	if (isSuccessful) {
-		redirect("/");
-	}
+	redirect("/");
 }
 
 export const logout = async () => {
-
 	const cookieStore = await cookies();
+
 	cookieStore.delete("token");
 	cookieStore.delete("user");
 
@@ -96,7 +88,12 @@ export async function getSessionUser() {
 
 	try {
 		const response = await fetch(`${BASE_URL}/auth/me`, {
-			headers: {Cookie: `token=${token}`},
+			method: "GET",
+			headers: {
+				"Cookie": `token=${token}`,
+				"Content-Type": "application/json"
+			},
+			cache: "no-store"
 		});
 
 		if (!response.ok) {
@@ -106,7 +103,8 @@ export async function getSessionUser() {
 		const data: {user?: SessionUser} = await response.json();
 
 		return data.user ?? null;
-	} catch {
+	} catch (error) {
+		console.error("Fetch session user error:", error);
 		return null;
 	}
 }

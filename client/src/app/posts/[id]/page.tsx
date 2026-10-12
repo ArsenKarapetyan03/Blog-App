@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BASE_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
-import { getSessionUser } from "@/app/services/users";
+import { getSessionUser } from "@/app/actions/auth";
 import { type PostType } from "@/types/types";
 
 async function getPost(id: string): Promise<PostType | null> {

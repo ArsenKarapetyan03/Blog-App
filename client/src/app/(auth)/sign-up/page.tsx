@@ -2,23 +2,13 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { signUp } from "@/app/services/users";
+import { signUp } from "@/app/actions/auth";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
-const initialState = {success: false, message: ""};
+const initialState = { success: false, message: "" };
 
 const RegisterPage = () => {
-	const [state, formAction, isPending] = useActionState(
-		async (prevState: any, formData: FormData) => {
-			const response = await signUp(formData);
-
-			if (response?.success) {
-				return initialState;
-			}
-			return response;
-		},
-		initialState
-	);
+	const [state, formAction, isPending] = useActionState(signUp, initialState);
 
 	return (
 		<main className="h-full w-full bg-white flex items-center justify-center p-6">
@@ -41,9 +31,10 @@ const RegisterPage = () => {
 							name="name"
 							type="text"
 							placeholder="Your Name"
-							required={true}
+							required
+							disabled={isPending} // Блокируем инпуты во время отправки
 							className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition
-							 placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+							 placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:opacity-60"
 						/>
 					</div>
 
@@ -56,9 +47,10 @@ const RegisterPage = () => {
 							name="email"
 							type="email"
 							placeholder="you@example.com"
-							required={true}
+							required
+							disabled={isPending} // Блокируем инпуты во время отправки
 							className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none
-							 transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+							 transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:opacity-60"
 						/>
 					</div>
 
@@ -73,20 +65,24 @@ const RegisterPage = () => {
 							name="password"
 							type="password"
 							placeholder="••••••••"
-							required={true}
+							required
+							disabled={isPending} // Блокируем инпуты во время отправки
 							className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none
-							 transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+							 transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:opacity-60"
 						/>
 					</div>
 
+					{/* Вывод сообщения об ошибке от Express */}
 					{state?.message && (
-						<p className="text-sm text-red-600 font-medium text-center">{state.message}</p>
+						<p className="text-sm text-red-600 font-medium text-center bg-red-50 p-2.5 rounded-lg border border-red-100">
+							{state.message}
+						</p>
 					)}
 
 					<button
 						type="submit"
 						disabled={isPending}
-						className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white transition hover:bg-gray-800 active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2"
+						className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white transition hover:bg-gray-800 active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
 					>
 						{isPending ? (
 							<>

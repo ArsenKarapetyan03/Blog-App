@@ -4,8 +4,8 @@ import { type Dispatch, type SetStateAction, useActionState, useEffect, useRef }
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { FormActions } from "@/components/PostModal/FormActions";
-import { createPost, updatePost } from "@/app/services/posts";
 import { type PostType } from "@/types/types";
+import { BASE_URL } from "@/config/api";
 
 const INPUT_STYLES = "w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500";
 
@@ -16,6 +16,39 @@ interface PostModalProps {
 }
 
 const initialState = {success: false, message: ""};
+
+const createPost = async (plainFormData: Partial<PostType>) => {
+	const response = await fetch(`${BASE_URL}/blog`, {
+		method: "POST",
+		body: JSON.stringify(plainFormData),
+		headers: { "Content-Type": "application/json" },
+		credentials: "include"
+	});
+
+	if (!response.ok) {
+		return {success: false, message: "Failed to create post."};
+	}
+
+	return {success: true, message: "Post created successfully!"};
+}
+
+const updatePost = async (plainFormData: Partial<PostType>) => {
+	if (!plainFormData.id) {
+		return {success: false, message: "Invalid or missing data for update."};
+	}
+
+	const response = await fetch(`${BASE_URL}/blog/${plainFormData.id}`, {
+		method: "PATCH",
+		body: JSON.stringify(plainFormData),
+		headers: { "Content-Type": "application/json" },
+		credentials: "include"
+	});
+
+	if (!response.ok) {
+		return { success: false, message: "Failed to update post." };
+	}
+	return { success: true, message: "Post updated successfully!" };
+}
 
 export const PostModal = (
 	{
@@ -30,11 +63,13 @@ export const PostModal = (
 
 	const isEditMode = !!postData;
 
-	const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
+	const [state, formAction] = useActionState(async (prevState: typeof initialState, formData: FormData) => {
+		const plainFormData: Partial<PostType> = Object.fromEntries(formData);
 		const action = isEditMode ? updatePost : createPost;
-		const response = await action(formData);
 
-		if (response?.success) {
+		const response = await action(plainFormData);
+
+		if (response.success) {
 			setIsOpen(false);
 			router.refresh();
 			return initialState;
@@ -65,10 +100,6 @@ export const PostModal = (
 		}
 	}, [state]);
 
-	if (!isOpen) {
-		return null;
-	}
-
 	return (
 		<dialog
 			ref={dialogRef}
@@ -90,13 +121,14 @@ export const PostModal = (
 				</div>
 
 				<form
+					key={postData?.id || "new-post"}
 					name="post-modal"
 					ref={formRef}
 					action={formAction}
 					className="flex flex-col gap-4"
 				>
 					{isEditMode && (
-						<input type="hidden" name="id" value={postData.id} />
+						<input type="hidden" name="id" value={postData?.id} />
 					)}
 					<div>
 						<label

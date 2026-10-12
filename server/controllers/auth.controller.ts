@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import db from "#models/index.js";
+import { userService } from "@/services/user.service.js";
 import { generateToken } from "../utils/jwt.js";
 
 export const signUp = async (req: Request, res: Response) => {
@@ -8,21 +8,16 @@ export const signUp = async (req: Request, res: Response) => {
 		const {name, email, password} = req.body;
 
 		if (!name || !email || !password) {
-			return res.status(400).json({
-				success: false,
-				message: "All fields (name, email, password) are required."
-			});
+			return res.status(400).json({success: false, message: "All fields (name, email, password) are required."});
 		}
 
-		const userExists = await db.User.findOne({where: {email}});
+		const userExists = await userService.findByEmail(email);
 
 		if (userExists) {
 		  return res.status(409).json({success: false, message: "Email already registered."});
 		}
 
-		const hashedPassword = await bcrypt.hash(password, 10);
-
-		const newUser = await db.User.create({name, email, password: hashedPassword});
+		const newUser = await userService.createUser({name, email, password});
 
 		return res.status(201).json({
 			success: true,
@@ -45,49 +40,34 @@ export const signIn = async (req: Request, res: Response) => {
 		const {email, password} = req.body;
 
 		if (!email || !password) {
-			return res.status(400).json({
-				success: false,
-				message: "Email and password are required."
-			});
+			return res.status(400).json({success: false, message: "Email and password are required."});
 		}
 
-		const user = await db.User.findOne({where: {email}});
+		const user = await userService.findByEmail(email);
 
 		if (!user) {
-			return res.status(401).json({
-				success: false,
-				message: "Invalid credentials."
-			});
+			return res.status(401).json({success: false, message: "Invalid credentials."});
 		}
 
 		const isPasswordValid = await bcrypt.compare(password, user.password);
 
 		if (!isPasswordValid) {
-			return res.status(401).json({
-				success: false,
-				message: "Invalid credentials."
-			});
+			return res.status(401).json({success: false, message: "Invalid credentials."});
 		}
 
-		const token = generateToken({id: String(user.id), name: user.name, email: user.email});
+		const token = generateToken({id: user.id, name: user.name, email: user.email});
 
 		return res.status(200).json({
 			success: true,
 			message: "Login successful.",
 			token,
-			user: {
-				id: user.id,
-				name: user.name,
-				email: user.email
-			},
+			user: {id: user.id, name: user.name, email: user.email}
 		});
 
 	} catch (error) {
 		console.error("Login error:", error);
-		return res.status(500).json({
-			success: false,
-			message: "An error occurred during sign-in."
-		});
+
+		return res.status(500).json({success: false,	message: "An error occurred during sign-in."});
 	}
 }
 
@@ -96,20 +76,13 @@ export const getUser = async (req: Request, res: Response) => {
 		const user = req.user;
 
 		if (!user) {
-			return res.status(401).json({
-				success: false,
-				message: "Unauthorized. User data not found in request."
-			});
+			return res.status(401).json({success: false, message: "Unauthorized. User data not found in request."});
 		}
 
-
-		const foundUser = await db.User.findOne({where: {id: user.id}});
+		const foundUser = await userService.findById(user.id);
 
 		if (!foundUser) {
-			return res.status(404).json({
-				success: false,
-				message: "User not found."
-			});
+			return res.status(404).json({success: false, message: "User not found."});
 		}
 
 		return res.status(200).json({
@@ -123,9 +96,6 @@ export const getUser = async (req: Request, res: Response) => {
 	} catch (error) {
 		console.error("Get user error:", error);
 
-		return res.status(500).json({
-			success: false,
-			message: "Internal server error."
-		});
+		return res.status(500).json({success: false, message: "Internal server error."});
 	}
 }
