@@ -3,14 +3,6 @@ import { getValidatedPost } from "@/utils/dataValidation.js";
 import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
 import { postService } from "@/services/post.service.js";
 
-interface AuthenticatedRequest extends Request {
-	user?: {
-		id: number;
-		name: string;
-		email: string;
-	};
-}
-
 const readPosts = async (req: Request, res: Response, userId?: number) => {
 	try {
 		const {limit, offset} = getPaginationDirectives(req.query);
@@ -36,7 +28,7 @@ const readPosts = async (req: Request, res: Response, userId?: number) => {
 
 export const readAll = (req: Request, res: Response) => readPosts(req, res);
 
-export const readMine = (req: AuthenticatedRequest, res: Response) => {
+export const readMine = (req: Request, res: Response) => {
 	if (!req.user) {
 		return res.status(401).json({success: false, message: "Authentication required. Please sign-in."});
 	}
@@ -63,7 +55,7 @@ export const readOne = async (req: Request, res: Response) => {
 	}
 };
 
-export const create = async (req: AuthenticatedRequest, res: Response) => {
+export const create = async (req: Request, res: Response) => {
 	try {
 		if (!req.user) {
 			return res.status(401).json({success: false, message: "Authentication required. Please sign-in."});
@@ -89,7 +81,7 @@ export const create = async (req: AuthenticatedRequest, res: Response) => {
 	}
 };
 
-export const update = async (req: AuthenticatedRequest, res: Response) => {
+export const update = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
 		if (!req.user) {
@@ -121,7 +113,7 @@ export const update = async (req: AuthenticatedRequest, res: Response) => {
 	}
 };
 
-export const remove = async (req: AuthenticatedRequest, res: Response) => {
+export const remove = async (req: Request, res: Response) => {
 	try {
 		const {id} = req.params;
 		if (!id) {
