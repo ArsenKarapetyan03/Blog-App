@@ -42,7 +42,10 @@ const Page = async ({searchParams}: PageProps) => {
 	const endpoint = currentFilter === "My" ? "/blog/mine" : "/blog";
 	const response = await fetch(`${BASE_URL}${endpoint}?${params.toString()}`, {
 		cache: "no-store",
-		headers: token ? {Cookie: `token=${token.value}`} : undefined,
+		headers: {
+			"Authorization": `Bearer ${token?.value}`,
+			"Content-Type": "application/json"
+		}
 	});
 
 	let posts: PostType[] = [];

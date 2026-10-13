@@ -41,24 +41,24 @@ export const signIn = async (prevState: any, formData: FormData): Promise<Action
 
 		const response = await fetch(`${BASE_URL}/auth/sign-in`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: {"Content-Type": "application/json"},
 			body: JSON.stringify(plainFormData)
 		});
 
 		if (!response.ok) {
 			const data = await response.json();
-			return { success: false, message: data?.message || "Invalid credentials." };
+			return {success: false, message: data?.message || "Invalid credentials."};
 		}
 
 		const data = await response.json();
 		const cookieStore = await cookies();
-
+		console.log(data.token)
 		cookieStore.set("token", data.token, {
 			httpOnly: true,
 			sameSite: "strict",
-			secure: process.env.NODE_ENV === "production",
 			path: "/",
 			maxAge: 60 * 60 * 24 * 7,
+			secure: process.env.NODE_ENV === "production"
 		});
 
 	} catch (error) {
@@ -90,7 +90,7 @@ export async function getSessionUser() {
 		const response = await fetch(`${BASE_URL}/auth/me`, {
 			method: "GET",
 			headers: {
-				"Cookie": `token=${token}`,
+				"Authorization": `Bearer ${token}`,
 				"Content-Type": "application/json"
 			},
 			cache: "no-store"

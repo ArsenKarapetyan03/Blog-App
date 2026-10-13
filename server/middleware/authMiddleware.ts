@@ -2,7 +2,13 @@ import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "@/utils/jwt.js";
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-	const token = req.cookies.token;
+	const authHeader = req.headers.authorization;
+
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return res.status(401).json({success: false, message: "Authentication required. Please sign-in."});
+	}
+
+	const token = authHeader.split(" ")[1];
 
 	if (!token) {
 		return res.status(401).json({message: "Authentication required. Please sign-in."});
@@ -12,7 +18,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 		const decoded = verifyToken(token);
 
 		if (!decoded || !decoded.id) {
-			throw new Error("Invalid token payload structure");
+			return res.status(401).json({message: "Invalid or expired token."});
 		}
 
 		req.user = {id: decoded.id, email: decoded.email};

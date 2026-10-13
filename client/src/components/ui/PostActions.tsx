@@ -5,34 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 import { Modal } from "antd";
+import { deletePost } from "@/app/actions/post";
 import { type PostType } from "@/types/types";
-import { BASE_URL } from "@/config/api";
 
 const PostModal = dynamic(() =>
 		import("@/components/PostModal/PostModal").then((mod) => mod.PostModal),
 	{ ssr: false }
 );
 
-type ActionResponse = { success: boolean; message: string };
-
-const deletePost = async (id: string): Promise<ActionResponse> => {
-	if (!id) {
-		return { success: false, message: "Invalid post ID." };
-	}
-
-	const response = await fetch(`${BASE_URL}/blog/${id}`, {
-		method: "DELETE",
-		credentials: "include"
-	});
-
-	if (!response.ok) {
-		return { success: false, message: "Failed to delete post." };
-	}
-
-	return { success: true, message: "Post deleted successfully!" };
-}
-
-export const PostActions = ({ postData }: { postData: PostType }) => {
+export const PostActions = ({postData}: {postData: PostType}) => {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
 	const router = useRouter();
 	const [isPostOpen, setIsPostOpen] = useState(false);

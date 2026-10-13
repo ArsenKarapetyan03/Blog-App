@@ -4,8 +4,8 @@ import { type Dispatch, type SetStateAction, useActionState, useEffect, useRef }
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { FormActions } from "@/components/PostModal/FormActions";
+import { createPost, updatePost } from "@/app/actions/post";
 import { type PostType } from "@/types/types";
-import { BASE_URL } from "@/config/api";
 
 const INPUT_STYLES = "w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500";
 
@@ -16,39 +16,6 @@ interface PostModalProps {
 }
 
 const initialState = {success: false, message: ""};
-
-const createPost = async (plainFormData: Partial<PostType>) => {
-	const response = await fetch(`${BASE_URL}/blog`, {
-		method: "POST",
-		body: JSON.stringify(plainFormData),
-		headers: { "Content-Type": "application/json" },
-		credentials: "include"
-	});
-
-	if (!response.ok) {
-		return {success: false, message: "Failed to create post."};
-	}
-
-	return {success: true, message: "Post created successfully!"};
-}
-
-const updatePost = async (plainFormData: Partial<PostType>) => {
-	if (!plainFormData.id) {
-		return {success: false, message: "Invalid or missing data for update."};
-	}
-
-	const response = await fetch(`${BASE_URL}/blog/${plainFormData.id}`, {
-		method: "PATCH",
-		body: JSON.stringify(plainFormData),
-		headers: { "Content-Type": "application/json" },
-		credentials: "include"
-	});
-
-	if (!response.ok) {
-		return { success: false, message: "Failed to update post." };
-	}
-	return { success: true, message: "Post updated successfully!" };
-}
 
 export const PostModal = (
 	{
