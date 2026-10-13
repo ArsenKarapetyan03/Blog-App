@@ -4,6 +4,7 @@
 export default {
   async up (queryInterface, Sequelize) {
     await queryInterface.bulkInsert("Users", [{
+      id: 1,
       name: "Michael Jordan",
       email: "jordan@email.com",
       password: "jordan1234",

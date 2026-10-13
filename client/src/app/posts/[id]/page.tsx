@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BASE_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
-import { getSessionUser } from "@/app/actions/auth";
+import { getSessionUser } from "@/actions/auth";
 import { type PostType } from "@/types/types";
 
 async function getPost(id: string): Promise<PostType | null> {
@@ -11,6 +11,7 @@ async function getPost(id: string): Promise<PostType | null> {
 		if (!response.ok) {
 			return null;
 		}
+
 		return await response.json();
 	} catch (error) {
 		return null;
@@ -35,7 +36,7 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 			description: post.excerpt,
 			type: "article",
 			publishedTime: new Date(post.createdAt).toISOString(),
-			authors: [post.author],
+			authors: [post.User.name],
 		},
 	};
 }
@@ -65,9 +66,9 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 				<div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
 					<div className="flex items-center gap-2 py-5">
 						<span className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-							{post.author[0]}
+							{post.User.name[0]}
 						</span>
-						<span className="font-semibold text-slate-700">{post.author}</span>
+						<span className="font-semibold text-slate-700">{post.User.name}</span>
 					</div>
 					<span className="text-slate-300">•</span>
 					<time>{new Date(post.createdAt).toISOString().split('T')[0]}</time>
@@ -80,6 +81,14 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 
 			<div className="text-lg text-zinc-600">
 				{post.description}
+			</div>
+
+			<div>
+				{
+					post.Comments.length > 0
+						?	post.Comments[0].User.name + " " +post.Comments[0].content
+						: ""
+				}
 			</div>
 		</div>
 	)

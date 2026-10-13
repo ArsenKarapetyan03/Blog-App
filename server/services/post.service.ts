@@ -27,8 +27,8 @@ export const postService = {
 	getPosts: async ({searchString, userId, limit, offset}: GetPostsFilters) => {
 		const searchQuery = searchString ? {
 			[Op.or]: [
-				{description: { [Op.iLike]: `%${searchString}%`}},
-				{title: { [Op.iLike]: `%${searchString}%`}}
+				{description: {[Op.iLike]: `%${searchString}%`}},
+				{title: {[Op.iLike]: `%${searchString}%`}}
 			]
 		} : {};
 
@@ -46,7 +46,17 @@ export const postService = {
 	},
 
 	getPostById: async (id: number) => {
-		const post = await db.Post.findByPk(id);
+		const post = await db.Post.findByPk(id, {
+			include: [{
+				model: db.Comment,
+				as: "Comments",
+				include: [{
+					model: db.User,
+					as: "User",
+					attributes: ["name"]
+				}]
+			}]
+		});
 		return post ? post.toJSON() : null;
 	},
 

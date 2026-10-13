@@ -9,6 +9,7 @@ import {
   type Association,
 } from "sequelize";
 import type { Post } from "./post.js";
+import type { Comment } from "@/models/comment.js";
 
 export class User extends Model<
     InferAttributes<User>,
@@ -25,10 +26,15 @@ export class User extends Model<
     Posts: Association<User, Post>;
   };
 
-  static associate(models: {Post: typeof Post}) {
+  static associate(models: {Post: typeof Post; Comment: typeof Comment}) {
     this.hasMany(models.Post, {
       foreignKey: "userId",
       as: "Posts",
+    });
+
+    this.hasMany(models.Comment, {
+      foreignKey: "userId",
+      as: "Comments"
     });
   }
 }

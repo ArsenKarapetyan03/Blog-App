@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { signUp } from "@/app/actions/auth";
+import { signUp } from "@/actions/auth";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
 const initialState = { success: false, message: "" };

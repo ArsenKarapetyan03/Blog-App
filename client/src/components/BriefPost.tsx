@@ -14,7 +14,7 @@ export const BriefPost = ({post}: {post: PostType}) => (
 				className="text-base font-semibold text-slate-700 bg-slate-100
 				 px-2 py-1 rounded md:bg-transparent md:p-0"
 			>
-				{post.author}
+				{post.User.name}
 			</span>
 		</div>
 

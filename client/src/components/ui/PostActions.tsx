@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 import { Modal } from "antd";
-import { deletePost } from "@/app/actions/post";
+import { deletePost } from "@/actions/post";
 import { type PostType } from "@/types/types";
 
 const PostModal = dynamic(() =>

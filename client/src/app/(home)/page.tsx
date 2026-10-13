@@ -59,6 +59,8 @@ const Page = async ({searchParams}: PageProps) => {
 		totalPages = data.totalPages;
 	}
 
+	console.log(posts[1]);
+
 	return (
 		<div>
 			<div className="py-10 flex justify-between border-b border-slate-200">

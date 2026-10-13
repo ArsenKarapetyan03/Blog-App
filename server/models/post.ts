@@ -8,6 +8,7 @@ import {
 	type ForeignKey
 } from "sequelize";
 import type { User } from "./user.js";
+import type { Comment } from "./comment.js";
 
 export class Post extends Model<
 	InferAttributes<Post>,
@@ -20,16 +21,23 @@ export class Post extends Model<
 	declare userId: ForeignKey<User['id'] | null>;
 
 	declare User?: NonAttribute<User | null>;
-	declare author: CreationOptional<string | null>;
+	declare Comments?: NonAttribute<Comment[]>;
 
 	declare static associations: {
 		User: Association<Post, User>;
+		Comments: Association<Post, Comment>;
 	};
 
-	static associate(models: { User: typeof User }) {
+	static associate(models: {User: typeof User; Comment: typeof Comment}) {
 		this.belongsTo(models.User, {
 			foreignKey: "userId",
 			as: "User",
+		});
+
+		this.hasMany(models.Comment, {
+			foreignKey: "postId",
+			as: "Comments",
+			onDelete: "CASCADE"
 		});
 	}
 }
@@ -44,13 +52,7 @@ export function initPost(sequelize: Sequelize): typeof Post {
 			title: DataTypes.STRING,
 			excerpt: DataTypes.TEXT,
 			description: DataTypes.TEXT,
-			userId: DataTypes.INTEGER,
-			author: {
-				type: DataTypes.VIRTUAL,
-				get(this: Post) {
-					return this.User?.name ?? null;
-				}
-			},
+			userId: DataTypes.INTEGER
 		},
 		{
 			sequelize,

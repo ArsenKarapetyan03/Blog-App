@@ -38,7 +38,7 @@ export const readOne = async (req: Request, res: Response) => {
 	if (!post) {
 		throw new AppError("Post not found", 404);
 	}
-
+	console.log(post);
 	return res.status(200).json(post);
 };
 export const create = async (req: Request, res: Response) => {
