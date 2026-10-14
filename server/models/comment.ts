@@ -17,15 +17,20 @@ export class Comment extends Model<
 	declare content: string;
 	declare postId: ForeignKey<Post["id"]>;
 	declare userId: ForeignKey<User["id"]>;
+	declare replyId: CreationOptional<ForeignKey<Comment["id"]> | null>;
 
 	declare static associations: {
 		Post: Association<Comment, Post>;
 		User: Association<Comment, User>;
+		ParentComment: Association<Comment, Comment>;
+		Replies: Association<Comment, Comment>;
 	};
 
 	static associate(models: { Post: typeof Post; User: typeof User }) {
 		this.belongsTo(models.Post, {foreignKey: "postId", as: "Post"});
 		this.belongsTo(models.User, {foreignKey: "userId", as: "User"});
+		this.belongsTo(this, { foreignKey: "replyId", as: "ParentComment" });
+		this.hasMany(this, { foreignKey: "replyId", as: "Replies" });
 	}
 }
 
@@ -47,6 +52,15 @@ export function initComment(sequelize: Sequelize): typeof Comment {
 			userId: {
 				type: DataTypes.INTEGER,
 				allowNull: false
+			},
+			replyId: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+				references: {
+					model: "Comments",
+					key: "id"
+				},
+				onDelete: "CASCADE"
 			}
 		},
 		{

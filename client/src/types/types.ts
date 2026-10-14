@@ -4,14 +4,16 @@ export interface User {
 	email: string;
 }
 
-export interface Comment {
+export interface CommentType {
 	id: number;
 	content: string;
 	postId: number;
-	userId: number
+	userId: number;
+	replyId: number | null;
 	createdAt: string;
 	updatedAt: string;
 	User: User;
+	Replies?: CommentType[];
 }
 
 export interface PostType {
@@ -22,6 +24,6 @@ export interface PostType {
 	updatedAt: string;
 	excerpt: string;
 	description: string;
-	Comments: Comment[];
+	Comments: CommentType[];
 	userId: number;
 }

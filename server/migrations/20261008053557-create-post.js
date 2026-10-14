@@ -1,8 +1,8 @@
-'use strict';
-/** @type {import('sequelize-cli').Migration} */
+"use strict";
+/** @type {import("sequelize-cli").Migration} */
 export default {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Posts', {
+    await queryInterface.createTable("Posts", {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -21,11 +21,11 @@ export default {
       userId: {
         type: Sequelize.INTEGER,
         references: {
-          model: 'Users',
-          key: 'id'
+          model: "Users",
+          key: "id"
         },
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE'
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE"
       },
       createdAt: {
         allowNull: false,
@@ -38,6 +38,6 @@ export default {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Posts');
+    await queryInterface.dropTable("Posts");
   }
 };

@@ -38,7 +38,7 @@ export const readOne = async (req: Request, res: Response) => {
 	if (!post) {
 		throw new AppError("Post not found", 404);
 	}
-	console.log(post);
+
 	return res.status(200).json(post);
 };
 export const create = async (req: Request, res: Response) => {
@@ -80,7 +80,7 @@ export const update = async (req: Request, res: Response) => {
 	if (!isUpdated) {
 		throw new AppError("Post not found", 404);
 	}
-	return res.status(200).json({ success: true, message: "Post updated successfully!" });
+	return res.status(200).json({success: true, message: "Post updated successfully!"});
 };
 export const remove = async (req: Request, res: Response) => {
 	const { id } = req.params;
@@ -94,5 +94,5 @@ export const remove = async (req: Request, res: Response) => {
 	if (!isDeleted) {
 		throw new AppError("Post not found", 404);
 	}
-	return res.status(200).json({ success: true, message: "Post deleted successfully!" });
+	return res.status(200).json({success: true, message: "Post deleted successfully!"});
 };

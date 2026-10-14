@@ -1,13 +1,17 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ThumbsUp, MessageCircle } from "lucide-react";
 import { BASE_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
+import { Comment } from "@/components/Comment/Comment";
+import { CommentForm } from "@/components/Comment/CommentForm";
 import { getSessionUser } from "@/actions/auth";
 import { type PostType } from "@/types/types";
+import { InfoRow } from "@/components/ui/InfoRow";
 
 async function getPost(id: string): Promise<PostType | null> {
 	try {
-		const response = await fetch(`${BASE_URL}/blog/${id}`);
+		const response = await fetch(`${BASE_URL}/blog/${id}`, {cache: "no-store"});
 		if (!response.ok) {
 			return null;
 		}
@@ -23,75 +27,87 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 	const post = await getPost(id);
 
 	if (!post) {
-		return {
-			title: "No post found",
-		};
+		return {title: "No post found"};
 	}
 
-	return {
-		title: post.title,
-		description: post.excerpt || post.description.substring(0, 160),
-		openGraph: {
-			title: post.title,
-			description: post.excerpt,
-			type: "article",
-			publishedTime: new Date(post.createdAt).toISOString(),
-			authors: [post.User.name],
-		},
-	};
+	return {title: post.title, description: post.description.substring(0, 160)};
 }
 
-const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
-	const {id} = await params;
-
+const PostPage = async ({ params }: { params: Promise<{ id: string }> }) => {
+	const { id } = await params;
 	const [post, user] = await Promise.all([getPost(id), getSessionUser()]);
 
-	if (!post) {
-		notFound();
-	}
+	if (!post) notFound();
 
 	const isAuthor = user && String(user.id) === String(post.userId);
 
+	const totalCommentsCount = (post.Comments || []).reduce(
+		(acc, comment) => acc + 1 + (comment.Replies?.length || 0), 0
+	);
+
 	return (
 		<div className="flex flex-col gap-10">
-			<header className="flex flex-col gap-10 border-b border-slate-100">
-				<div className="flex">
+			<header className="flex flex-col gap-6 border-b border-slate-200 pb-6">
+				<div className="flex items-start">
 					<h1 className="flex-1 text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-slate-900">
 						{post.title}
 					</h1>
-
-					{isAuthor && (<PostActions postData={post} />)}
+					{isAuthor && <PostActions postData={post} />}
 				</div>
-
-				<div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-					<div className="flex items-center gap-2 py-5">
-						<span className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-							{post.User.name[0]}
-						</span>
-						<span className="font-semibold text-slate-700">{post.User.name}</span>
-					</div>
-					<span className="text-slate-300">•</span>
-					<time>{new Date(post.createdAt).toISOString().split('T')[0]}</time>
-				</div>
+				<InfoRow name={post.User.name} createdAt={post.createdAt} />
 			</header>
 
-			<div className="text-xl text-slate-600 font-light border-l-4 border-indigo-500 pl-4 italic">
-				{post.excerpt}
+			{post.excerpt && (
+				<div className="text-xl text-slate-600 font-light border-l-4 border-indigo-500 pl-4 italic">
+					{post.excerpt}
+				</div>
+			)}
+
+			<div className="text-lg text-zinc-600 leading-relaxed whitespace-pre-wrap">{post.description}</div>
+
+			<div className="p-2 flex gap-10 items-center border-b border-slate-100 pb-4">
+				<button className="flex gap-2 cursor-pointer hover:text-indigo-600 text-slate-500 transition">
+					<ThumbsUp size={20} />
+					<span>12</span>
+				</button>
+
+				{totalCommentsCount > 0
+					&& <div className="flex gap-2 text-slate-500">
+                <MessageCircle size={20} />
+                <span>{totalCommentsCount} comments</span>
+            </div>
+				}
 			</div>
 
-			<div className="text-lg text-zinc-600">
-				{post.description}
-			</div>
+			<div className="px-2">
+				<div className="flex gap-2 pb-5 items-center">
+					<MessageCircle className="text-slate-800" />
+					<span className="font-bold text-xl text-slate-800">Discussion</span>
+				</div>
 
-			<div>
-				{
-					post.Comments.length > 0
-						?	post.Comments[0].User.name + " " +post.Comments[0].content
-						: ""
+				{user
+					? <div className="mb-8 max-w-2xl">
+						<CommentForm postId={post.id} replyId={null}/>
+					</div>
+					: <p className="text-sm text-slate-400 mb-6 italic">Please sign in to join the conversation.</p>
+				}
+
+				{post.Comments && post.Comments.length > 0
+					? <div className="flex flex-col gap-2">
+						{post.Comments.map((comment) => (
+							<Comment
+								key={comment.id}
+								comment={comment}
+								postId={post.id}
+								currentUser={user}
+							/>
+						))}
+					</div>
+					: <p className="text-slate-400 italic">No comments yet. Be the first!</p>
 				}
 			</div>
 		</div>
-	)
-}
+	);
+};
 
 export default PostPage;

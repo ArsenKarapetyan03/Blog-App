@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {SignInModal} from "@/components/SignInModal";
+import {SignInModal} from "@/components/ui/SignInModal";
 
 const PostModal = dynamic(() =>
 		import("@/components/PostModal/PostModal").then((mod) => mod.PostModal),

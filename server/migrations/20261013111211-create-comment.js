@@ -1,19 +1,31 @@
-'use strict';
-/** @type {import('sequelize-cli').Migration} */
+"use strict";
+/** @type {import("sequelize-cli").Migration} */
 export default {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Comments', {
+    await queryInterface.createTable("Comments", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
+      content: {
+        type: Sequelize.STRING,
+        allowNull: false
+      },
       postId: {
-        type: Sequelize.NUMBER
+        type: Sequelize.INTEGER
       },
       userId: {
-        type: Sequelize.NUMBER
+        type: Sequelize.INTEGER
+      },
+      replyId: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: "Comments",
+          key: "id"
+        }
       },
       createdAt: {
         allowNull: false,
@@ -26,6 +38,6 @@ export default {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Comments');
+    await queryInterface.dropTable("Comments");
   }
 };

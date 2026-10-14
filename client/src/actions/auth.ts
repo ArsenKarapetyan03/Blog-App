@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { BASE_URL } from "@/config/api";
 
 interface SessionUser {
-	id: string | number;
+	id: number;
 	name: string;
 	email: string;
 }
@@ -52,7 +52,7 @@ export const signIn = async (prevState: any, formData: FormData): Promise<Action
 
 		const data = await response.json();
 		const cookieStore = await cookies();
-		console.log(data.token)
+
 		cookieStore.set("token", data.token, {
 			httpOnly: true,
 			sameSite: "strict",

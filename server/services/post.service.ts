@@ -50,11 +50,24 @@ export const postService = {
 			include: [{
 				model: db.Comment,
 				as: "Comments",
-				include: [{
-					model: db.User,
-					as: "User",
-					attributes: ["name"]
-				}]
+				where: {replyId: null},
+				required: false,
+				include: [
+					{
+						model: db.User,
+						as: "User",
+						attributes: ["id", "name", "email"]
+					},
+					{
+						model: db.Comment,
+						as: "Replies",
+						include: [{
+							model: db.User,
+							as: "User",
+							attributes: ["id", "name", "email"]
+						}]
+					}
+				]
 			}]
 		});
 		return post ? post.toJSON() : null;

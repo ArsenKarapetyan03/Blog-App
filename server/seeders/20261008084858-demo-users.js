@@ -11,6 +11,15 @@ export default {
       createdAt: new Date(),
       updatedAt: new Date(),
     }], {});
+
+    await queryInterface.bulkInsert("Users", [{
+      id: 2,
+      name: "Jenifer",
+      email: "jenifer@email.com",
+      password: "jenifer1234",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }], {});
   },
 
   async down (queryInterface, Sequelize) {
