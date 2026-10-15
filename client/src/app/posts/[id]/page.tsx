@@ -10,6 +10,7 @@ import { InfoRow } from "@/components/ui/InfoRow";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { getSessionUser } from "@/actions/auth";
 import { type PostType } from "@/types/types";
+import { CommentSection } from "@/components/Comment/CommentSection";
 
 async function getPost(id: string): Promise<PostType | null> {
 	try {
@@ -100,26 +101,7 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 					<span className="font-bold text-xl text-slate-800">Discussion</span>
 				</div>
 
-				{post.Comments && post.Comments.length > 0
-					? <div className="flex flex-col gap-2">
-						{post.Comments.map((comment) => (
-							<Comment
-								key={comment.id}
-								comment={comment}
-								postId={post.id}
-								currentUser={user}
-							/>
-						))}
-					</div>
-					: <p className="text-slate-400 italic">No comments yet. Be the first!</p>
-				}
-
-				{user
-					? <div className="mb-8 max-w-2xl">
-						<CommentForm postId={post.id} replyId={null}/>
-					</div>
-					: <p className="text-sm text-slate-400 mb-6 italic">Please sign in to join the conversation.</p>
-				}
+				<CommentSection post={post} user={user} />
 			</div>
 		</div>
 	);

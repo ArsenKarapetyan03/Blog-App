@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { type CommentType, type User } from "@/types/types";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { CommentForm } from "./CommentForm";
+import type { CommentType, User } from "@/types/types";
 
 interface CommentProps {
 	comment: CommentType;

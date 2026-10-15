@@ -15,12 +15,12 @@ export default {
         type: Sequelize.INTEGER,
         primaryKey: true,
         allowNull: false,
-        references: { model: 'Users', key: 'id' },
-        onDelete: 'CASCADE'
+        references: {model: "Users", key: "id"},
+        onDelete: "CASCADE"
       }
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('PostLikes');
+    await queryInterface.dropTable("PostLikes");
   }
 };

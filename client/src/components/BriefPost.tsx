@@ -20,24 +20,20 @@ export const BriefPost = ({post}: {post: PostType}) => (
 
 		<div className="flex-1">
 			<h2 className="text-2xl font-semibold text-slate-900">
-				<a href={`/posts/${post.id}`} className="hover:text-indigo-500 hover:underline">
-					{post.title}
-				</a>
+				{post.title}
 			</h2>
 
 			<p className="mt-3 text-lg text-slate-600">
 				{post.excerpt}
 			</p>
 
-			<div className="mt-4">
-				<a
-					href={`/posts/${post.id}`}
-					className="inline-flex items-center text-base font-medium
-					 text-indigo-600 hover:text-indigo-800"
-				>
-					Read more
-				</a>
-			</div>
+			<a
+				href={`/posts/${post.id}`}
+				className="mt-4 inline-flex items-center text-base font-medium
+				 text-indigo-600 hover:text-indigo-800"
+			>
+				Read more
+			</a>
 		</div>
 	</div>
 )

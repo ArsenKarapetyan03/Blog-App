@@ -48,14 +48,15 @@ export const LikeButton = (
 		<>
 			<button
 				onClick={handleLikeClick}
-				className={`flex gap-2 items-center cursor-pointer transition active:scale-90 p-2 rounded-md ${
-					optimisticLike.isLiked
-						? "text-indigo-600 bg-indigo-50 font-semibold"
-						: "text-slate-500 hover:text-indigo-600 hover:bg-slate-50"
+				className={`flex gap-2 items-center cursor-pointer transition active:scale-90 p-2 rounded-md 
+					${
+						optimisticLike.isLiked
+							? "text-indigo-600 bg-indigo-50 font-semibold"
+							: "text-slate-500 hover:text-indigo-600 hover:bg-slate-50"
 				}`}
 			>
-				<ThumbsUp size={20} fill={optimisticLike.isLiked ? "currentColor" : "none"}/>
-				<span>{optimisticLike.likesCount}</span>
+				<ThumbsUp size={20} fill={optimisticLike.isLiked ? "currentColor" : "none"} />
+				<span>{optimisticLike.likesCount ? optimisticLike.likesCount : ""}</span>
 			</button>
 
 			<SignInModal
