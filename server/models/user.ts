@@ -10,6 +10,7 @@ import {
 } from "sequelize";
 import type { Post } from "./post.js";
 import type { Comment } from "@/models/comment.js";
+import type { PostLikes } from "./postlikes.js";
 
 export class User extends Model<
     InferAttributes<User>,
@@ -21,12 +22,21 @@ export class User extends Model<
   declare password: string;
 
   declare Posts?: NonAttribute<Post[]>;
+  declare Comments?: NonAttribute<Comment[]>;
+  declare LikedPosts?: NonAttribute<Post[]>;
 
   declare static associations: {
     Posts: Association<User, Post>;
+    Comments: Association<User, Comment>;
+    LikedPosts: Association<User, Post>;
   };
 
-  static associate(models: {Post: typeof Post; Comment: typeof Comment}) {
+  static associate(models: {
+    User: typeof User;
+    Post: typeof Post;
+    Comment: typeof Comment;
+    PostLikes: typeof PostLikes;
+  }) {
     this.hasMany(models.Post, {
       foreignKey: "userId",
       as: "Posts",
@@ -36,6 +46,14 @@ export class User extends Model<
       foreignKey: "userId",
       as: "Comments"
     });
+
+    this.belongsToMany(models.Post, {
+      through: models.PostLikes,
+      foreignKey: "userId",
+      otherKey: "postId",
+      as: "LikedPosts"
+    });
+
   }
 }
 

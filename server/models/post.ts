@@ -9,6 +9,7 @@ import {
 } from "sequelize";
 import type { User } from "./user.js";
 import type { Comment } from "./comment.js";
+import type { PostLikes } from "@/models/postlikes.js";
 
 export class Post extends Model<
 	InferAttributes<Post>,
@@ -22,13 +23,19 @@ export class Post extends Model<
 
 	declare User?: NonAttribute<User | null>;
 	declare Comments?: NonAttribute<Comment[]>;
+	declare LikedByUsers?: NonAttribute<User[]>;
 
 	declare static associations: {
 		User: Association<Post, User>;
 		Comments: Association<Post, Comment>;
+		LikedByUsers: Association<Post, User>;
 	};
 
-	static associate(models: {User: typeof User; Comment: typeof Comment}) {
+	static associate(models: {
+		User: typeof User;
+		Comment: typeof Comment;
+		PostLikes: typeof PostLikes;
+	}) {
 		this.belongsTo(models.User, {
 			foreignKey: "userId",
 			as: "User",
@@ -39,6 +46,14 @@ export class Post extends Model<
 			as: "Comments",
 			onDelete: "CASCADE"
 		});
+
+		this.belongsToMany(models.User, {
+			through: models.PostLikes,
+			foreignKey: "postId",
+			otherKey: "userId",
+			as: "LikedByUsers"
+		});
+
 	}
 }
 

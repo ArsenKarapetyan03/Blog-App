@@ -79,14 +79,14 @@ export const logout = async () => {
 }
 
 export async function getSessionUser() {
-	const cookieStore = await cookies();
-	const token = cookieStore.get("token")?.value;
-
-	if (!token) {
-		return null;
-	}
-
 	try {
+		const cookieStore = await cookies();
+		const token = cookieStore.get("token")?.value;
+
+		if (!token) {
+			return null;
+		}
+
 		const response = await fetch(`${BASE_URL}/auth/me`, {
 			method: "GET",
 			headers: {

@@ -20,10 +20,12 @@ export interface PostType {
 	id: number;
 	title: string;
 	User: User;
-	createdAt: string;
-	updatedAt: string;
 	excerpt: string;
 	description: string;
+	likesCount: number;
+	isLikedByMe: boolean;
 	Comments: CommentType[];
 	userId: number;
+	createdAt: string;
+	updatedAt: string;
 }

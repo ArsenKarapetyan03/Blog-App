@@ -5,7 +5,7 @@ declare global {
 			user?: {
 				id: number;
 				email: string;
-			};
+			} | undefined;
 		}
 	}
 }

@@ -3,6 +3,7 @@ import configJson from "@/config/config.js";
 import { User, initUser } from "./user.js";
 import { Post, initPost } from "./post.js";
 import { Comment, initComment } from "./comment.js";
+import { PostLikes, initPostLikes } from "@/models/postlikes.js";
 
 type Environment = keyof typeof configJson;
 
@@ -38,19 +39,22 @@ if ("use_env_variable" in config && config.use_env_variable) {
 initUser(sequelize);
 initPost(sequelize);
 initComment(sequelize);
+initPostLikes(sequelize);
 
-const models = {User, Post, Comment};
+const models = {User, Post, Comment, PostLikes};
 
 User.associate(models);
 Post.associate(models);
 Comment.associate(models);
+PostLikes.associate(models);
 
 const db = {
     sequelize,
     Sequelize,
     User,
     Post,
-    Comment
+    Comment,
+    PostLikes,
 };
 
 export default db;

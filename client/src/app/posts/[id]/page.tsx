@@ -1,17 +1,28 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ThumbsUp, MessageCircle } from "lucide-react";
+import { cookies } from "next/headers";
+import { MessageCircle } from "lucide-react";
 import { BASE_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
 import { Comment } from "@/components/Comment/Comment";
 import { CommentForm } from "@/components/Comment/CommentForm";
+import { InfoRow } from "@/components/ui/InfoRow";
+import { LikeButton } from "@/components/ui/LikeButton";
 import { getSessionUser } from "@/actions/auth";
 import { type PostType } from "@/types/types";
-import { InfoRow } from "@/components/ui/InfoRow";
 
 async function getPost(id: string): Promise<PostType | null> {
 	try {
-		const response = await fetch(`${BASE_URL}/blog/${id}`, {cache: "no-store"});
+		const token = (await cookies()).get("token")?.value;
+
+		const response = await fetch(`${BASE_URL}/blog/${id}`,
+			{
+				headers: {
+					"Content-Type": "application/json",
+					"Authorization": `Bearer ${token}`,
+				},
+				cache: "no-store"
+			});
 		if (!response.ok) {
 			return null;
 		}
@@ -22,7 +33,7 @@ async function getPost(id: string): Promise<PostType | null> {
 	}
 }
 
-export async function generateMetadata({params}: {params: Promise<{id: string}>}): Promise<Metadata> {
+export const generateMetadata = async({params}: {params: Promise<{id: string}>}): Promise<Metadata> => {
 	const {id} = await params;
 	const post = await getPost(id);
 
@@ -33,11 +44,13 @@ export async function generateMetadata({params}: {params: Promise<{id: string}>}
 	return {title: post.title, description: post.description.substring(0, 160)};
 }
 
-const PostPage = async ({ params }: { params: Promise<{ id: string }> }) => {
-	const { id } = await params;
+const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
+	const {id} = await params;
 	const [post, user] = await Promise.all([getPost(id), getSessionUser()]);
 
-	if (!post) notFound();
+	if (!post) {
+		notFound();
+	}
 
 	const isAuthor = user && String(user.id) === String(post.userId);
 
@@ -65,16 +78,18 @@ const PostPage = async ({ params }: { params: Promise<{ id: string }> }) => {
 
 			<div className="text-lg text-zinc-600 leading-relaxed whitespace-pre-wrap">{post.description}</div>
 
-			<div className="p-2 flex gap-10 items-center border-b border-slate-100 pb-4">
-				<button className="flex gap-2 cursor-pointer hover:text-indigo-600 text-slate-500 transition">
-					<ThumbsUp size={20} />
-					<span>12</span>
-				</button>
+			<div className="p-2 flex gap-10 border-b border-slate-100 pb-4">
+					<LikeButton
+						postId={post.id}
+						initialLikesCount={post.likesCount || 0}
+						initialIsLiked={post.isLikedByMe || false}
+						hasUser={!!user}
+					/>
 
 				{totalCommentsCount > 0
-					&& <div className="flex gap-2 text-slate-500">
+					&& <div className="flex items-center gap-2 text-slate-500">
                 <MessageCircle size={20} />
-                <span>{totalCommentsCount} comments</span>
+                <span>{totalCommentsCount}</span>
             </div>
 				}
 			</div>
@@ -84,13 +99,6 @@ const PostPage = async ({ params }: { params: Promise<{ id: string }> }) => {
 					<MessageCircle className="text-slate-800" />
 					<span className="font-bold text-xl text-slate-800">Discussion</span>
 				</div>
-
-				{user
-					? <div className="mb-8 max-w-2xl">
-						<CommentForm postId={post.id} replyId={null}/>
-					</div>
-					: <p className="text-sm text-slate-400 mb-6 italic">Please sign in to join the conversation.</p>
-				}
 
 				{post.Comments && post.Comments.length > 0
 					? <div className="flex flex-col gap-2">
@@ -104,6 +112,13 @@ const PostPage = async ({ params }: { params: Promise<{ id: string }> }) => {
 						))}
 					</div>
 					: <p className="text-slate-400 italic">No comments yet. Be the first!</p>
+				}
+
+				{user
+					? <div className="mb-8 max-w-2xl">
+						<CommentForm postId={post.id} replyId={null}/>
+					</div>
+					: <p className="text-sm text-slate-400 mb-6 italic">Please sign in to join the conversation.</p>
 				}
 			</div>
 		</div>

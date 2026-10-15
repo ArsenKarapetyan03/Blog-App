@@ -2,8 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import {SignInModal} from "@/components/ui/SignInModal";
+import { SignInModal } from "@/components/ui/SignInModal";
 
 const PostModal = dynamic(() =>
 		import("@/components/PostModal/PostModal").then((mod) => mod.PostModal),
@@ -13,7 +12,6 @@ const PostModal = dynamic(() =>
 export const AddPostButton = ({authorized}: {authorized: boolean}) => {
 
 	const [isOpen, setIsOpen] = useState(false);
-	const router = useRouter();
 
 	const handleOpen = () => setIsOpen(true);
   const handleClose = () => setIsOpen(false);
@@ -36,7 +34,6 @@ export const AddPostButton = ({authorized}: {authorized: boolean}) => {
 				: <SignInModal
 						isOpen={isOpen}
 						onClose={handleClose}
-						onContinue={()=>router.push("/sign-in")}
 				/>
 			}
 		</>

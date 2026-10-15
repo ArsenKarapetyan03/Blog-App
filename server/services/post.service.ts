@@ -1,5 +1,8 @@
-import { Op } from "sequelize";
+import { type Attributes, Op } from "sequelize";
 import db from "@/models/index.js";
+import type { Post } from "@/models/post.js";
+import type { User } from "@/models/user.js";
+import type { Comment } from "@/models/comment.js";
 
 interface GetPostsFilters {
 	searchString?: string;
@@ -21,6 +24,21 @@ interface UpdatePostInput {
 	title: string;
 	excerpt: string;
 	description: string;
+}
+
+interface PostJSON extends Attributes<Post> {
+	User?: Pick<Attributes<User>, "id" | "name" | "email"> | null;
+	LikedByUsers?: Array<Pick<Attributes<User>, "id">>;
+	Comments?: Array<
+		Attributes<Comment> & {
+		User?: Pick<Attributes<User>, "id" | "name" | "email"> | null;
+		Replies?: Array<
+			Attributes<Comment> & {
+			User?: Pick<Attributes<User>, "id" | "name" | "email"> | null;
+		}
+		>;
+	}
+	>;
 }
 
 export const postService = {
@@ -45,32 +63,55 @@ export const postService = {
 		};
 	},
 
-	getPostById: async (id: number) => {
+	getPostById: async (id: number, currentUserId?: number) => {
 		const post = await db.Post.findByPk(id, {
-			include: [{
-				model: db.Comment,
-				as: "Comments",
-				where: {replyId: null},
-				required: false,
-				include: [
-					{
-						model: db.User,
-						as: "User",
-						attributes: ["id", "name", "email"]
-					},
-					{
-						model: db.Comment,
-						as: "Replies",
-						include: [{
+			include: [
+				{
+					model: db.User,
+					as: "User",
+					attributes: ["id", "name", "email"]
+				},
+				{
+					model: db.User,
+					as: "LikedByUsers",
+					attributes: ["id"]
+				},
+				{
+					model: db.Comment,
+					as: "Comments",
+					where: {replyId: null},
+					required: false,
+					include: [
+						{
 							model: db.User,
 							as: "User",
 							attributes: ["id", "name", "email"]
-						}]
-					}
-				]
-			}]
+						},
+						{
+							model: db.Comment,
+							as: "Replies",
+							include: [{
+								model: db.User,
+								as: "User",
+								attributes: ["id", "name", "email"]
+							}]
+						}
+					]
+				}]
 		});
-		return post ? post.toJSON() : null;
+
+		if (!post) {
+			return null;
+		}
+
+		const plainPost = post.toJSON() as PostJSON;
+		const likedByUsers = plainPost.LikedByUsers || [];
+
+		return {
+			...plainPost,
+			likesCount: likedByUsers.length,
+			isLikedByMe: currentUserId ? likedByUsers.some((u: any) => u.id === currentUserId) : false
+		};
 	},
 
 	createPost: async (data: CreatePostInput) => {
@@ -93,5 +134,22 @@ export const postService = {
 			where: {id, userId},
 		});
 		return result > 0;
-	}
+	},
+
+	toggleLike: async (postId: number, userId: number) => {
+		const existingLike = await db.PostLikes.findOne({
+			where: {postId, userId}
+		});
+
+		if (existingLike) {
+			await db.PostLikes.destroy({
+				where: {postId, userId}
+			});
+
+			return {liked: false};
+		} else {
+			await db.PostLikes.create({postId, userId});
+			return {liked: true};
+		}
+	},
 };

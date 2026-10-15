@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BriefPost } from "@/components/BriefPost";
 import { Pagination } from "@/components/Pagination/Pagination";
-import { AddPostButton } from "@/components/ui/AddPostButton";
+import { AddPostButton } from "@/components/PostModal/AddPostButton";
 import { PostFilter } from "@/components/PostFilter";
 import { Search } from "@/components/Search";
 import { type PostType } from "@/types/types";

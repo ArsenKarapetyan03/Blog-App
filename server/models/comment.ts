@@ -4,10 +4,12 @@ import {
 	type InferCreationAttributes,
 	type CreationOptional,
 	type ForeignKey,
-	type Association
+	type Association,
+	type NonAttribute
 } from "sequelize";
 import type { Post } from "./post.js";
 import type { User } from "./user.js";
+import type { PostLikes } from "@/models/postlikes.js";
 
 export class Comment extends Model<
 	InferAttributes<Comment>,
@@ -19,6 +21,11 @@ export class Comment extends Model<
 	declare userId: ForeignKey<User["id"]>;
 	declare replyId: CreationOptional<ForeignKey<Comment["id"]> | null>;
 
+	declare User?: NonAttribute<User | null>;
+	declare Post?: NonAttribute<Post | null>;
+	declare ParentComment?: NonAttribute<Comment | null>;
+	declare Replies?: NonAttribute<Comment[]>;
+
 	declare static associations: {
 		Post: Association<Comment, Post>;
 		User: Association<Comment, User>;
@@ -26,11 +33,16 @@ export class Comment extends Model<
 		Replies: Association<Comment, Comment>;
 	};
 
-	static associate(models: { Post: typeof Post; User: typeof User }) {
+	static associate(models: {
+		Post: typeof Post;
+		User: typeof User;
+		Comment: typeof Comment;
+		PostLikes: typeof PostLikes;
+	}) {
 		this.belongsTo(models.Post, {foreignKey: "postId", as: "Post"});
 		this.belongsTo(models.User, {foreignKey: "userId", as: "User"});
-		this.belongsTo(this, { foreignKey: "replyId", as: "ParentComment" });
-		this.hasMany(this, { foreignKey: "replyId", as: "Replies" });
+		this.belongsTo(models.Comment, { foreignKey: "replyId", as: "ParentComment" });
+		this.hasMany(models.Comment, { foreignKey: "replyId", as: "Replies" });
 	}
 }
 
