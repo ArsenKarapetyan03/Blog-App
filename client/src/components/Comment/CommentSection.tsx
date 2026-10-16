@@ -13,6 +13,7 @@ export const CommentSection = (
 		user,
 	}: Props
 ) => {
+
 	return (
 		<div>
 			{post.Comments && post.Comments.length > 0
@@ -21,7 +22,6 @@ export const CommentSection = (
 							<Comment
 								key={comment.id}
 								comment={comment}
-								postId={post.id}
 								currentUser={user}
 							/>
 						)}

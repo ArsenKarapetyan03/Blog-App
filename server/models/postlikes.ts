@@ -32,10 +32,18 @@ export function initPostLikes(sequelize: Sequelize): typeof PostLikes {
       postId: {
         type: DataTypes.INTEGER,
         primaryKey: true,
+        references: {
+          model: "Posts",
+          key: "id"
+        }
       },
       userId: {
         type: DataTypes.INTEGER,
         primaryKey: true,
+        references: {
+          model: "Users",
+          key: "userId"
+        }
       },
     },
     {

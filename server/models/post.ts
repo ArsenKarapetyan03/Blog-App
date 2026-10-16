@@ -33,6 +33,7 @@ export class Post extends Model<
 
 	static associate(models: {
 		User: typeof User;
+		Post: typeof Post;
 		Comment: typeof Comment;
 		PostLikes: typeof PostLikes;
 	}) {
@@ -67,7 +68,15 @@ export function initPost(sequelize: Sequelize): typeof Post {
 			title: DataTypes.STRING,
 			excerpt: DataTypes.TEXT,
 			description: DataTypes.TEXT,
-			userId: DataTypes.INTEGER
+			userId: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				references: {
+					model: "Users",
+					key: "id"
+				},
+				onDelete: "CASCADE"
+			}
 		},
 		{
 			sequelize,

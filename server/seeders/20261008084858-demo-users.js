@@ -4,7 +4,7 @@
 export default {
   async up (queryInterface, Sequelize) {
     await queryInterface.bulkInsert("Users", [{
-      id: 1,
+
       name: "Michael Jordan",
       email: "jordan@email.com",
       password: "jordan1234",
@@ -13,7 +13,7 @@ export default {
     }], {});
 
     await queryInterface.bulkInsert("Users", [{
-      id: 2,
+
       name: "Jenifer",
       email: "jenifer@email.com",
       password: "jenifer1234",

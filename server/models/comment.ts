@@ -41,8 +41,8 @@ export class Comment extends Model<
 	}) {
 		this.belongsTo(models.Post, {foreignKey: "postId", as: "Post"});
 		this.belongsTo(models.User, {foreignKey: "userId", as: "User"});
-		this.belongsTo(models.Comment, { foreignKey: "replyId", as: "ParentComment" });
-		this.hasMany(models.Comment, { foreignKey: "replyId", as: "Replies" });
+		this.belongsTo(models.Comment, {foreignKey: "replyId", as: "ParentComment"});
+		this.hasMany(models.Comment, {foreignKey: "replyId", as: "Replies"});
 	}
 }
 
@@ -59,11 +59,19 @@ export function initComment(sequelize: Sequelize): typeof Comment {
 			},
 			postId: {
 				type: DataTypes.INTEGER,
-				allowNull: false
+				allowNull: false,
+				references: {
+					model: "Posts",
+					key: "id"
+				},
 			},
 			userId: {
 				type: DataTypes.INTEGER,
-				allowNull: false
+				allowNull: false,
+				references: {
+					model: "Users",
+					key: "id"
+				},
 			},
 			replyId: {
 				type: DataTypes.INTEGER,

@@ -14,7 +14,7 @@ if (!config) {
     throw new Error(`Database configuration not found for "${env}"`);
 }
 
-let sequelize: Sequelize;
+export let sequelize: Sequelize;
 
 if ("use_env_variable" in config && config.use_env_variable) {
     const connectionString = process.env[config.use_env_variable as string];

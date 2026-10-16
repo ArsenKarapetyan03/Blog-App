@@ -1,8 +1,7 @@
-import { type Attributes, Op } from "sequelize";
+import { Op } from "sequelize";
 import db from "@/models/index.js";
-import type { Post } from "@/models/post.js";
+import { commentService } from "@/services/comment.service.js";
 import type { User } from "@/models/user.js";
-import type { Comment } from "@/models/comment.js";
 
 interface GetPostsFilters {
 	searchString?: string;
@@ -24,21 +23,6 @@ interface UpdatePostInput {
 	title: string;
 	excerpt: string;
 	description: string;
-}
-
-interface PostJSON extends Attributes<Post> {
-	User?: Pick<Attributes<User>, "id" | "name" | "email"> | null;
-	LikedByUsers?: Array<Pick<Attributes<User>, "id">>;
-	Comments?: Array<
-		Attributes<Comment> & {
-		User?: Pick<Attributes<User>, "id" | "name" | "email"> | null;
-		Replies?: Array<
-			Attributes<Comment> & {
-			User?: Pick<Attributes<User>, "id" | "name" | "email"> | null;
-		}
-		>;
-	}
-	>;
 }
 
 export const postService = {
@@ -64,7 +48,7 @@ export const postService = {
 	},
 
 	getPostById: async (id: number, currentUserId?: number) => {
-		const post = await db.Post.findByPk(id, {
+		const response = await db.Post.findByPk(id, {
 			include: [
 				{
 					model: db.User,
@@ -75,42 +59,21 @@ export const postService = {
 					model: db.User,
 					as: "LikedByUsers",
 					attributes: ["id"]
-				},
-				{
-					model: db.Comment,
-					as: "Comments",
-					where: {replyId: null},
-					required: false,
-					include: [
-						{
-							model: db.User,
-							as: "User",
-							attributes: ["id", "name", "email"]
-						},
-						{
-							model: db.Comment,
-							as: "Replies",
-							include: [{
-								model: db.User,
-								as: "User",
-								attributes: ["id", "name", "email"]
-							}]
-						}
-					]
 				}]
 		});
 
-		if (!post) {
+		if (!response) {
 			return null;
 		}
 
-		const plainPost = post.toJSON() as PostJSON;
-		const likedByUsers = plainPost.LikedByUsers || [];
+		const likedByUsers = response.LikedByUsers || [];
+		const post = response.toJSON();
 
 		return {
-			...plainPost,
+			...post,
+			Comments: await commentService.getCommentsTree(id),
 			likesCount: likedByUsers.length,
-			isLikedByMe: currentUserId ? likedByUsers.some((u: any) => u.id === currentUserId) : false
+			isLikedByMe: currentUserId ? likedByUsers.some((u: any) => u.id === currentUserId) : false,
 		};
 	},
 
