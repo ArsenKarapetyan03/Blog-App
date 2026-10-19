@@ -42,7 +42,7 @@ export const PostActions = ({postData}: {postData: PostType}) => {
 			async onOk() {
 				setIsDeleting(true);
 				try {
-					const response = await deletePost(postData.id);
+					const response = await deletePost(String(postData.id));
 					if (response.success) {
 						router.push("/");
 						router.refresh();

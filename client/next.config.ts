@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
 
 	experimental: {
 		externalDir: true,
+		serverActions: {
+			bodySizeLimit: "26mb",
+		},
 	},
 
 	transpilePackages: ["../types"],

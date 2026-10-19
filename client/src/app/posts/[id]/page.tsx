@@ -77,6 +77,19 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 				</div>
 			)}
 
+			{post.images?.length > 0
+				&& <div className="grid gap-4 sm:grid-cols-2">
+						{post.images.map((image, index) => (
+							<img
+								key={image}
+								src={new URL(image, BASE_URL).toString()}
+								alt={`${post.title} - photo ${index + 1}`}
+								className="w-full max-h-128 rounded-xl object-cover"
+							/>
+						))}
+          </div>
+			}
+
 			<div className="text-lg text-zinc-600 leading-relaxed whitespace-pre-wrap">{post.description}</div>
 
 			<div className="p-2 flex gap-10 border-b border-slate-100 pb-4">

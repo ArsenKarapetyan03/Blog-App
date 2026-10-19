@@ -19,6 +19,7 @@ export class Post extends Model<
 	declare title: string | null;
 	declare excerpt: string | null;
 	declare description: string | null;
+	declare images: CreationOptional<string[]>;
 	declare userId: ForeignKey<User['id'] | null>;
 
 	declare User?: NonAttribute<User | null>;
@@ -54,7 +55,6 @@ export class Post extends Model<
 			otherKey: "userId",
 			as: "LikedByUsers"
 		});
-
 	}
 }
 
@@ -68,6 +68,11 @@ export function initPost(sequelize: Sequelize): typeof Post {
 			title: DataTypes.STRING,
 			excerpt: DataTypes.TEXT,
 			description: DataTypes.TEXT,
+			images: {
+				type: DataTypes.ARRAY(DataTypes.STRING),
+				allowNull: false,
+				defaultValue: [],
+			},
 			userId: {
 				type: DataTypes.INTEGER,
 				allowNull: false,

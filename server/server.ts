@@ -2,6 +2,7 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { uploadsDirectory } from "@/middleware/imagesMiddleware.js";
 import routes from "./routes/index.js";
 import errorHandler from "@/middleware/errorHandler.js";
 
@@ -13,6 +14,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+app.use("/uploads", express.static(uploadsDirectory));
 app.use("/api", routes);
 app.use(errorHandler);
 

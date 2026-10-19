@@ -5,7 +5,6 @@ export type CommentTreeNode = {
 	postId: number;
 	replyId: number | null;
 	Replies: CommentTreeNode[];
-	[key: string]: unknown;
 };
 
 export const commentService = {

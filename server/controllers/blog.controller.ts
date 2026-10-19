@@ -57,6 +57,7 @@ export const create = async (req: Request, res: Response) => {
 		title,
 		excerpt,
 		description,
+		images: (Array.isArray(req.files) ? req.files : []).map(file => `/uploads/${file.filename}`),
 	});
 
 	if (!newPost || !newPost.get("id")) {

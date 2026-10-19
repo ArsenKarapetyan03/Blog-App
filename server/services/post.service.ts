@@ -1,7 +1,6 @@
 import { Op } from "sequelize";
-import db from "@/models/index.js";
+import db from "#models/index.js";
 import { commentService } from "@/services/comment.service.js";
-import type { User } from "@/models/user.js";
 
 interface GetPostsFilters {
 	searchString?: string;
@@ -15,6 +14,7 @@ interface CreatePostInput {
 	title: string;
 	excerpt: string;
 	description: string;
+	images: string[];
 }
 
 interface UpdatePostInput {

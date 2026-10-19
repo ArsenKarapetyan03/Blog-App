@@ -2,23 +2,18 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { type PostType } from "@/types/types";
 import { BASE_URL } from "@/config/api";
 
-export const createPost = async (plainFormData: Partial<PostType>) => {
+export const createPost = async (formData: FormData) => {
 	try {
 		const cookieStore = await cookies();
 		const token = cookieStore.get("token")?.value;
 
-		console.log(token);
-		console.log(plainFormData);
-
 		const response = await fetch(`${BASE_URL}/blog`, {
 			method: "POST",
-			body: JSON.stringify(plainFormData),
+			body: formData,
 			headers: {
 				"Authorization": `Bearer ${token}`,
-				"Content-Type": "application/json"
 			}
 		});
 
@@ -32,16 +27,23 @@ export const createPost = async (plainFormData: Partial<PostType>) => {
 	}
 }
 
-export const updatePost = async (plainFormData: Partial<PostType>) => {
+export const updatePost = async (formData: FormData) => {
 	try {
 		const cookieStore = await cookies();
 		const token = cookieStore.get("token")?.value;
 
-		if (!plainFormData.id) {
+		const id = formData.get("id");
+		if (typeof id !== "string" || !id) {
 			return {success: false, message: "Invalid or missing data for update."};
 		}
 
-		const response = await fetch(`${BASE_URL}/blog/${plainFormData.id}`, {
+		const plainFormData = {
+			title: String(formData.get("title") ?? ""),
+			excerpt: String(formData.get("excerpt") ?? ""),
+			description: String(formData.get("description") ?? ""),
+		};
+
+		const response = await fetch(`${BASE_URL}/blog/${id}`, {
 			method: "PATCH",
 			body: JSON.stringify(plainFormData),
 			headers: {

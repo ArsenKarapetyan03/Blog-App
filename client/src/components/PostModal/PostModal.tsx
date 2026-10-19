@@ -31,10 +31,9 @@ export const PostModal = (
 	const isEditMode = !!postData;
 
 	const [state, formAction] = useActionState(async (prevState: typeof initialState, formData: FormData) => {
-		const plainFormData: Partial<PostType> = Object.fromEntries(formData);
 		const action = isEditMode ? updatePost : createPost;
 
-		const response = await action(plainFormData);
+		const response = await action(formData);
 
 		if (response.success) {
 			setIsOpen(false);
@@ -148,6 +147,21 @@ export const PostModal = (
 						/>
 					</div>
 
+					{!isEditMode && (
+						<div>
+							<label htmlFor="photos" className="block text-zinc-400 mb-1">
+								Photos (up to 5, 5 MB each)
+							</label>
+							<input
+								id="photos"
+								name="photos"
+								type="file"
+								accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+								multiple
+								className="w-full text-sm text-zinc-400 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-700 file:px-4 file:py-2 file:text-white"
+							/>
+						</div>
+					)}
 					<FormActions onCancel={handleClose} />
 				</form>
 			</div>
