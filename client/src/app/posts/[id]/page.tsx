@@ -8,6 +8,7 @@ import { Comment } from "@/components/Comment/Comment";
 import { CommentForm } from "@/components/Comment/CommentForm";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { LikeButton } from "@/components/ui/LikeButton";
+import { PostGallery } from "@/components/ui/PostGallery";
 import { getSessionUser } from "@/actions/auth";
 import { type PostType } from "@/types/types";
 import { CommentSection } from "@/components/Comment/CommentSection";
@@ -23,7 +24,9 @@ async function getPost(id: string): Promise<PostType | null> {
 					"Authorization": `Bearer ${token}`,
 				},
 				cache: "no-store"
-			});
+			}
+		);
+
 		if (!response.ok) {
 			return null;
 		}
@@ -77,18 +80,13 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 				</div>
 			)}
 
-			{post.images?.length > 0
-				&& <div className="grid gap-4 sm:grid-cols-2">
-						{post.images.map((image, index) => (
-							<img
-								key={image}
-								src={new URL(image, BASE_URL).toString()}
-								alt={`${post.title} - photo ${index + 1}`}
-								className="w-full max-h-128 rounded-xl object-cover"
-							/>
-						))}
-          </div>
-			}
+			{post.images?.length > 0 && (
+				<PostGallery
+					images={post.images}
+					baseUrl={BASE_URL}
+					postTitle={post.title}
+				/>
+			)}
 
 			<div className="text-lg text-zinc-600 leading-relaxed whitespace-pre-wrap">{post.description}</div>
 

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { getValidatedPost } from "@/utils/dataValidation.js";
 import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
+import { deletePhysicalFiles } from "@/utils/deleteFiles.js"
 import { AppError } from "@/utils/appError.js";
 import { postService } from "@/services/post.service.js";
 
@@ -68,31 +69,44 @@ export const create = async (req: Request, res: Response) => {
 };
 
 export const update = async (req: Request, res: Response) => {
-	const { id } = req.params;
+	const {id} = req.params;
 	if (!req.user) {
 		throw new AppError("Authentication required. Please sign-in.", 401);
 	}
 	if (!id) {
 		throw new AppError("Post ID is required", 400);
 	}
-	const { title, excerpt, description } = getValidatedPost(req.body);
-	const isUpdated = await postService.updatePost({
+
+	const {title, excerpt, description} = getValidatedPost(req.body);
+
+	const updateData: any = {
 		id: Number(id),
 		userId: req.user.id,
 		title,
 		excerpt,
 		description
-	});
+	}
 
-	if (!isUpdated) {
+	const hasNewFiles = Array.isArray(req.files) && req.files.length > 0;
+	if (hasNewFiles) {
+		updateData.images = req.files.map(file => `/uploads/${file.filename}`);
+	}
+
+	const result = await postService.updatePost(updateData);
+
+	if (!result.success) {
 		throw new AppError("Post not found", 404);
+	}
+
+	if (hasNewFiles && result.oldImages) {
+		await deletePhysicalFiles(result.oldImages);
 	}
 
 	return res.status(200).json({success: true, message: "Post updated successfully!"});
 };
 
 export const remove = async (req: Request, res: Response) => {
-	const { id } = req.params;
+	const {id} = req.params;
 	if (!id) {
 		throw new AppError("Post ID is required", 400);
 	}
@@ -101,10 +115,15 @@ export const remove = async (req: Request, res: Response) => {
 		throw new AppError("Authentication required. Please sign-in.", 401);
 	}
 
-	const isDeleted = await postService.deletePost(Number(id), req.user.id);
-	if (!isDeleted) {
+	const result = await postService.deletePost(Number(id), req.user.id);
+	if (!result.success) {
 		throw new AppError("Post not found", 404);
 	}
+
+	if (result.imagesData) {
+		await deletePhysicalFiles(result.imagesData);
+	}
+
 	return res.status(200).json({success: true, message: "Post deleted successfully!"});
 };
 

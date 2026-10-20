@@ -17,12 +17,8 @@ interface CreatePostInput {
 	images: string[];
 }
 
-interface UpdatePostInput {
+interface UpdatePostInput extends CreatePostInput {
 	id: number;
-	userId: number;
-	title: string;
-	excerpt: string;
-	description: string;
 }
 
 export const postService = {
@@ -81,22 +77,39 @@ export const postService = {
 		return await db.Post.create(data);
 	},
 
-	updatePost: async ({id, userId, title, excerpt, description}: UpdatePostInput) => {
-		const [affectedCount] = await db.Post.update(
-			{title, excerpt, description},
+	updatePost: async ({id, userId, ...data}: UpdatePostInput) => {
+		const oldPost = await db.Post.findOne({where: {id, userId}});
+		if (!oldPost) {
+			return {success: false};
+		}
+
+		await db.Post.update(
+			{...data},
 			{
 				where: {id, userId},
 				returning: true
 			}
 		);
-		return affectedCount > 0;
+
+		return {
+			success: true,
+			oldImages: oldPost.images
+		};
 	},
 
 	deletePost: async (id: number, userId: number) => {
-		const result = await db.Post.destroy({
+		const post = await db.Post.findOne({where: {id, userId}});
+		if (!post) {
+			return { success: false };
+		}
+
+		await db.Post.destroy({
 			where: {id, userId},
 		});
-		return result > 0;
+		return {
+			success: true,
+			imagesData: post.images
+		};
 	},
 
 	toggleLike: async (postId: number, userId: number) => {

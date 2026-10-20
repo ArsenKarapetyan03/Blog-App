@@ -12,9 +12,7 @@ export const createPost = async (formData: FormData) => {
 		const response = await fetch(`${BASE_URL}/blog`, {
 			method: "POST",
 			body: formData,
-			headers: {
-				"Authorization": `Bearer ${token}`,
-			}
+			headers: {"Authorization": `Bearer ${token}`}
 		});
 
 		if (!response.ok) {
@@ -37,19 +35,10 @@ export const updatePost = async (formData: FormData) => {
 			return {success: false, message: "Invalid or missing data for update."};
 		}
 
-		const plainFormData = {
-			title: String(formData.get("title") ?? ""),
-			excerpt: String(formData.get("excerpt") ?? ""),
-			description: String(formData.get("description") ?? ""),
-		};
-
 		const response = await fetch(`${BASE_URL}/blog/${id}`, {
 			method: "PATCH",
-			body: JSON.stringify(plainFormData),
-			headers: {
-				"Authorization": `Bearer ${token}`,
-				"Content-Type": "application/json"
-			}
+			body: formData,
+			headers: {"Authorization": `Bearer ${token}`}
 		});
 
 		if (!response.ok) {
