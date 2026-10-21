@@ -1,5 +1,7 @@
 import {
-	Model, DataTypes, type Sequelize,
+	Model,
+	DataTypes,
+	type Sequelize,
 	type InferAttributes,
 	type InferCreationAttributes,
 	type CreationOptional,

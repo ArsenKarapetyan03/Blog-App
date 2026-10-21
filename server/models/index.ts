@@ -4,6 +4,7 @@ import { User, initUser } from "./user.js";
 import { Post, initPost } from "./post.js";
 import { Comment, initComment } from "./comment.js";
 import { PostLikes, initPostLikes } from "@/models/postlikes.js";
+import { Image, initImage } from "@/models/image.js";
 
 type Environment = keyof typeof configJson;
 
@@ -40,6 +41,7 @@ initUser(sequelize);
 initPost(sequelize);
 initComment(sequelize);
 initPostLikes(sequelize);
+initImage(sequelize);
 
 const models = {User, Post, Comment, PostLikes};
 
@@ -47,6 +49,7 @@ User.associate(models);
 Post.associate(models);
 Comment.associate(models);
 PostLikes.associate(models);
+// Image.associate(models);
 
 const db = {
     sequelize,
@@ -55,6 +58,7 @@ const db = {
     Post,
     Comment,
     PostLikes,
+    Image,
 };
 
 export default db;
