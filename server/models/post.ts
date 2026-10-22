@@ -12,6 +12,7 @@ import {
 import type { User } from "./user.js";
 import type { Comment } from "./comment.js";
 import type { PostLikes } from "@/models/postlikes.js";
+import type { Image } from "@/models/image.js";
 
 export class Post extends Model<
 	InferAttributes<Post>,
@@ -21,17 +22,18 @@ export class Post extends Model<
 	declare title: string | null;
 	declare excerpt: string | null;
 	declare description: string | null;
-	declare images: CreationOptional<string[]>;
 	declare userId: ForeignKey<User['id'] | null>;
 
 	declare User?: NonAttribute<User | null>;
 	declare Comments?: NonAttribute<Comment[]>;
 	declare LikedByUsers?: NonAttribute<User[]>;
+	declare Images?: NonAttribute<Image[]>;
 
 	declare static associations: {
 		User: Association<Post, User>;
 		Comments: Association<Post, Comment>;
 		LikedByUsers: Association<Post, User>;
+		Images: Association<Post, Image>;
 	};
 
 	static associate(models: {
@@ -39,6 +41,7 @@ export class Post extends Model<
 		Post: typeof Post;
 		Comment: typeof Comment;
 		PostLikes: typeof PostLikes;
+		Image: typeof Image;
 	}) {
 		this.belongsTo(models.User, {
 			foreignKey: "userId",
@@ -50,6 +53,12 @@ export class Post extends Model<
 			as: "Comments",
 			onDelete: "CASCADE"
 		});
+
+		this.hasMany(models.Image, {
+			foreignKey: "postId",
+			as: "Images",
+			onDelete: "CASCADE"
+		})
 
 		this.belongsToMany(models.User, {
 			through: models.PostLikes,
@@ -70,11 +79,6 @@ export function initPost(sequelize: Sequelize): typeof Post {
 			title: DataTypes.STRING,
 			excerpt: DataTypes.TEXT,
 			description: DataTypes.TEXT,
-			images: {
-				type: DataTypes.ARRAY(DataTypes.STRING),
-				allowNull: false,
-				defaultValue: [],
-			},
 			userId: {
 				type: DataTypes.INTEGER,
 				allowNull: false,

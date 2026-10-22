@@ -4,7 +4,9 @@ import { useRef, useState, useEffect } from "react";
 import { X } from "lucide-react";
 
 interface PostGalleryProps {
-	images: string[];
+	images: {
+		imagePath: string;
+	}[];
 	baseUrl: string;
 	postTitle: string;
 }
@@ -39,10 +41,10 @@ export const PostGallery = ({ images, baseUrl, postTitle }: PostGalleryProps) =>
 		<>
 			<div className="grid gap-4 sm:grid-cols-2">
 				{images.map((image, index) => {
-					const fullUrl = new URL(image, baseUrl).toString();
+					const fullUrl = new URL(image.imagePath, baseUrl).toString();
 					return (
 						<div
-							key={image}
+							key={image.imagePath}
 							className="group relative overflow-hidden rounded-xl bg-slate-100 cursor-zoom-in"
 							onClick={() => openViewer(fullUrl)}
 						>

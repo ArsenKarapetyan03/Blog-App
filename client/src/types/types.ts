@@ -22,7 +22,9 @@ export interface PostType {
 	User: User;
 	excerpt: string;
 	description: string;
-	images: string[];
+	Images: {
+		imagePath: string;
+	}[];
 	likesCount: number;
 	isLikedByMe: boolean;
 	Comments: CommentType[];

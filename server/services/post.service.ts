@@ -14,7 +14,9 @@ interface CreatePostInput {
 	title: string;
 	excerpt: string;
 	description: string;
-	images: string[];
+	Images: {
+		imagePath: string;
+	}[];
 }
 
 interface UpdatePostInput extends CreatePostInput {
@@ -55,7 +57,9 @@ export const postService = {
 					model: db.User,
 					as: "LikedByUsers",
 					attributes: ["id"]
-				}]
+				},
+				"Images"
+				]
 		});
 
 		if (!response) {
@@ -74,7 +78,9 @@ export const postService = {
 	},
 
 	createPost: async (data: CreatePostInput) => {
-		return await db.Post.create(data);
+		return await db.Post.create(data, {
+			include: ["Images"]
+		});
 	},
 
 	updatePost: async ({id, userId, ...data}: UpdatePostInput) => {
@@ -92,23 +98,30 @@ export const postService = {
 		);
 
 		return {
-			success: true,
-			oldImages: oldPost.images
+			success: true
+			////////////////////////////
 		};
 	},
 
 	deletePost: async (id: number, userId: number) => {
-		const post = await db.Post.findOne({where: {id, userId}});
+		const post = await db.Post.findOne(
+			{
+				where: {id, userId},
+				include: ["Images"]
+			});
 		if (!post) {
-			return { success: false };
+			return {success: false};
 		}
 
 		await db.Post.destroy({
 			where: {id, userId},
 		});
+
+		const imagePaths = post.Images ? post.Images.map((img: any) => img.imagePath as string) : [];
+
 		return {
 			success: true,
-			imagesData: post.images
+			imagePaths: imagePaths
 		};
 	},
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readAll, readMine, readOne, create, update, remove, toggleLike } from "@/controllers/blog.controller.js";
+import { readAll, readMine, readOne, create, update, remove, toggleLike } from "@/controllers/post.controller.js";
 import { authMiddleware } from "@/middleware/authMiddleware.js";
 import { uploadMiddleware } from "@/middleware/imagesMiddleware.js";
 import { optionalAuth } from "@/middleware/optionalAuth.js";

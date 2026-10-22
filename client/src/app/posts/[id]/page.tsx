@@ -80,9 +80,9 @@ const PostPage = async ({params}: {params: Promise<{id: string}>}) => {
 				</div>
 			)}
 
-			{post.images?.length > 0 && (
+			{post.Images?.length > 0 && (
 				<PostGallery
-					images={post.images}
+					images={post.Images}
 					baseUrl={BASE_URL}
 					postTitle={post.title}
 				/>

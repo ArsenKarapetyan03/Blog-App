@@ -52,13 +52,17 @@ export const create = async (req: Request, res: Response) => {
 	}
 
 	const {title, excerpt, description} = getValidatedPost(req.body);
+	const files = (req.files as Express.Multer.File[]) || [];
+	const imagesData = files.map(file => ({
+		imagePath: `/uploads/${file.filename}`
+	}));
 
 	const newPost = await postService.createPost({
 		userId: req.user.id,
 		title,
 		excerpt,
 		description,
-		images: (Array.isArray(req.files) ? req.files : []).map(file => `/uploads/${file.filename}`),
+		Images: imagesData,
 	});
 
 	if (!newPost || !newPost.get("id")) {
@@ -89,7 +93,7 @@ export const update = async (req: Request, res: Response) => {
 
 	const hasNewFiles = Array.isArray(req.files) && req.files.length > 0;
 	if (hasNewFiles) {
-		updateData.images = req.files.map(file => `/uploads/${file.filename}`);
+		//////updateData = req.files.map(file => `/uploads/${file.filename}`);
 	}
 
 	const result = await postService.updatePost(updateData);
@@ -98,30 +102,36 @@ export const update = async (req: Request, res: Response) => {
 		throw new AppError("Post not found", 404);
 	}
 
-	if (hasNewFiles && result.oldImages) {
-		await deletePhysicalFiles(result.oldImages);
-	}
+	// if (hasNewFiles && result.oldImages) {
+	// 	await deletePhysicalFiles(result.oldImages);
+	// }
 
 	return res.status(200).json({success: true, message: "Post updated successfully!"});
 };
 
 export const remove = async (req: Request, res: Response) => {
 	const {id} = req.params;
-	if (!id) {
-		throw new AppError("Post ID is required", 400);
-	}
 
 	if (!req.user) {
 		throw new AppError("Authentication required. Please sign-in.", 401);
 	}
 
-	const result = await postService.deletePost(Number(id), req.user.id);
+	const postId = Number(id);
+	if (isNaN(postId)) {
+		throw new AppError("Invalid Post ID format. It must be a number.", 400);
+	}
+
+	const result = await postService.deletePost(postId, req.user.id);
 	if (!result.success) {
 		throw new AppError("Post not found", 404);
 	}
 
-	if (result.imagesData) {
-		await deletePhysicalFiles(result.imagesData);
+	if (result.imagePaths && result.imagePaths.length > 0) {
+		const response = await deletePhysicalFiles(result.imagePaths);
+
+		if (!response.success) {
+			console.warn("Some physical files could not be deleted:", response.message);
+		}
 	}
 
 	return res.status(200).json({success: true, message: "Post deleted successfully!"});

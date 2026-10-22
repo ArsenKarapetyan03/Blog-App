@@ -43,13 +43,13 @@ initComment(sequelize);
 initPostLikes(sequelize);
 initImage(sequelize);
 
-const models = {User, Post, Comment, PostLikes};
+const models = {User, Post, Comment, PostLikes, Image};
 
 User.associate(models);
 Post.associate(models);
 Comment.associate(models);
 PostLikes.associate(models);
-// Image.associate(models);
+Image.associate(models);
 
 const db = {
     sequelize,

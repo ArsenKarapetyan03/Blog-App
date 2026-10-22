@@ -8,7 +8,6 @@ import {
 	type InferCreationAttributes,
 	type CreationOptional,
 	type NonAttribute,
-	type Association,
 	type ForeignKey
 } from "sequelize";
 import { type Post } from "@/models/post.js";
@@ -21,8 +20,15 @@ export class Image extends Model<
 	declare postId: ForeignKey<Post["id"]>;
 	declare imagePath: string;
 
-	static associate(models: Model<Image>) {
+	declare post?: NonAttribute<Post>;
 
+	static associate(models: {
+		Post: typeof Post,
+	}) {
+		this.belongsTo(models.Post, {
+			foreignKey: "postId",
+			as: "post"
+		})
 	}
 }
 
@@ -30,9 +36,17 @@ export function initImage(sequelize: Sequelize) {
 	Image.init({
 		id: {
       type: DataTypes.INTEGER,
+			primaryKey: true,
       autoIncrement: true,
     },
-		postId: DataTypes.NUMBER,
+		postId: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			references: {
+				model: "Post",
+				key: "id",
+			}
+		},
 		imagePath: DataTypes.STRING
 	}, {
 		sequelize,
