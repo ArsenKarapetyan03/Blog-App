@@ -1,11 +1,12 @@
 "use client";
 
-import { type Dispatch, type SetStateAction, useActionState, useEffect, useRef } from "react";
+import { type Dispatch, type SetStateAction, useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, AlertCircle } from "lucide-react";
+import { X, AlertCircle, Plus, Trash } from "lucide-react";
 import { FormActions } from "@/components/PostModal/FormActions";
 import { createPost, updatePost } from "@/actions/post";
 import { type PostType } from "@/types/types";
+import { Upload, type UploadFile } from "antd";
 
 const INPUT_STYLES = "w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500";
 
@@ -15,43 +16,70 @@ interface PostModalProps {
 	postData?: PostType;
 }
 
-const initialState = { success: false, message: "" };
+const initialState = {success: false, message: ""};
 
-export const PostModal = ({ isOpen, setIsOpen, postData }: PostModalProps) => {
+export const PostModal = ({isOpen, setIsOpen, postData}: PostModalProps) => {
 	const dialogRef = useRef<HTMLDialogElement>(null);
 	const formRef = useRef<HTMLFormElement>(null);
+	const [fileList, setFileList] = useState<UploadFile[]>([]);
+
 	const router = useRouter();
 	const isEditMode = !!postData;
 
-	const [state, formAction, isPending] = useActionState(async (prevState: typeof initialState, formData: FormData) => {
-		try {
+	const [state, formAction, isPending] = useActionState(
+		async (prevState: typeof initialState, formData: FormData) => {
+			formData.delete("file");
+
+			for (const file of fileList) {
+				if (file.originFileObj) {
+					formData.append("photos", file.originFileObj, file.name);
+				}
+			}
+
 			const action = isEditMode ? updatePost : createPost;
 			const response = await action(formData);
 
 			if (response?.success) {
 				setIsOpen(false);
+				setFileList([]);
 				router.refresh();
 				return initialState;
 			}
-			return response || { success: false, message: "Something went wrong" };
-		} catch (error) {
-			return { success: false, message: "Error creating post" };
-		}
-	}, initialState);
+
+			return response || {
+				success: false,
+				message: "Something went wrong",
+			};
+		},
+		initialState
+	);
 
 	const handleClose = () => {
 		setIsOpen(false);
 	};
 
+	const handleUploadChange = ({fileList: newFileList}: { fileList: UploadFile[] }) => {
+		const updatedList = newFileList.map(file => {
+			if (!file.status) {
+				file.status = "done";
+			}
+			return file;
+		});
+		setFileList(updatedList);
+	};
+
 	useEffect(() => {
 		const dialog = dialogRef.current;
-		if (!dialog) return;
+		if (!dialog) {
+			return;
+		}
 
 		if (isOpen && !dialog.open) {
 			dialog.showModal();
 		} else if (!isOpen && dialog.open) {
 			dialog.close();
 			formRef.current?.reset();
+			setFileList([]);
 		}
 	}, [isOpen]);
 
@@ -85,7 +113,7 @@ export const PostModal = ({ isOpen, setIsOpen, postData }: PostModalProps) => {
 					action={formAction}
 					className="flex flex-col gap-4"
 				>
-					{isEditMode && <input type="hidden" name="id" value={postData?.id} />}
+					{isEditMode && <input type="hidden" name="id" value={postData?.id}/>}
 
 					<div>
 						<label htmlFor="title" className="block text-zinc-400 mb-1">Title</label>
@@ -122,29 +150,84 @@ export const PostModal = ({ isOpen, setIsOpen, postData }: PostModalProps) => {
 							defaultValue={postData?.description}
 						/>
 					</div>
-
 					<div>
 						<label htmlFor="photos" className="block text-zinc-400 mb-1">
 							Photos (up to 5, 5 MB each)
 						</label>
-						<input
+						<Upload
 							id="photos"
-							name="photos"
-							type="file"
 							accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+							listType="picture-card"
+							fileList={fileList}
+							onChange={handleUploadChange}
+							beforeUpload={(file) => {
+								const isAllowedSize = file.size <= 5 * 1024 * 1024;
+								if (!isAllowedSize) {
+									console.error(`${file.name} exceeds the 5 MB limit`);
+								}
+								return false;
+							}}
+							maxCount={5}
 							multiple
-							className="w-full text-sm text-zinc-400 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-700 file:px-4 file:py-2 file:text-white file:cursor-pointer"
-						/>
+							className="block
+						[&_.ant-upload-select]:!bg-zinc-800
+						[&_.ant-upload-select]:!border-zinc-700
+						[&_.ant-upload-select]:hover:!border-indigo-500
+						[&_.ant-upload-select_text]:text-zinc-400"
+
+							itemRender={(originNode, file, currFileList, actions) => {
+								const src = file.url || (file.originFileObj ? URL.createObjectURL(file.originFileObj) : "");
+
+								return (
+									<div
+										className="relative w-25 h-25 border border-zinc-700 bg-zinc-800 rounded-lg overflow-hidden group">
+
+										{src ? (
+											<img
+												src={src}
+												alt={file.name}
+												className="w-full h-full object-cover block"
+											/>
+										) : (
+											<div className="w-full h-full flex items-center justify-center text-xs text-zinc-500">
+												Loading...
+											</div>
+										)}
+
+										<div
+											className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-200">
+											<button
+												type="button"
+												onClick={actions.remove}
+												className="text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+												title="Remove file"
+											>
+												<Trash />
+											</button>
+										</div>
+									</div>
+								);
+							}}
+						>
+							{fileList.length >= 5 ? null : (
+								<div
+									className="flex flex-col items-center justify-center text-zinc-400 hover:text-indigo-400 transition-colors">
+									<Plus className="w-5 h-5 mb-1"/>
+									<div className="text-xs">Upload</div>
+								</div>
+							)}
+						</Upload>
 					</div>
 
 					{state?.message && !state.success && (
-						<div className="flex items-center gap-2 p-3 bg-red-950/50 border border-red-800 text-red-200 rounded-lg text-sm animate-in fade-in zoom-in-95 duration-200">
-							<AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+						<div
+							className="flex items-center gap-2 p-3 bg-red-950/50 border border-red-800 text-red-200 rounded-lg text-sm animate-in fade-in zoom-in-95 duration-200">
+							<AlertCircle className="w-4 h-4 shrink-0 text-red-400"/>
 							<span>{state.message}</span>
 						</div>
 					)}
 
-					<FormActions onCancel={handleClose} isPending={isPending} />
+					<FormActions onCancel={handleClose} pending={isPending} />
 				</form>
 			</div>
 		</dialog>

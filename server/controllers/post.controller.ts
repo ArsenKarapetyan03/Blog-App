@@ -92,9 +92,9 @@ export const update = async (req: Request, res: Response) => {
 	}
 
 	const hasNewFiles = Array.isArray(req.files) && req.files.length > 0;
-	if (hasNewFiles) {
-		//////updateData = req.files.map(file => `/uploads/${file.filename}`);
-	}
+	// if (hasNewFiles) {
+	// 	updateData.Images = req.files.map(file => `/uploads/${file.filename}`);
+	// }
 
 	const result = await postService.updatePost(updateData);
 

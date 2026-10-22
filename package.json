@@ -24,6 +24,7 @@
     "types"
   ],
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
     "pg": "^8.23.1",
     "pg-hstore": "^2.3.4"
   }

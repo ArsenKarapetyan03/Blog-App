@@ -1,10 +1,16 @@
-import { useFormStatus } from "react-dom";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
-export const FormActions = ({onCancel}: {onCancel: () => void}) => {
-	const {pending} = useFormStatus();
+interface FormActionsProps {
+	onCancel: () => void;
+	pending: boolean;
+}
 
-	return (
+export const FormActions = (
+	{
+		onCancel,
+		pending
+	}: FormActionsProps
+) => (
 		<div className="flex justify-end gap-2 mt-2">
 			<button
 				type="button"
@@ -32,4 +38,3 @@ export const FormActions = ({onCancel}: {onCancel: () => void}) => {
 			</button>
 		</div>
 	)
-}

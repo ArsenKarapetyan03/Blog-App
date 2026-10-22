@@ -4,8 +4,6 @@ import { cookies } from "next/headers";
 import { MessageCircle } from "lucide-react";
 import { BASE_URL } from "@/config/api";
 import { PostActions } from "@/components/ui/PostActions";
-import { Comment } from "@/components/Comment/Comment";
-import { CommentForm } from "@/components/Comment/CommentForm";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { PostGallery } from "@/components/ui/PostGallery";
