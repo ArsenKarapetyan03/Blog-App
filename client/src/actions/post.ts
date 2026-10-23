@@ -1,15 +1,13 @@
-"use server"
+"use client"
 
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { BASE_URL } from "@/config/api";
+import Cookies from "js-cookie";
+import { NEXT_PUBLIC_BASE_URL } from "@/config/api";
 
 export const createPost = async (formData: FormData) => {
 	try {
-		const cookieStore = await cookies();
-		const token = cookieStore.get("token")?.value;
+		const token = Cookies.get("token");
 
-		const response = await fetch(`${BASE_URL}/blog`, {
+		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog`, {
 			method: "POST",
 			body: formData,
 			headers: {"Authorization": `Bearer ${token}`}
@@ -27,15 +25,14 @@ export const createPost = async (formData: FormData) => {
 
 export const updatePost = async (formData: FormData) => {
 	try {
-		const cookieStore = await cookies();
-		const token = cookieStore.get("token")?.value;
+		const token = Cookies.get("token");
 
 		const id = formData.get("id");
 		if (typeof id !== "string" || !id) {
 			return {success: false, message: "Invalid or missing data for update."};
 		}
 
-		const response = await fetch(`${BASE_URL}/blog/${id}`, {
+		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog/${id}`, {
 			method: "PATCH",
 			body: formData,
 			headers: {"Authorization": `Bearer ${token}`}
@@ -56,10 +53,9 @@ export const deletePost = async (id: string) => {
 			return {success: false, message: "Invalid post ID."};
 		}
 
-		const cookieStore = await cookies();
-		const token = cookieStore.get("token")?.value;
+		const token = Cookies.get("token");
 
-		const response = await fetch(`${BASE_URL}/blog/${id}`, {
+		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog/${id}`, {
 			method: "DELETE",
 			headers: {
 				"Authorization": `Bearer ${token}`,
@@ -79,14 +75,13 @@ export const deletePost = async (id: string) => {
 
 export const toggleLikeAction = async (postId: number) => {
 	try {
-		const cookieStore = await cookies();
-		const token = cookieStore.get("token")?.value;
+		const token = Cookies.get("token");
 
 		if (!token) {
 			return {success: false, message: "Unauthorized"};
 		}
 
-		const response = await fetch(`${BASE_URL}/blog/${postId}/like`, {
+		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog/${postId}/like`, {
 			method: "POST",
 			headers: {
 				"Authorization": `Bearer ${token}`,
@@ -97,8 +92,6 @@ export const toggleLikeAction = async (postId: number) => {
 		if (!response.ok) {
 			return {success: false, message: "Failed to like post."};
 		}
-
-		revalidatePath(`/posts/${postId}`);
 
 		return {success: true};
 	} catch (error) {

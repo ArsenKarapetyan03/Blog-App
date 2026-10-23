@@ -7,9 +7,36 @@ import { PostActions } from "@/components/ui/PostActions";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { PostGallery } from "@/components/ui/PostGallery";
-import { getSessionUser } from "@/actions/auth";
 import { type PostType } from "@/types/types";
 import { CommentSection } from "@/components/Comment/CommentSection";
+
+async function getSessionUser() {
+	try {
+		const token = (await cookies()).get("token")?.value;
+
+		if (!token) {
+			return null;
+		}
+
+		const response = await fetch(`${BASE_URL}/auth/me`, {
+			method: "GET",
+			headers: {
+				"Authorization": `Bearer ${token}`
+			}
+		});
+
+		if (!response.ok) {
+			return null;
+		}
+
+		const data = await response.json();
+
+		return data.user ?? null;
+	} catch (error) {
+		console.error("Fetch session user error:", error);
+		return null;
+	}
+}
 
 async function getPost(id: string): Promise<PostType | null> {
 	try {

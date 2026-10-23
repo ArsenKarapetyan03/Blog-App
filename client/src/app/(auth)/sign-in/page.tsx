@@ -1,14 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 import { signIn } from "@/actions/auth";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
 const initialState = { success: false, message: "" };
 
 const LoginPage = () => {
+	const router = useRouter();
 	const [state, formAction, isPending] = useActionState(signIn, initialState);
+
+	useEffect(() => {
+		if (state?.success) {
+			router.push("/");
+			router.refresh();
+		}
+	}, [state?.success, router]);
 
 	return (
 		<main className="h-full w-full bg-white flex items-center justify-center p-6">
@@ -69,7 +78,7 @@ const LoginPage = () => {
 						/>
 					</div>
 
-					{state?.message && (
+					{state?.message && !state.success && (
 						<p className="text-sm text-red-600 font-medium text-center bg-red-50 p-2.5 rounded-lg border border-red-100">
 							{state.message}
 						</p>

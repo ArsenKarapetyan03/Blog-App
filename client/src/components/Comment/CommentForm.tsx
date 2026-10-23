@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createCommentAction, type ActionState } from "@/actions/comment";
 
 interface CommentFormProps {
@@ -14,11 +15,15 @@ const initialState: ActionState = { success: false, error: null };
 export const CommentForm = ({postId, replyId, onCancel}: CommentFormProps) => {
 	const [state, formAction, isPending] = useActionState(createCommentAction, initialState);
 	const formRef = useRef<HTMLFormElement>(null);
+	const router = useRouter();
 
 	useEffect(() => {
 		if (state.success && formRef.current) {
 			formRef.current.reset();
-			if (onCancel) onCancel();
+			if (onCancel) {
+				onCancel();
+			}
+			router.refresh();
 		}
 	}, [state.success, onCancel]);
 

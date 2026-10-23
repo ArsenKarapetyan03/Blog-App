@@ -1,14 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 import { signUp } from "@/actions/auth";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
 const initialState = { success: false, message: "" };
 
 const RegisterPage = () => {
+	const router = useRouter();
 	const [state, formAction, isPending] = useActionState(signUp, initialState);
+
+	useEffect(() => {
+		if (state?.success) {
+			router.push("/sign-in");
+		}
+	}, [state?.success, router]);
 
 	return (
 		<main className="h-full w-full bg-white flex items-center justify-center p-6">

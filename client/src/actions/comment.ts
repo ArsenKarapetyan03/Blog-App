@@ -1,8 +1,7 @@
-"use server";
+"use client";
 
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { BASE_URL } from "@/config/api";
+import Cookies from "js-cookie";
+import { NEXT_PUBLIC_BASE_URL } from "@/config/api";
 
 export interface ActionState {
 	success: boolean;
@@ -23,10 +22,9 @@ export const createCommentAction = async (
 	}
 
 	try {
-		const cookieStore = await cookies();
-		const token = cookieStore.get("token")?.value;
+		const token = Cookies.get("token");
 
-		const response = await fetch(`${BASE_URL}/comment`, {
+		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/comment`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -44,11 +42,9 @@ export const createCommentAction = async (
 			return {success: false, error: errorData.error || "Failed to post comment."};
 		}
 
-		revalidatePath(`/posts/${postId}`);
-
-		return { success: true, error: null };
+		return {success: true, error: null};
 	} catch (error) {
 		console.error("Server Action Error:", error);
-		return { success: false, error: "Internal server error." };
+		return {success: false, error: "Internal server error."};
 	}
 }
