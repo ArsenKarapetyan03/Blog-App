@@ -11,6 +11,7 @@ import {
 import type { Post } from "./post.js";
 import type { Comment } from "@/models/comment.js";
 import type { PostLikes } from "./postlikes.js";
+import { Friendship } from "@/models/friendship.js";
 
 export class User extends Model<
     InferAttributes<User>,
@@ -24,11 +25,15 @@ export class User extends Model<
   declare Posts?: NonAttribute<Post[]>;
   declare Comments?: NonAttribute<Comment[]>;
   declare LikedPosts?: NonAttribute<Post[]>;
+  declare Friends?: NonAttribute<User[]>;
+  declare FriendRequests?: NonAttribute<User[]>;
 
   declare static associations: {
     Posts: Association<User, Post>;
     Comments: Association<User, Comment>;
     LikedPosts: Association<User, Post>;
+    Friends: Association<User, User>;
+    FriendRequests: Association<User, User>;
   };
 
   static associate(models: {
@@ -52,6 +57,20 @@ export class User extends Model<
       foreignKey: "userId",
       otherKey: "postId",
       as: "LikedPosts"
+    });
+
+    this.belongsToMany(User, {
+      as: "Friends",
+      through: Friendship,
+      foreignKey: "userId",
+      otherKey: "friendId",
+    });
+
+    this.belongsToMany(User, {
+      as: "FriendRequests",
+      through: Friendship,
+      foreignKey: "friendId",
+      otherKey: "userId",
     });
 
   }
