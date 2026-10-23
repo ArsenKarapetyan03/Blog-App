@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import db from "#models/index.js";
 import { commentService } from "@/services/comment.service.js";
+import { imageService } from "@/services/image.services.js";
 
 interface GetPostsFilters {
 	searchString?: string;
@@ -21,6 +22,7 @@ interface CreatePostInput {
 
 interface UpdatePostInput extends CreatePostInput {
 	id: number;
+	existingImagePaths?: string[];
 }
 
 export const postService = {
@@ -83,24 +85,36 @@ export const postService = {
 		});
 	},
 
-	updatePost: async ({id, userId, ...data}: UpdatePostInput) => {
-		const oldPost = await db.Post.findOne({where: {id, userId}});
-		if (!oldPost) {
-			return {success: false};
-		}
-
-		await db.Post.update(
-			{...data},
-			{
-				where: {id, userId},
-				returning: true
+	updatePost: async (data: UpdatePostInput) => {
+		return db.sequelize.transaction(async transaction => {
+			const post = await db.Post.findOne({
+				where: {id: data.id, userId: data.userId},
+				include: ["Images"],
+				transaction
+			});
+			if (!post) {
+				return {success: false, removedImagePaths: []};
 			}
-		);
 
-		return {
-			success: true
-			////////////////////////////
-		};
+			const currentImagePaths = (post.Images || []).map(image => image.imagePath);
+			const retainedImagePaths = data.existingImagePaths === undefined
+				? currentImagePaths
+				: currentImagePaths.filter(imagePath => data.existingImagePaths?.includes(imagePath));
+			const removedImagePaths = currentImagePaths.filter(imagePath => !retainedImagePaths.includes(imagePath));
+
+			await db.Post.update(
+				{
+					title: data.title,
+					excerpt: data.excerpt,
+					description: data.description
+				},
+				{where: {id: data.id, userId: data.userId}, transaction}
+			);
+			await imageService.deleteImages(data.id, removedImagePaths, transaction);
+			await imageService.createImages(data.id, data.Images, transaction);
+
+			return {success: true, removedImagePaths};
+		});
 	},
 
 	deletePost: async (id: number, userId: number) => {

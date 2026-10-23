@@ -11,7 +11,7 @@ interface PostGalleryProps {
 	postTitle: string;
 }
 
-export const PostGallery = ({ images, baseUrl, postTitle }: PostGalleryProps) => {
+export const PostGallery = ({images, baseUrl, postTitle}: PostGalleryProps) => {
 	const [activeImage, setActiveImage] = useState<string | null>(null);
 	const dialogRef = useRef<HTMLDialogElement>(null);
 

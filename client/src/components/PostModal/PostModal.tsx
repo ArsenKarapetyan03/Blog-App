@@ -7,6 +7,7 @@ import { FormActions } from "@/components/PostModal/FormActions";
 import { createPost, updatePost } from "@/actions/post";
 import { type PostType } from "@/types/types";
 import { Upload, type UploadFile } from "antd";
+import { BASE_URL } from "@/config/api";
 
 const INPUT_STYLES = "w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500";
 
@@ -22,7 +23,6 @@ export const PostModal = ({isOpen, setIsOpen, postData}: PostModalProps) => {
 	const dialogRef = useRef<HTMLDialogElement>(null);
 	const formRef = useRef<HTMLFormElement>(null);
 	const [fileList, setFileList] = useState<UploadFile[]>([]);
-
 	const router = useRouter();
 	const isEditMode = !!postData;
 
@@ -30,11 +30,17 @@ export const PostModal = ({isOpen, setIsOpen, postData}: PostModalProps) => {
 		async (prevState: typeof initialState, formData: FormData) => {
 			formData.delete("file");
 
+			const existingPhotos: string[] = [];
+
 			for (const file of fileList) {
 				if (file.originFileObj) {
 					formData.append("photos", file.originFileObj, file.name);
+				} else if (file.url) {
+					existingPhotos.push(file.url);
 				}
 			}
+
+			formData.append("existingPhotos", JSON.stringify(existingPhotos));
 
 			const action = isEditMode ? updatePost : createPost;
 			const response = await action(formData);
@@ -69,6 +75,20 @@ export const PostModal = ({isOpen, setIsOpen, postData}: PostModalProps) => {
 	};
 
 	useEffect(() => {
+		if (isOpen && postData?.Images) {
+			const existingPhotos: UploadFile[] = postData.Images.map((image, index) => ({
+				uid: `existing-${index}`,
+				name: image.imagePath.split("/").pop() || `image-${index}`,
+				status: "done",
+				url: new URL(image.imagePath, BASE_URL).toString(),
+			}));
+			setFileList(existingPhotos);
+		} else if (!isOpen) {
+			setFileList([]);
+		}
+	}, [isOpen, postData]);
+
+	useEffect(() => {
 		const dialog = dialogRef.current;
 		if (!dialog) {
 			return;
@@ -88,9 +108,9 @@ export const PostModal = ({isOpen, setIsOpen, postData}: PostModalProps) => {
 			ref={dialogRef}
 			onClose={handleClose}
 			onCancel={handleClose}
-			className="p-6 m-auto w-full sm:max-w-2/3 md:w-1/2 text-white border border-zinc-800 rounded-xl shadow-2xl
-			 bg-zinc-900 backdrop:bg-black/50 transition-[opacity,transform,overlay,display] duration-300 allow-discrete
-			 opacity-0 open:opacity-100 starting:open:opacity-0"
+			className="p-6 m-auto w-full sm:max-w-2/3 md:w-1/2 text-white border border-zinc-800 rounded-xl
+			 shadow-2xl bg-zinc-900 backdrop:bg-black/50 transition-[opacity,transform,overlay,display]
+			 duration-300 allow-discrete opacity-0 open:opacity-100 starting:open:opacity-0"
 		>
 			<div className="w-full">
 				<div className="flex justify-between items-center mb-4">
@@ -170,10 +190,10 @@ export const PostModal = ({isOpen, setIsOpen, postData}: PostModalProps) => {
 							maxCount={5}
 							multiple
 							className="block
-						[&_.ant-upload-select]:!bg-zinc-800
-						[&_.ant-upload-select]:!border-zinc-700
-						[&_.ant-upload-select]:hover:!border-indigo-500
-						[&_.ant-upload-select_text]:text-zinc-400"
+							[&_.ant-upload-select]:!bg-zinc-800
+							[&_.ant-upload-select]:!border-zinc-700
+							[&_.ant-upload-select]:hover:!border-indigo-500
+							[&_.ant-upload-select_text]:text-zinc-400"
 
 							itemRender={(originNode, file, currFileList, actions) => {
 								const src = file.url || (file.originFileObj ? URL.createObjectURL(file.originFileObj) : "");

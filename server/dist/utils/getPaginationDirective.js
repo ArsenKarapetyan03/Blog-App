@@ -1,0 +1,6 @@
+export const getPaginationDirectives = (query) => {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 4));
+    return { limit, offset: (page - 1) * limit };
+};
+//# sourceMappingURL=getPaginationDirective.js.map

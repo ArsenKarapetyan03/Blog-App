@@ -77,34 +77,49 @@ export const update = async (req: Request, res: Response) => {
 	if (!req.user) {
 		throw new AppError("Authentication required. Please sign-in.", 401);
 	}
+
 	if (!id) {
 		throw new AppError("Post ID is required", 400);
 	}
 
-	const {title, excerpt, description} = getValidatedPost(req.body);
+	const postId = Number(id);
 
-	const updateData: any = {
-		id: Number(id),
+	let existingImagePaths: string[] | undefined;
+
+	if (req.body.existingPhotos !== undefined) {
+		const parsedPhotos: unknown = JSON.parse(req.body.existingPhotos);
+		if (!Array.isArray(parsedPhotos) || !parsedPhotos.every(photo => typeof photo === "string")) {
+			throw new Error("Expected an array of image URLs");
+		}
+		existingImagePaths = parsedPhotos
+			.map(photo => new URL(photo, "http://localhost").pathname)
+			.filter(imagePath => imagePath.startsWith("/uploads/"));
+	}
+
+	const {title, excerpt, description} = getValidatedPost(req.body);
+	const files = (req.files as Express.Multer.File[]) || [];
+	const imagesData = files.map(file => ({imagePath: `/uploads/${file.filename}`}));
+
+	const result = await postService.updatePost({
+		id: postId,
 		userId: req.user.id,
 		title,
 		excerpt,
-		description
-	}
-
-	const hasNewFiles = Array.isArray(req.files) && req.files.length > 0;
-	// if (hasNewFiles) {
-	// 	updateData.Images = req.files.map(file => `/uploads/${file.filename}`);
-	// }
-
-	const result = await postService.updatePost(updateData);
+		description,
+		Images: imagesData,
+		...(existingImagePaths === undefined ? {} : {existingImagePaths}),
+	});
 
 	if (!result.success) {
 		throw new AppError("Post not found", 404);
 	}
 
-	// if (hasNewFiles && result.oldImages) {
-	// 	await deletePhysicalFiles(result.oldImages);
-	// }
+	if (result.removedImagePaths.length > 0) {
+		const deletion = await deletePhysicalFiles(result.removedImagePaths);
+		if (!deletion.success) {
+			console.warn("Some physical files could not be deleted:", deletion.message);
+		}
+	}
 
 	return res.status(200).json({success: true, message: "Post updated successfully!"});
 };
