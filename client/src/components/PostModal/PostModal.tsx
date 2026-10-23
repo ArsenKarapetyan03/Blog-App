@@ -180,13 +180,7 @@ export const PostModal = ({isOpen, setIsOpen, postData}: PostModalProps) => {
 							listType="picture-card"
 							fileList={fileList}
 							onChange={handleUploadChange}
-							beforeUpload={(file) => {
-								const isAllowedSize = file.size <= 5 * 1024 * 1024;
-								if (!isAllowedSize) {
-									console.error(`${file.name} exceeds the 5 MB limit`);
-								}
-								return false;
-							}}
+							beforeUpload={() => false}
 							maxCount={5}
 							multiple
 							className="block
