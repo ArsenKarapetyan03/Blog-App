@@ -33,61 +33,56 @@ export class Comment extends Model<
 		Replies: Association<Comment, Comment>;
 	};
 
-	static associate(models: {
-		Post: typeof Post;
-		User: typeof User;
-		Comment: typeof Comment;
-		PostLikes: typeof PostLikes;
-	}) {
-		this.belongsTo(models.Post, {foreignKey: "postId", as: "Post"});
-		this.belongsTo(models.User, {foreignKey: "userId", as: "User"});
-		this.belongsTo(models.Comment, {foreignKey: "replyId", as: "ParentComment"});
-		this.hasMany(models.Comment, {foreignKey: "replyId", as: "Replies"});
+	static configureAssociations() {
+		const registry = this.sequelize!.models;
+
+		this.belongsTo(registry.Post as any, {foreignKey: "postId", as: "Post"});
+		this.belongsTo(registry.User as any, {foreignKey: "userId", as: "User"});
+		this.belongsTo(this, {foreignKey: "replyId", as: "ParentComment"});
+		this.hasMany(this, {foreignKey: "replyId", as: "Replies"});
 	}
-}
 
-export function initComment(sequelize: Sequelize): typeof Comment {
-	Comment.init({
-			id: {
-				type: DataTypes.INTEGER,
-				autoIncrement: true,
-				primaryKey: true
-			},
-			content: {
-				type: DataTypes.TEXT,
-				allowNull: false
-			},
-			postId: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-				references: {
-					model: "Posts",
-					key: "id"
+	static initialize(sequelize: Sequelize) {
+		this.init({
+				id: {
+					type: DataTypes.INTEGER,
+					autoIncrement: true,
+					primaryKey: true
 				},
-			},
-			userId: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-				references: {
-					model: "Users",
-					key: "id"
+				content: {
+					type: DataTypes.TEXT,
+					allowNull: false
 				},
-			},
-			replyId: {
-				type: DataTypes.INTEGER,
-				allowNull: true,
-				references: {
-					model: "Comments",
-					key: "id"
+				postId: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+					references: {
+						model: "Posts",
+						key: "id"
+					},
 				},
-				onDelete: "CASCADE"
+				userId: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+					references: {
+						model: "Users",
+						key: "id"
+					},
+				},
+				replyId: {
+					type: DataTypes.INTEGER,
+					allowNull: true,
+					references: {
+						model: "Comments",
+						key: "id"
+					},
+					onDelete: "CASCADE"
+				}
+			},
+			{
+				sequelize,
+				modelName: "Comment",
 			}
-		},
-		{
-			sequelize,
-			modelName: "Comment",
-		}
-	);
-
-	return Comment;
+		);
+	}
 }

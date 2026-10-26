@@ -6,7 +6,6 @@ import {
 } from "sequelize";
 import type { User } from "./user.js";
 import type { Post } from "./post.js";
-import type { Comment } from "./comment.js";
 
 export class PostLikes extends Model<
   InferAttributes<PostLikes>,
@@ -15,44 +14,39 @@ export class PostLikes extends Model<
   declare postId: ForeignKey<Post['id']>;
   declare userId: ForeignKey<User['id']>;
 
-  static associate(models: {
-    User: typeof User;
-    Post: typeof Post;
-    Comment: typeof Comment;
-    PostLikes: typeof PostLikes
-  }) {
-    this.belongsTo(models.Post, { foreignKey: "postId" });
-    this.belongsTo(models.User, { foreignKey: "userId" });
+  static initialize(sequelize: Sequelize) {
+    this.init(
+      {
+        postId: {
+          type: DataTypes.INTEGER,
+          primaryKey: true,
+          references: {
+            model: "Posts",
+            key: "id"
+          }
+        },
+        userId: {
+          type: DataTypes.INTEGER,
+          primaryKey: true,
+          references: {
+            model: "Users",
+            key: "id"
+          }
+        },
+      },
+      {
+        sequelize,
+        modelName: "PostLikes",
+        tableName: "PostLikes",
+        timestamps: false,
+      }
+    );
   }
-}
 
-export function initPostLikes(sequelize: Sequelize): typeof PostLikes {
-  PostLikes.init(
-    {
-      postId: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        references: {
-          model: "Posts",
-          key: "id"
-        }
-      },
-      userId: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        references: {
-          model: "Users",
-          key: "userId"
-        }
-      },
-    },
-    {
-      sequelize,
-      modelName: "PostLikes",
-      tableName: "PostLikes",
-      timestamps: false,
-    }
-  );
+  static configureAssociations() {
+    const registry = this.sequelize!.models;
 
-  return PostLikes;
+    this.belongsTo(registry.Post as any, { foreignKey: "postId" });
+    this.belongsTo(registry.User as any, { foreignKey: "userId" });
+  }
 }

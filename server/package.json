@@ -5,10 +5,6 @@
   "license": "ISC",
   "author": "",
   "type": "module",
-  "imports": {
-    "#models/*": "./models/*",
-    "#config/*": "./config/*"
-  },
   "main": "server.ts",
   "scripts": {
     "dev": "tsx watch server.ts",

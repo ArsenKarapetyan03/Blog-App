@@ -1,64 +1,36 @@
 import { Sequelize } from "sequelize";
 import configJson from "@/config/config.js";
-import { User, initUser } from "./user.js";
-import { Post, initPost } from "./post.js";
-import { Comment, initComment } from "./comment.js";
-import { PostLikes, initPostLikes } from "@/models/postlikes.js";
-import { Image, initImage } from "@/models/image.js";
 
-type Environment = keyof typeof configJson;
+import { User } from "./user.js";
+import { Post } from "./post.js";
+import { Comment } from "./comment.js";
+import { PostLikes } from "./postlikes.js";
+import { Image } from "./image.js";
+import { Friendship } from "./friendship.js";
 
-const env = (process.env.NODE_ENV || "development") as Environment;
-const config = configJson[env];
+const env = (process.env.NODE_ENV || "development") as keyof typeof configJson;
+const config = configJson[env] as typeof configJson[typeof env] & {
+	database: string;
+	username: string;
+	password: string;
+};
 
-if (!config) {
-    throw new Error(`Database configuration not found for "${env}"`);
-}
+export const sequelize = new Sequelize(config.database, config.username, config.password, config as any);
 
-export let sequelize: Sequelize;
+const models = [User, Post, Comment, PostLikes, Image, Friendship];
 
-if ("use_env_variable" in config && config.use_env_variable) {
-    const connectionString = process.env[config.use_env_variable as string];
+models.forEach((model) => model.initialize(sequelize));
 
-    if (!connectionString) {
-        throw new Error(
-            `Environment variable "${config.use_env_variable}" is not defined`
-        );
-    }
-
-    sequelize = new Sequelize(connectionString, config as any);
-} else {
-    const c = config as any;
-    sequelize = new Sequelize(
-        c.database,
-        c.username,
-        c.password,
-        c
-    );
-}
-
-initUser(sequelize);
-initPost(sequelize);
-initComment(sequelize);
-initPostLikes(sequelize);
-initImage(sequelize);
-
-const models = {User, Post, Comment, PostLikes, Image};
-
-User.associate(models);
-Post.associate(models);
-Comment.associate(models);
-PostLikes.associate(models);
-Image.associate(models);
+models.forEach((model) => model.configureAssociations());
 
 const db = {
-    sequelize,
-    Sequelize,
-    User,
-    Post,
-    Comment,
-    PostLikes,
-    Image,
+	sequelize,
+	User,
+	Post,
+	Comment,
+	PostLikes,
+	Image,
+	Friendship
 };
 
 export default db;

@@ -11,7 +11,6 @@ import {
 } from "sequelize";
 import type { User } from "./user.js";
 import type { Comment } from "./comment.js";
-import type { PostLikes } from "@/models/postlikes.js";
 import type { Image } from "@/models/image.js";
 
 export class Post extends Model<
@@ -36,72 +35,66 @@ export class Post extends Model<
 		Images: Association<Post, Image>;
 	};
 
-	static associate(models: {
-		User: typeof User;
-		Post: typeof Post;
-		Comment: typeof Comment;
-		PostLikes: typeof PostLikes;
-		Image: typeof Image;
-	}) {
-		this.belongsTo(models.User, {
+	static initialize(sequelize: Sequelize) {
+		this.init({
+				id: {
+					type: DataTypes.INTEGER,
+					autoIncrement: true,
+					primaryKey: true,
+				},
+				title: DataTypes.STRING,
+				excerpt: DataTypes.TEXT,
+				description: DataTypes.TEXT,
+				userId: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+					references: {
+						model: "Users",
+						key: "id"
+					},
+					onDelete: "CASCADE"
+				}
+			},
+			{
+				sequelize,
+				modelName: "Post",
+				defaultScope: {
+					include: [
+						{
+							association: "User",
+							attributes: ["name"]
+						}
+					]
+				}
+			}
+		);
+	}
+
+	static configureAssociations() {
+		const registry = this.sequelize!.models;
+
+		this.belongsTo(registry.User as any, {
 			foreignKey: "userId",
 			as: "User",
 		});
 
-		this.hasMany(models.Comment, {
+		this.hasMany(registry.Comment as any, {
 			foreignKey: "postId",
 			as: "Comments",
 			onDelete: "CASCADE"
 		});
 
-		this.hasMany(models.Image, {
+		this.hasMany(registry.Image as any, {
 			foreignKey: "postId",
 			as: "Images",
 			onDelete: "CASCADE"
-		})
+		});
 
-		this.belongsToMany(models.User, {
-			through: models.PostLikes,
+		this.belongsToMany(registry.User as any, {
+			through: "PostLikes",
 			foreignKey: "postId",
 			otherKey: "userId",
 			as: "LikedByUsers"
 		});
 	}
-}
-
-export function initPost(sequelize: Sequelize): typeof Post {
-	Post.init({
-			id: {
-				type: DataTypes.INTEGER,
-				autoIncrement: true,
-				primaryKey: true,
-			},
-			title: DataTypes.STRING,
-			excerpt: DataTypes.TEXT,
-			description: DataTypes.TEXT,
-			userId: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-				references: {
-					model: "Users",
-					key: "id"
-				},
-				onDelete: "CASCADE"
-			}
-		},
-		{
-			sequelize,
-			modelName: "Post",
-			defaultScope: {
-				include: [
-					{
-						association: "User",
-						attributes: ["name"]
-					}
-				]
-			}
-		}
-	);
-
-	return Post;
 }

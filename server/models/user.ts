@@ -10,8 +10,6 @@ import {
 } from "sequelize";
 import type { Post } from "./post.js";
 import type { Comment } from "@/models/comment.js";
-import type { PostLikes } from "./postlikes.js";
-import { Friendship } from "@/models/friendship.js";
 
 export class User extends Model<
     InferAttributes<User>,
@@ -36,73 +34,74 @@ export class User extends Model<
     FriendRequests: Association<User, User>;
   };
 
-  static associate(models: {
-    User: typeof User;
-    Post: typeof Post;
-    Comment: typeof Comment;
-    PostLikes: typeof PostLikes;
-  }) {
-    this.hasMany(models.Post, {
-      foreignKey: "userId",
-      as: "Posts",
-    });
-
-    this.hasMany(models.Comment, {
-      foreignKey: "userId",
-      as: "Comments"
-    });
-
-    this.belongsToMany(models.Post, {
-      through: models.PostLikes,
-      foreignKey: "userId",
-      otherKey: "postId",
-      as: "LikedPosts"
-    });
-
-    this.belongsToMany(User, {
-      as: "Friends",
-      through: Friendship,
-      foreignKey: "userId",
-      otherKey: "friendId",
-    });
-
-    this.belongsToMany(User, {
-      as: "FriendRequests",
-      through: Friendship,
-      foreignKey: "friendId",
-      otherKey: "userId",
-    });
-
-  }
-}
-
-export function initUser(sequelize: Sequelize): typeof User {
-  User.init(
-    {
+  static initialize(sequelize: Sequelize) {
+    this.init(
+      {
         id: {
           type: DataTypes.INTEGER,
           autoIncrement: true,
-          primaryKey: true,
+          primaryKey: true
         },
         name: {
           type: DataTypes.STRING,
-          allowNull: false,
+          allowNull: false
         },
         email: {
           type: DataTypes.STRING,
           allowNull: false,
-          unique: true,
+          unique: true
         },
         password: {
           type: DataTypes.STRING,
           allowNull: false,
         }
       },
-      {
-        sequelize,
-        modelName: "User",
-      }
-  );
+      { sequelize, modelName: "User" }
+    );
+  }
 
-  return User;
+  static configureAssociations() {
+    const registry = this.sequelize!.models;
+
+    this.hasMany(registry.Post as any, {
+      foreignKey: "userId",
+      as: "Posts",
+    });
+
+    this.hasMany(registry.Comment as any, {
+      foreignKey: "userId",
+      as: "Comments"
+    });
+
+    this.belongsToMany(registry.Post as any, {
+      through: "PostLikes",
+      foreignKey: "userId",
+      otherKey: "postId",
+      as: "LikedPosts"
+    });
+
+    this.belongsToMany(this, {
+      as: "Friends",
+      through: {
+       model: "Friendship",
+        scope: {
+          status: "accepted",
+        }
+      },
+      foreignKey: "userId",
+      otherKey: "friendId",
+    });
+
+    this.belongsToMany(this, {
+      as: "FriendRequests",
+      through: {
+        model: "Friendship",
+        scope: {
+          status: "pending",
+        }
+      },
+      foreignKey: "friendId",
+      otherKey: "userId",
+    });
+  }
 }

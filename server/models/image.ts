@@ -1,4 +1,4 @@
-"use strict"
+"use strict";
 
 import {
 	Model,
@@ -22,35 +22,38 @@ export class Image extends Model<
 
 	declare post?: NonAttribute<Post>;
 
-	static associate(models: {
-		Post: typeof Post,
-	}) {
-		this.belongsTo(models.Post, {
+	static initialize(sequelize: Sequelize) {
+		this.init({
+			id: {
+				type: DataTypes.INTEGER,
+				primaryKey: true,
+				autoIncrement: true,
+			},
+			postId: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				references: {
+					model: "Posts",
+					key: "id",
+				},
+				onDelete: "CASCADE"
+			},
+			imagePath: {
+				type: DataTypes.STRING,
+				allowNull: false
+			}
+		}, {
+			sequelize,
+			modelName: "Image"
+		});
+	}
+
+	static configureAssociations() {
+		const registry = this.sequelize!.models;
+
+		this.belongsTo(registry.Post as any, {
 			foreignKey: "postId",
 			as: "post"
-		})
+		});
 	}
-}
-
-export function initImage(sequelize: Sequelize) {
-	Image.init({
-		id: {
-      type: DataTypes.INTEGER,
-			primaryKey: true,
-      autoIncrement: true,
-    },
-		postId: {
-			type: DataTypes.INTEGER,
-			allowNull: false,
-			references: {
-				model: "Post",
-				key: "id",
-			}
-		},
-		imagePath: DataTypes.STRING
-	}, {
-		sequelize,
-		modelName: "Image"
-	})
-	return Image;
 }

@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import db from "#models/index.js";
+import db from "@/models/index.js";
 
 export const userService = {
 	findByEmail: async (email: string) => {
