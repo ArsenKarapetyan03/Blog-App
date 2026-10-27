@@ -3,27 +3,18 @@ import { AppError } from "@/utils/appError.js";
 import { friendshipService } from "@/services/friendship.service.js";
 
 export const add = async (req: Request, res: Response) => {
-	if (!req.user) {
-		throw new AppError("Authentication required. Please sign-in.", 401);
-	}
+	const userId = res.locals.user!.id;
+	const friendId = res.locals.friendId;
 
-	const userId = Number(req.user.id);
-	const friendId = Number(req.body.friendId);
+	const existingRelation = await friendshipService.find(userId, friendId);
 
-	if (!Number.isSafeInteger(userId) || !Number.isSafeInteger(friendId)) {
-		return res.status(400).json({ success: false, message: "Invalid user identifiers provided" });
-	}
+	if (existingRelation) {
+		if (existingRelation.status === "accepted") {
+			return res.status(400).json({ success: false, message: "You are already friends" });
+		};
 
-	if (userId === friendId) {
-		return res.status(400).json({	success: false,	message: "You cannot add yourself to friends"	});
-	}
-
-	const alreadyRequested = await friendshipService.find(userId, friendId);
-	const incomingRequest = await friendshipService.find(friendId, userId);
-
-	if (alreadyRequested || incomingRequest) {
 		return res.status(400).json({ success: false, message: "Friendship request already exists" });
-	}
+	};
 
 	const response = await friendshipService.create(userId, friendId);
 
@@ -35,32 +26,28 @@ export const add = async (req: Request, res: Response) => {
 };
 
 export const accept = async (req: Request, res: Response) => {
-	if (!req.user) {
-		throw new AppError("Authentication required. Please sign-in.", 401);
-	}
+	const userId = res.locals.user!.id;
+	const friendId = res.locals.friendId;
 
-	const userId = Number(req.user.id);
-	const friendId = Number(req.body.friendId);
+	const request = await friendshipService.find(userId, friendId);
 
-	if (!Number.isSafeInteger(userId) || !Number.isSafeInteger(friendId)) {
-		return res.status(400).json({ success: false, message: "Invalid user identifiers provided" });
-	}
-
-	if (userId === friendId) {
-		return res.status(400).json({ success: false, message: "You cannot add yourself to friends" });
-	}
-
-	const incomingRequest = await friendshipService.find(friendId, userId);
-
-	if (!incomingRequest) {
+	if (!request) {
 		return res.status(404).json({ success: false, message: "Friendship request not found" });
 	}
 
-	if (incomingRequest.status === "accepted") {
+	if (request.status === "accepted") {
 		return res.status(400).json({ success: false, message: "You are already friends" });
 	}
 
-	const response = await friendshipService.update(friendId, userId, "accepted");
+	if (request.senderId === userId) {
+		return res.status(400).json({ success: false, message: "You cannot accept your own pending request" });
+	}
+
+	if (request.senderId !== friendId) {
+		return res.status(400).json({ success: false, message: "This request was not initiated by this user" });
+	}
+
+	const response = await friendshipService.updateStatus(userId, friendId, "accepted");
 
 	if (!response || !response.success) {
 		throw new AppError("Failed to accept friendship request", 500);
@@ -70,7 +57,14 @@ export const accept = async (req: Request, res: Response) => {
 };
 
 export const remove = async (req: Request, res: Response) => {
+	const userId = res.locals.user!.id;
+	const friendId = res.locals.friendId;
 
+	const response = await friendshipService.delete(userId, friendId);
+
+	if (!response || !response.success) {
+		return res.status(404).json({ success: false, message: "Friendship or request not found" });
+	}
+
+	return res.status(200).json({ success: true, message: "Friendship or request removed successfully", friendId });
 }
-
-// console.log(friendshipService.getFriendsList(2));

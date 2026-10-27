@@ -1,20 +1,25 @@
 import db from "@/models/index.js";
+import { Op } from "sequelize";
 
 export const friendshipService = {
 	find: async function (userId: number, friendId: number) {
+		const sortedUserId = Math.min(userId, friendId);
+		const sortedFriendId = Math.max(userId, friendId);
+
 		return await db.Friendship.findOne({
 			where: {
-				userId,
-				friendId
+				userId: sortedUserId,
+				friendId: sortedFriendId,
 			}
 		});
 	},
 
-	create: async function (userId, friendId) {
+	create: async function (userId: number, friendId: number) {
 		const result = await db.Friendship.create(
 			{
 				userId,
 				friendId,
+				senderId: userId,
 				status: "pending",
 			}
 		);
@@ -26,16 +31,16 @@ export const friendshipService = {
 		return { success: true, message: "Successfully created friendship request" };
 	},
 
-	update: async function (userId, friendId, status) {
-		const [affectedCount] = await db.Friendship.update({
-				userId,
-				friendId,
-				status,
-			},
+	updateStatus: async function (userId: number, friendId: number, status: string) {
+		const sortedUserId = Math.min(userId, friendId);
+		const sortedFriendId = Math.max(userId, friendId);
+
+		const [affectedCount] = await db.Friendship.update(
+			{	status },
 			{
 				where: {
-					userId,
-					friendId
+					userId: sortedUserId,
+					friendId: sortedFriendId,
 				}
 			});
 
@@ -46,24 +51,21 @@ export const friendshipService = {
 		return { success: true, message: "Successfully updated friendship status" };
 	},
 
-	getFriendsList: async function (userId: number) {
-		const friendships = await Friendship.findAll({
+	delete: async function (userId: number, friendId: number) {
+		const sortedUserId = Math.min(userId, friendId);
+		const sortedFriendId = Math.max(userId, friendId);
+
+		const affectedRows = await db.Friendship.destroy({
 			where: {
-				status: "accepted",
-				[Op.or]: [
-					{ userId },
-					{ friendId: userId }
-				]
+				userId: sortedUserId,
+				friendId: sortedFriendId
 			}
 		});
 
-		const friendIds = friendships.map(f => f.userId === currentUserId ? f.friendId : f.userId);
+		if (affectedRows === 0) {
+			return { success: false, message: "Friendship relation not found" };
+		}
 
-		if (friendIds.length === 0) return [];
-
-		return await User.findAll({
-			where: { id: { [Op.in]: friendIds } },
-			attributes: ["id", "name", "email"]
-		});
+		return { success: true, message: "Successfully deleted friendship relation" };
 	}
-}
+};

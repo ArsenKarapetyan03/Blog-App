@@ -57,7 +57,7 @@ export const signIn = async (req: Request, res: Response) => {
 };
 
 export const getUser = async (req: Request, res: Response) => {
-	const user = req.user;
+	const user = res.locals.user;
 	if (!user) {
 		throw new AppError("Unauthorized. User data not found in request.", 401);
 	}
@@ -74,5 +74,6 @@ export const getUser = async (req: Request, res: Response) => {
 			name: foundUser.name,
 			email: foundUser.email
 		},
+		Friends: foundUser
 	});
 };

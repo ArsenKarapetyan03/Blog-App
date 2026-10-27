@@ -11,6 +11,7 @@ export class Friendship extends Model {
   declare id: CreationOptional<number>;
   declare userId: number;
   declare friendId: number;
+  declare senderId: number;
   declare status: CreationOptional<FriendshipStatus>;
 
   static initialize(sequelize: Sequelize) {
@@ -27,6 +28,11 @@ export class Friendship extends Model {
           allowNull: false,
           references: { model: "Users", key: "id" },
         },
+        senderId: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          references: { model: "Users", key: "id" },
+        },
         status: {
           type: DataTypes.ENUM("pending", "accepted", "blocked"),
           allowNull: false,
@@ -37,6 +43,24 @@ export class Friendship extends Model {
         sequelize,
         modelName: "Friendship",
         indexes: [{unique: true, fields: ["userId", "friendId"]}],
+        hooks: {
+          beforeValidate: (friendship: Friendship) => {
+            if (friendship.userId && friendship.friendId) {
+              const uId = friendship.userId;
+              const fId = friendship.friendId;
+
+              friendship.userId = Math.min(uId, fId);
+              friendship.friendId = Math.max(uId, fId);
+            }
+          }
+        },
+        validate: {
+          userIdLessThanFriendId() {
+            if (this.userId >= this.friendId) {
+              throw new Error("userId must always be less than friendId.");
+            }
+          }
+        }
       }
     );
   }

@@ -30,6 +30,16 @@ export default {
         onDelete: "CASCADE",
         onUpdate: "CASCADE",
       },
+      senderId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "Users",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      },
       status: {
         type: Sequelize.ENUM("pending", "accepted", "blocked"),
         allowNull: false,

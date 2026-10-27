@@ -5,11 +5,7 @@ import { commentService } from "@/services/comment.service.js";
 export const create = async (req: Request, res: Response) => {
 	const {content, postId, replyId} = req.body;
 
-	if (!req.user) {
-		throw new AppError("Authentication required. Please sign-in.", 401);
-	}
-
-	const userId = req.user.id;
+	const userId = res.locals.user!.id;
 
 	if (!content || !postId) {
 		throw new AppError("Content and postId are required", 400);
@@ -42,7 +38,7 @@ export const create = async (req: Request, res: Response) => {
 	const comment = await commentService.createComment({
 		content,
 		postId: normalizedPostId,
-		userId: Number(userId),
+		userId,
 		replyId: normalizedReplyId
 	});
 

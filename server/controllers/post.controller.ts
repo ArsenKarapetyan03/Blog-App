@@ -24,21 +24,19 @@ const readPosts = async (req: Request, res: Response, userId?: number) => {
 
 export const readAll = (req: Request, res: Response) => readPosts(req, res);
 
-export const readMine = (req: Request, res: Response) => {
-	if (!req.user) {
-		throw new AppError("Authentication required. Please sign-in.", 401);
-	}
-
-	return readPosts(req, res, req.user.id);
-};
+export const readMine = (req: Request, res: Response) =>
+	readPosts(req, res, res.locals.user!.id);
 
 export const readOne = async (req: Request, res: Response) => {
 	const {id} = req.params;
-	if (!id) {
+
+	const postId = Number(id);
+
+	if (!Number.isSafeInteger(postId)) {
 		throw new AppError("Post not found", 404);
 	}
 
-	const post = await postService.getPostById(Number(id), req.user?.id);
+	const post = await postService.getPostById(postId, res.locals.user?.id);
 	if (!post) {
 		throw new AppError("Post not found", 404);
 	}
@@ -47,10 +45,6 @@ export const readOne = async (req: Request, res: Response) => {
 };
 
 export const create = async (req: Request, res: Response) => {
-	if (!req.user) {
-		throw new AppError("Authentication required. Please sign-in.", 401);
-	}
-
 	const {title, excerpt, description} = getValidatedPost(req.body);
 	const files = (req.files as Express.Multer.File[]) || [];
 	const imagesData = files.map(file => ({
@@ -58,7 +52,7 @@ export const create = async (req: Request, res: Response) => {
 	}));
 
 	const newPost = await postService.createPost({
-		userId: req.user.id,
+		userId: res.locals.user!.id,
 		title,
 		excerpt,
 		description,
@@ -74,9 +68,6 @@ export const create = async (req: Request, res: Response) => {
 
 export const update = async (req: Request, res: Response) => {
 	const {id} = req.params;
-	if (!req.user) {
-		throw new AppError("Authentication required. Please sign-in.", 401);
-	}
 
 	if (!id) {
 		throw new AppError("Post ID is required", 400);
@@ -102,7 +93,7 @@ export const update = async (req: Request, res: Response) => {
 
 	const result = await postService.updatePost({
 		id: postId,
-		userId: req.user.id,
+		userId: res.locals.user!.id,
 		title,
 		excerpt,
 		description,
@@ -127,7 +118,7 @@ export const update = async (req: Request, res: Response) => {
 export const remove = async (req: Request, res: Response) => {
 	const {id} = req.params;
 
-	if (!req.user) {
+	if (!res.locals.user) {
 		throw new AppError("Authentication required. Please sign-in.", 401);
 	}
 
@@ -136,7 +127,7 @@ export const remove = async (req: Request, res: Response) => {
 		throw new AppError("Invalid Post ID format. It must be a number.", 400);
 	}
 
-	const result = await postService.deletePost(postId, req.user.id);
+	const result = await postService.deletePost(postId, res.locals.user.id);
 	if (!result.success) {
 		throw new AppError("Post not found", 404);
 	}
@@ -159,11 +150,11 @@ export const toggleLike = async (req: Request, res: Response) => {
 		throw new AppError("Post not found", 404);
 	}
 
-	if (!req.user) {
+	if (!res.locals.user) {
 		throw new AppError("Authentication required.", 401);
 	}
 
-	const result = await postService.toggleLike(Number(id), req.user.id);
+	const result = await postService.toggleLike(Number(id), res.locals.user.id);
 
 	return res.status(200).json(result);
 };

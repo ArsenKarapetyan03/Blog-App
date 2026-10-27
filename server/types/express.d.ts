@@ -1,10 +1,11 @@
 declare global {
 	namespace Express {
-		interface Request {
-			user?: {
+		interface Locals {
+			user: {
 				id: number;
 				email: string;
 			} | undefined;
+			friendId: number;
 		}
 	}
 }

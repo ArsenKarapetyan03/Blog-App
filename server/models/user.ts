@@ -1,107 +1,143 @@
 import {
-  Model,
-  DataTypes,
-  type Sequelize,
-  type InferAttributes,
-  type InferCreationAttributes,
-  type CreationOptional,
-  type NonAttribute,
-  type Association,
+	Model,
+	DataTypes,
+	Op,
+	col,
+	type Sequelize,
+	type InferAttributes,
+	type InferCreationAttributes,
+	type CreationOptional,
+	type NonAttribute,
+	type Association,
 } from "sequelize";
 import type { Post } from "./post.js";
 import type { Comment } from "@/models/comment.js";
 
 export class User extends Model<
-    InferAttributes<User>,
-    InferCreationAttributes<User>
-    > {
-  declare id: CreationOptional<number>;
-  declare name: string;
-  declare email: string;
-  declare password: string;
+	InferAttributes<User>,
+	InferCreationAttributes<User>
+> {
+	declare id: CreationOptional<number>;
+	declare name: string;
+	declare email: string;
+	declare password: string;
 
-  declare Posts?: NonAttribute<Post[]>;
-  declare Comments?: NonAttribute<Comment[]>;
-  declare LikedPosts?: NonAttribute<Post[]>;
-  declare Friends?: NonAttribute<User[]>;
-  declare FriendRequests?: NonAttribute<User[]>;
+	declare Posts?: NonAttribute<Post[]>;
+	declare Comments?: NonAttribute<Comment[]>;
+	declare LikedPosts?: NonAttribute<Post[]>;
+	declare InitiatedFriends?: NonAttribute<User[]>;
+	declare ReceivedFriends?: NonAttribute<User[]>;
+	declare IncomingRequests?: NonAttribute<User[]>;
+	declare OutgoingRequests?: NonAttribute<User[]>;
 
-  declare static associations: {
-    Posts: Association<User, Post>;
-    Comments: Association<User, Comment>;
-    LikedPosts: Association<User, Post>;
-    Friends: Association<User, User>;
-    FriendRequests: Association<User, User>;
-  };
+	declare static associations: {
+		Posts: Association<User, Post>;
+		Comments: Association<User, Comment>;
+		LikedPosts: Association<User, Post>;
+		InitiatedFriends: Association<User, User>;
+		ReceivedFriends: Association<User, User>;
+		IncomingRequests: Association<User, User>;
+		OutgoingRequests: Association<User, User>;
+	};
 
-  static initialize(sequelize: Sequelize) {
-    this.init(
-      {
-        id: {
-          type: DataTypes.INTEGER,
-          autoIncrement: true,
-          primaryKey: true
-        },
-        name: {
-          type: DataTypes.STRING,
-          allowNull: false
-        },
-        email: {
-          type: DataTypes.STRING,
-          allowNull: false,
-          unique: true
-        },
-        password: {
-          type: DataTypes.STRING,
-          allowNull: false,
-        }
-      },
-      { sequelize, modelName: "User" }
-    );
-  }
+	get Friends(): NonAttribute<User[]> {
+		return [...(this.InitiatedFriends || []), ...(this.ReceivedFriends || [])];
+	}
 
-  static configureAssociations() {
-    const registry = this.sequelize!.models;
+	static initialize(sequelize: Sequelize) {
+		this.init(
+			{
+				id: {
+					type: DataTypes.INTEGER,
+					autoIncrement: true,
+					primaryKey: true
+				},
+				name: {
+					type: DataTypes.STRING,
+					allowNull: false
+				},
+				email: {
+					type: DataTypes.STRING,
+					allowNull: false,
+					unique: true
+				},
+				password: {
+					type: DataTypes.STRING,
+					allowNull: false,
+				}
+			},
+			{sequelize, modelName: "User"}
+		);
+	}
 
-    this.hasMany(registry.Post as any, {
-      foreignKey: "userId",
-      as: "Posts",
-    });
+	static configureAssociations() {
+		const registry = this.sequelize!.models;
 
-    this.hasMany(registry.Comment as any, {
-      foreignKey: "userId",
-      as: "Comments"
-    });
+		this.hasMany(registry.Post as any, {
+			foreignKey: "userId",
+			as: "Posts",
+		});
 
-    this.belongsToMany(registry.Post as any, {
-      through: "PostLikes",
-      foreignKey: "userId",
-      otherKey: "postId",
-      as: "LikedPosts"
-    });
+		this.hasMany(registry.Comment as any, {
+			foreignKey: "userId",
+			as: "Comments"
+		});
 
-    this.belongsToMany(this, {
-      as: "Friends",
-      through: {
-       model: "Friendship",
-        scope: {
-          status: "accepted",
-        }
-      },
-      foreignKey: "userId",
-      otherKey: "friendId",
-    });
+		this.belongsToMany(registry.Post as any, {
+			through: "PostLikes",
+			foreignKey: "userId",
+			otherKey: "postId",
+			as: "LikedPosts"
+		});
 
-    this.belongsToMany(this, {
-      as: "FriendRequests",
-      through: {
-        model: "Friendship",
-        scope: {
-          status: "pending",
-        }
-      },
-      foreignKey: "friendId",
-      otherKey: "userId",
-    });
-  }
+		this.belongsToMany(this, {
+			as: "InitiatedFriends",
+			through: {
+				model: "Friendship",
+				scope: {
+					status: "accepted",
+				}
+			},
+			foreignKey: "userId",
+			otherKey: "friendId",
+		});
+
+		this.belongsToMany(this, {
+			as: "ReceivedFriends",
+			through: {
+				model: "Friendship",
+				scope: {
+					status: "accepted",
+				}
+			},
+			foreignKey: "friendId",
+			otherKey: "userId",
+		})
+
+		this.belongsToMany(this, {
+			as: "IncomingRequests",
+			through: {
+				model: "Friendship",
+				scope: {
+					status: "pending",
+					senderId: {[Op.ne]: col("User.id")}
+				}
+			},
+			foreignKey: "userId",
+			otherKey: "friendId",
+		});
+
+		this.belongsToMany(this, {
+			as: "OutgoingRequests",
+			through: {
+				model: "Friendship",
+				scope: {
+					status: "pending",
+					senderId: {[Op.eq]: col("User.id")}
+				}
+			},
+			foreignKey: "userId",
+			otherKey: "friendId",
+		});
+	}
 }
