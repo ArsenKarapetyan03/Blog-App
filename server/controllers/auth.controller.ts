@@ -55,25 +55,3 @@ export const signIn = async (req: Request, res: Response) => {
 		user: {id: user.id, name: user.name, email: user.email}
 	});
 };
-
-export const getUser = async (req: Request, res: Response) => {
-	const user = res.locals.user;
-	if (!user) {
-		throw new AppError("Unauthorized. User data not found in request.", 401);
-	}
-
-	const foundUser = await userService.findById(user.id);
-	if (!foundUser) {
-		throw new AppError("User not found.", 404);
-	}
-
-	return res.status(200).json({
-		success: true,
-		user: {
-			id: foundUser.id,
-			name: foundUser.name,
-			email: foundUser.email
-		},
-		Friends: foundUser
-	});
-};

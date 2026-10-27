@@ -55,7 +55,7 @@ export class Friendship extends Model {
           }
         },
         validate: {
-          userIdLessThanFriendId() {
+          userIdLessThanFriendId(this: Friendship) {
             if (this.userId >= this.friendId) {
               throw new Error("userId must always be less than friendId.");
             }

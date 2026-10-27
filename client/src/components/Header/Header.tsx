@@ -9,12 +9,15 @@ export const Header = async () => {
 
 	return(
 		<header className="flex justify-between p-5">
-			<HeaderLink text="Home" href="/"/>
+			<div className="flex items-center gap-5">
+				<HeaderLink text="Home" href="/" />
+				<HeaderLink text="Users" href="/users" />
+			</div>
 
 			{!isAuthenticated
 				? <div className="flex gap-4">
-						<HeaderLink text="Sign up" href="/sign-up"/>
-						<HeaderLink text="Sign in" href="/sign-in"/>
+						<HeaderLink text="Sign up" href="/sign-up" />
+						<HeaderLink text="Sign in" href="/sign-in" />
 					</div>
 				: <LogoutButton />
 			}

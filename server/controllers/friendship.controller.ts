@@ -11,10 +11,10 @@ export const add = async (req: Request, res: Response) => {
 	if (existingRelation) {
 		if (existingRelation.status === "accepted") {
 			return res.status(400).json({ success: false, message: "You are already friends" });
-		};
+		}
 
 		return res.status(400).json({ success: false, message: "Friendship request already exists" });
-	};
+	}
 
 	const response = await friendshipService.create(userId, friendId);
 

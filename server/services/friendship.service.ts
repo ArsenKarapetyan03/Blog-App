@@ -1,5 +1,4 @@
 import db from "@/models/index.js";
-import { Op } from "sequelize";
 
 export const friendshipService = {
 	find: async function (userId: number, friendId: number) {

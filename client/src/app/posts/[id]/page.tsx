@@ -18,7 +18,7 @@ async function getSessionUser() {
 			return null;
 		}
 
-		const response = await fetch(`${BASE_URL}/auth/me`, {
+		const response = await fetch(`${BASE_URL}/users/me`, {
 			method: "GET",
 			headers: {
 				"Authorization": `Bearer ${token}`

@@ -2,8 +2,9 @@ import type { PostType } from "@/types/types";
 
 export const BriefPost = ({post}: {post: PostType}) => (
 	<div
-		className="flex flex-col md:flex-row md:items-start md:gap-8 px-5 py-10
-	 rounded border-b border-slate-100 hover:bg-zinc-50 transition-colors duration-200"
+		className="flex flex-col md:flex-row md:items-start md:gap-8 px-5 py-10 group rounded-xl border border-zinc-100
+	   dark:border-zinc-800 bg-white dark:bg-zinc-900/50 transition-all duration-200
+	   hover:border-zinc-200 dark:hover:border-zinc-700 hover:shadow-sm"
 	>
 		<div className="flex items-center gap-3 md:flex-col md:items-start md:w-32 mb-3">
 			<time className="text-xs font-medium text-slate-400">

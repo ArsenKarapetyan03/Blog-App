@@ -4,7 +4,7 @@ export const InfoRow = (
 		createdAt
 	}: {
 		name: string,
-		createdAt: string
+		createdAt?: string
 	}
 ) =>
 	(
@@ -16,7 +16,12 @@ export const InfoRow = (
 
 				<span className="font-semibold text-slate-600">{name}</span>
 			</div>
-			<span className="text-slate-300">•</span>
-			<time className="text-sm">{new Date(createdAt).toISOString().split('T')[0]}</time>
+
+			{	createdAt
+				&& <>
+              <span className="text-slate-300">•</span>
+							<time className="text-sm">{new Date(createdAt).toISOString().split('T')[0]}</time>
+					</>
+			}
 		</div>
 	)
