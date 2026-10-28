@@ -1,39 +1,55 @@
+import { cookies } from "next/headers";
 import { BASE_URL } from "@/config/api";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { User } from "@/types/types";
-import { InfoRow } from "@/components/ui/InfoRow";
+import { UserType } from "@/types/types";
+import { UserRow } from "@/components/ui/UserRow";
 
 const UsersPage = async () => {
-	const response = await fetch(`${BASE_URL}/user`);
-	const result = await response.json();
+	const token = (await cookies()).get("token")?.value;
 
-	if (!result.success || !result.users?.length) {
-		return <EmptyState />
+	const [usersRes, meRes] = await Promise.all([
+		fetch(`${BASE_URL}/user`, { next: { revalidate: 60 } }),
+		fetch(`${BASE_URL}/user/me`, {
+			headers: token ? { "Authorization": `Bearer ${token}` } : {},
+			cache: "no-store"
+		})
+	]);
+
+	if (!usersRes.ok || !meRes.ok) {
+		return <EmptyState />;
 	}
 
-	const users: User[] = result.users;
+	const [rawUsers, rawCurrentUser] = await Promise.all([
+		usersRes.json(),
+		meRes.json()
+	]);
+
+	if (!rawUsers.success || !rawUsers.users?.length || !rawCurrentUser.success) {
+		return <EmptyState />;
+	}
+
+	const currentUser: UserType = rawCurrentUser.user;
+	const friendIds = new Set(currentUser.friends?.map(f => f.id) || []);
+	const incomingRequestIds = new Set(currentUser.incomingRequests?.map(user => user.id) || []);
+	const outgoingRequestIds = new Set(currentUser.outgoingRequests?.map(user => user.id) || []);
+	const users = rawUsers.users.filter((user: UserType) => currentUser.id !== user.id);
 
 	return (
 		<div className="py-5 flex flex-col gap-4">
-			{users.map((user: User) => (
-				<div
+			{users.map((user: UserType) => (
+				<UserRow
 					key={user.id}
-					className="group relative flex items-center gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 transition-all duration-200 hover:border-zinc-200 dark:hover:border-zinc-700 hover:shadow-sm"
-				>
-					<div className="flex-1 min-w-0">
-						<InfoRow name={user.name} />
-
-						{user.email && (
-							<p className="text-xs text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
-								{user.email}
-							</p>
-						)}
-					</div>
-
-					<div>
-
-					</div>
-				</div>
+					user={user}
+					relationshipStatus={
+						friendIds.has(user.id)
+							? "accepted"
+							: incomingRequestIds.has(user.id)
+								? "incoming"
+								: outgoingRequestIds.has(user.id)
+									? "outgoing"
+									: "none"
+					}
+				/>
 			))}
 		</div>
 	)

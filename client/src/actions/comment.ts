@@ -1,7 +1,7 @@
 "use client";
 
 import Cookies from "js-cookie";
-import { NEXT_PUBLIC_BASE_URL } from "@/config/api";
+import { BASE_URL } from "@/config/api";
 
 export interface ActionState {
 	success: boolean;
@@ -24,7 +24,7 @@ export const createCommentAction = async (
 	try {
 		const token = Cookies.get("token");
 
-		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/comment`, {
+		const response = await fetch(`${BASE_URL}/comment`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",

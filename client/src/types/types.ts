@@ -1,7 +1,10 @@
-export interface User {
+export interface UserType {
 	id: number;
 	name: string;
 	email: string;
+	friends?: UserType[];
+	incomingRequests?: UserType[];
+	outgoingRequests?: UserType[];
 }
 
 export interface CommentType {
@@ -12,14 +15,14 @@ export interface CommentType {
 	replyId: number | null;
 	createdAt: string;
 	updatedAt: string;
-	User: User;
+	User: UserType;
 	Replies?: CommentType[];
 }
 
 export interface PostType {
 	id: number;
 	title: string;
-	User: User;
+	User: UserType;
 	excerpt: string;
 	description: string;
 	Images: {

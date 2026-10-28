@@ -3,6 +3,11 @@ import { AppError } from "@/utils/appError.js";
 
 export const validateFriendship = (req: Request, res: Response, next: NextFunction) => {
 	const userId = Number(res.locals.user!.id);
+
+	if (!req.body || !req.body.friendId) {
+		throw new AppError("Invalid user identifiers provided", 400);
+	}
+
 	const friendId = Number(req.body.friendId);
 
 	if (!Number.isSafeInteger(userId) || !Number.isSafeInteger(friendId)) {

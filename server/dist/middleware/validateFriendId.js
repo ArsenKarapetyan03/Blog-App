@@ -1,0 +1,17 @@
+import { AppError } from "@/utils/appError.js";
+export const validateFriendship = (req, res, next) => {
+    const userId = Number(res.locals.user.id);
+    if (!req.body || !req.body.friendId) {
+        throw new AppError("Invalid user identifiers provided", 400);
+    }
+    const friendId = Number(req.body.friendId);
+    if (!Number.isSafeInteger(userId) || !Number.isSafeInteger(friendId)) {
+        throw new AppError("Invalid user identifiers provided", 400);
+    }
+    if (userId === friendId) {
+        throw new AppError("You cannot perform this action on yourself", 400);
+    }
+    res.locals.friendId = friendId;
+    next();
+};
+//# sourceMappingURL=validateFriendId.js.map

@@ -1,13 +1,7 @@
 "use client"
 
 import Cookies from "js-cookie";
-import { NEXT_PUBLIC_BASE_URL } from "@/config/api";
-
-interface SessionUser {
-	id: number;
-	name: string;
-	email: string;
-}
+import { BASE_URL } from "@/config/api";
 
 type ActionResponse = {success: boolean; message: string};
 
@@ -15,7 +9,7 @@ export const signUp = async (prevState: any, formData: FormData): Promise<Action
 	try {
 		const plainFormData = Object.fromEntries(formData);
 
-		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/auth/sign-up`, {
+		const response = await fetch(`${BASE_URL}/auth/sign-up`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(plainFormData)
@@ -37,7 +31,7 @@ export const signIn = async (prevState: any, formData: FormData): Promise<Action
 	try {
 		const plainFormData = Object.fromEntries(formData);
 
-		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/auth/sign-in`, {
+		const response = await fetch(`${BASE_URL}/auth/sign-in`, {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
 			body: JSON.stringify(plainFormData)

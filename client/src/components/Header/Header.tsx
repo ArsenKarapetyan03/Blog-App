@@ -11,7 +11,7 @@ export const Header = async () => {
 		<header className="flex justify-between p-5">
 			<div className="flex items-center gap-5">
 				<HeaderLink text="Home" href="/" />
-				<HeaderLink text="Users" href="/users" />
+				<HeaderLink text="Authors" href="/users" />
 			</div>
 
 			{!isAuthenticated

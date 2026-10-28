@@ -1,13 +1,13 @@
 "use client"
 
 import Cookies from "js-cookie";
-import { NEXT_PUBLIC_BASE_URL } from "@/config/api";
+import { BASE_URL } from "@/config/api";
 
 export const createPost = async (formData: FormData) => {
 	try {
 		const token = Cookies.get("token");
 
-		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog`, {
+		const response = await fetch(`${BASE_URL}/blog`, {
 			method: "POST",
 			body: formData,
 			headers: {"Authorization": `Bearer ${token}`}
@@ -32,7 +32,7 @@ export const updatePost = async (formData: FormData) => {
 			return {success: false, message: "Invalid or missing data for update."};
 		}
 
-		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog/${id}`, {
+		const response = await fetch(`${BASE_URL}/blog/${id}`, {
 			method: "PATCH",
 			body: formData,
 			headers: {"Authorization": `Bearer ${token}`}
@@ -55,7 +55,7 @@ export const deletePost = async (id: string) => {
 
 		const token = Cookies.get("token");
 
-		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog/${id}`, {
+		const response = await fetch(`${BASE_URL}/blog/${id}`, {
 			method: "DELETE",
 			headers: {
 				"Authorization": `Bearer ${token}`,
@@ -81,7 +81,7 @@ export const toggleLikeAction = async (postId: number) => {
 			return {success: false, message: "Unauthorized"};
 		}
 
-		const response = await fetch(`${NEXT_PUBLIC_BASE_URL}/blog/${postId}/like`, {
+		const response = await fetch(`${BASE_URL}/blog/${postId}/like`, {
 			method: "POST",
 			headers: {
 				"Authorization": `Bearer ${token}`,
