@@ -1,6 +1,11 @@
 import bcrypt from "bcrypt";
-import { Op } from "sequelize";
 import db from "@/models/index.js";
+import type { User } from "@/models/user.js";
+
+interface PendingRequestsResult {
+	incomingRequests: User[];
+	outgoingRequests: User[];
+}
 
 export const userService = {
 	findAll: async () => {
@@ -19,58 +24,37 @@ export const userService = {
 			include: [
 				{
 					model: db.User,
-					as: "InitiatedFriends",
+					as: "FriendsAsRequester",
 					attributes: ["id", "name", "email"],
 				},
 				{
 					model: db.User,
-					as: "ReceivedFriends",
+					as: "FriendsAsReceiver",
 					attributes: ["id", "name", "email"],
 				}
 			]
 		});
 	},
 
-	findPendingRequests: async (userId: number) => {
-		const pendingFriendships = await db.Friendship.findAll({
-			where: {
-				status: "pending",
-				[Op.or]: [{ userId }, { friendId: userId }]
-			},
+	findPendingRequests: async (userId: number): Promise<PendingRequestsResult> => {
+		const user = await db.User.findByPk(userId, {
 			include: [
 				{
 					model: db.User,
-					as: "user",
+					as: "IncomingRequests",
 					attributes: ["id", "name", "email"],
 				},
 				{
 					model: db.User,
-					as: "friend",
+					as: "OutgoingRequests",
 					attributes: ["id", "name", "email"],
 				}
 			]
 		});
 
-		const incomingRequests: any[] = [];
-		const outgoingRequests: any[] = [];
-
-		for (const friendship of pendingFriendships) {
-			const friend = friendship.userId === userId ? friendship.friend : friendship.user;
-
-			if (!friend) {
-				continue;
-			}
-
-			if (friendship.senderId === userId) {
-				outgoingRequests.push(friend);
-			} else {
-				incomingRequests.push(friend);
-			}
-		}
-
 		return {
-			incomingRequests,
-			outgoingRequests
+			incomingRequests: user?.IncomingRequests || [],
+			outgoingRequests: user?.OutgoingRequests || [],
 		};
 	},
 

@@ -13,7 +13,15 @@ export const add = async (req: Request, res: Response) => {
 			return res.status(400).json({ success: false, message: "You are already friends" });
 		}
 
-		return res.status(400).json({ success: false, message: "Friendship request already exists" });
+		if (existingRelation.status === "blocked") {
+			return res.status(400).json({ success: false, message: "Action not allowed" });
+		}
+
+		if (existingRelation.requesterId === userId) {
+			return res.status(400).json({ success: false, message: "Friendship request already sent by you" });
+		} else {
+			return res.status(400).json({ success: false, message: "This user has already sent you a friend request" });
+		}
 	}
 
 	const response = await friendshipService.create(userId, friendId);
@@ -39,11 +47,11 @@ export const accept = async (req: Request, res: Response) => {
 		return res.status(400).json({ success: false, message: "You are already friends" });
 	}
 
-	if (request.senderId === userId) {
+	if (request.requesterId === userId) {
 		return res.status(400).json({ success: false, message: "You cannot accept your own pending request" });
 	}
 
-	if (request.senderId !== friendId) {
+	if (request.requesterId !== friendId) {
 		return res.status(400).json({ success: false, message: "This request was not initiated by this user" });
 	}
 

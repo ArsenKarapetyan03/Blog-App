@@ -24,7 +24,7 @@ const UsersPage = async ({searchParams}: UsersPageProps) => {
 	]);
 
 	if (!usersRes.ok || !meRes.ok) {
-		return <EmptyState/>;
+		return <EmptyState />;
 	}
 
 	const [rawUsers, rawCurrentUser] = await Promise.all([
@@ -33,7 +33,7 @@ const UsersPage = async ({searchParams}: UsersPageProps) => {
 	]);
 
 	if (!rawUsers.success || !rawUsers.users?.length || !rawCurrentUser.success) {
-		return <EmptyState/>;
+		return <EmptyState />;
 	}
 
 	const currentUser: UserType = rawCurrentUser.user;
@@ -59,7 +59,7 @@ const UsersPage = async ({searchParams}: UsersPageProps) => {
 
 			<div className="py-5 flex flex-col gap-4">
 				{users.length === 0
-					? <EmptyState message="No users found"/>
+					? <EmptyState message="No users found" />
 					: users.map((user: UserType) => (
 						<UserRow
 							key={user.id}

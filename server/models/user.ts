@@ -1,8 +1,6 @@
 import {
 	Model,
 	DataTypes,
-	Op,
-	col,
 	type Sequelize,
 	type InferAttributes,
 	type InferCreationAttributes,
@@ -25,8 +23,8 @@ export class User extends Model<
 	declare Posts?: NonAttribute<Post[]>;
 	declare Comments?: NonAttribute<Comment[]>;
 	declare LikedPosts?: NonAttribute<Post[]>;
-	declare InitiatedFriends?: NonAttribute<User[]>;
-	declare ReceivedFriends?: NonAttribute<User[]>;
+	declare FriendsAsRequester?: NonAttribute<User[]>;
+	declare FriendsAsReceiver?: NonAttribute<User[]>;
 	declare IncomingRequests?: NonAttribute<User[]>;
 	declare OutgoingRequests?: NonAttribute<User[]>;
 
@@ -34,14 +32,14 @@ export class User extends Model<
 		Posts: Association<User, Post>;
 		Comments: Association<User, Comment>;
 		LikedPosts: Association<User, Post>;
-		InitiatedFriends: Association<User, User>;
-		ReceivedFriends: Association<User, User>;
+		FriendsAsRequester: Association<User, User>;
+		FriendsAsReceiver: Association<User, User>;
 		IncomingRequests: Association<User, User>;
 		OutgoingRequests: Association<User, User>;
 	};
 
 	get Friends(): NonAttribute<User[]> {
-		return [...(this.InitiatedFriends || []), ...(this.ReceivedFriends || [])];
+		return [...(this.FriendsAsRequester || []), ...(this.FriendsAsReceiver || [])];
 	}
 
 	static initialize(sequelize: Sequelize) {
@@ -91,53 +89,47 @@ export class User extends Model<
 		});
 
 		this.belongsToMany(this, {
-			as: "InitiatedFriends",
+			as: "FriendsAsRequester",
 			through: {
 				model: "Friendship",
 				scope: {
 					status: "accepted",
 				}
 			},
-			foreignKey: "userId",
-			otherKey: "friendId",
+			foreignKey: "requesterId",
+			otherKey: "receiverId",
 		});
 
 		this.belongsToMany(this, {
-			as: "ReceivedFriends",
+			as: "FriendsAsReceiver",
 			through: {
 				model: "Friendship",
 				scope: {
 					status: "accepted",
 				}
 			},
-			foreignKey: "friendId",
-			otherKey: "userId",
+			foreignKey: "receiverId",
+			otherKey: "requesterId",
 		})
 
 		this.belongsToMany(this, {
 			as: "IncomingRequests",
 			through: {
 				model: "Friendship",
-				scope: {
-					status: "pending",
-					senderId: {[Op.ne]: col("User.id")}
-				}
+				scope: { status: "pending" }
 			},
-			foreignKey: "userId",
-			otherKey: "friendId",
+			foreignKey: "receiverId",
+			otherKey: "requesterId",
 		});
 
 		this.belongsToMany(this, {
 			as: "OutgoingRequests",
 			through: {
 				model: "Friendship",
-				scope: {
-					status: "pending",
-					senderId: {[Op.eq]: col("User.id")}
-				}
+				scope: { status: "pending" }
 			},
-			foreignKey: "userId",
-			otherKey: "friendId",
+			foreignKey: "requesterId",
+			otherKey: "receiverId",
 		});
 	}
 }

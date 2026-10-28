@@ -11,33 +11,32 @@ type FriendshipStatus = "pending" | "accepted" | "blocked";
 
 export class Friendship extends Model {
   declare id: CreationOptional<number>;
-  declare userId: number;
-  declare friendId: number;
-  declare senderId: number;
+  declare requesterId: number;
+  declare receiverId: number;
   declare status: CreationOptional<FriendshipStatus>;
 
-  declare sender?: NonAttribute<User>;
-  declare user?: NonAttribute<User>;
-  declare friend?: NonAttribute<User>;
+  declare requester?: NonAttribute<User>;
+  declare receiver?: NonAttribute<User>;
 
   static initialize(sequelize: Sequelize) {
     this.init(
       {
-        id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-        userId: {
+        id: {
           type: DataTypes.INTEGER,
-          allowNull: false,
-          references: { model: "Users", key: "id" },
+          autoIncrement: true,
+          primaryKey: true
         },
-        friendId: {
+        requesterId: {
           type: DataTypes.INTEGER,
           allowNull: false,
           references: { model: "Users", key: "id" },
+          onDelete: "CASCADE",
         },
-        senderId: {
+        receiverId: {
           type: DataTypes.INTEGER,
           allowNull: false,
           references: { model: "Users", key: "id" },
+          onDelete: "CASCADE",
         },
         status: {
           type: DataTypes.ENUM("pending", "accepted", "blocked"),
@@ -48,22 +47,11 @@ export class Friendship extends Model {
       {
         sequelize,
         modelName: "Friendship",
-        indexes: [{unique: true, fields: ["userId", "friendId"]}],
-        hooks: {
-          beforeValidate: (friendship: Friendship) => {
-            if (friendship.userId && friendship.friendId) {
-              const uId = friendship.userId;
-              const fId = friendship.friendId;
-
-              friendship.userId = Math.min(uId, fId);
-              friendship.friendId = Math.max(uId, fId);
-            }
-          }
-        },
+        indexes: [{ unique: true, fields: ["requesterId", "receiverId"] }],
         validate: {
-          userIdLessThanFriendId(this: Friendship) {
-            if (this.userId >= this.friendId) {
-              throw new Error("userId must always be less than friendId.");
+          noSelfFriendship(this: Friendship) {
+            if (this.requesterId && this.receiverId && this.requesterId === this.receiverId) {
+              throw new Error("You cannot send a friend request to yourself.");
             }
           }
         }
@@ -75,18 +63,13 @@ export class Friendship extends Model {
     const registry = this.sequelize!.models;
 
     this.belongsTo(registry.User as any, {
-      foreignKey: "senderId",
-      as: "sender",
+      foreignKey: "requesterId",
+      as: "requester",
     });
 
     this.belongsTo(registry.User as any, {
-      foreignKey: "userId",
-      as: "user",
-    });
-
-    this.belongsTo(registry.User as any, {
-      foreignKey: "friendId",
-      as: "friend",
+      foreignKey: "receiverId",
+      as: "receiver",
     });
   }
 }

@@ -10,7 +10,7 @@ export default {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      userId: {
+      requesterId: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
@@ -20,17 +20,7 @@ export default {
         onDelete: "CASCADE",
         onUpdate: "CASCADE",
       },
-      friendId: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        references: {
-          model: "Users",
-          key: "id",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-      },
-      senderId: {
+      receiverId: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
@@ -55,13 +45,23 @@ export default {
       }
     });
 
-    await queryInterface.addIndex("Friendships", ["userId", "friendId"], {
+    await queryInterface.addIndex("Friendships", ["requesterId", "receiverId"], {
       unique: true,
-      name: "unique_user_friend_pair",
+      name: "unique_requester_receiver_pair",
+    });
+
+    await queryInterface.addConstraint("Friendships", {
+      type: "check",
+      fields: ["requesterId", "receiverId"],
+      where: {
+        requesterId: { [Sequelize.Op.ne]: Sequelize.col("receiverId") }
+      },
+      name: "check_self_friendship"
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.removeIndex("Friendships", "unique_user_friend_pair");
+    await queryInterface.removeConstraint("Friendships", "check_self_friendship");
+    await queryInterface.removeIndex("Friendships", "unique_requester_receiver_pair");
     await queryInterface.dropTable("Friendships");
   }
 };
