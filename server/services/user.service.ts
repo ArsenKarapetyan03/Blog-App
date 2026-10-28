@@ -32,30 +32,45 @@ export const userService = {
 	},
 
 	findPendingRequests: async (userId: number) => {
-		const requests = await db.Friendship.findAll({
-			attributes: ["userId", "friendId", "senderId"],
+		const pendingFriendships = await db.Friendship.findAll({
 			where: {
 				status: "pending",
-				[Op.or]: [{ userId }, { friendId: userId }],
+				[Op.or]: [{ userId }, { friendId: userId }]
 			},
+			include: [
+				{
+					model: db.User,
+					as: "user",
+					attributes: ["id", "name", "email"],
+				},
+				{
+					model: db.User,
+					as: "friend",
+					attributes: ["id", "name", "email"],
+				}
+			]
 		});
-		const incomingIds: number[] = [];
-		const outgoingIds: number[] = [];
 
-		for (const request of requests) {
-			const otherUserId = request.userId === userId ? request.friendId : request.userId;
-			(request.senderId === userId ? outgoingIds : incomingIds).push(otherUserId);
+		const incomingRequests: any[] = [];
+		const outgoingRequests: any[] = [];
+
+		for (const friendship of pendingFriendships) {
+			const friend = friendship.userId === userId ? friendship.friend : friendship.user;
+
+			if (!friend) {
+				continue;
+			}
+
+			if (friendship.senderId === userId) {
+				outgoingRequests.push(friend);
+			} else {
+				incomingRequests.push(friend);
+			}
 		}
 
-		const users = await db.User.findAll({
-			where: { id: { [Op.in]: [...incomingIds, ...outgoingIds] } },
-			attributes: ["id", "name", "email"],
-		});
-		const usersById = new Map(users.map(user => [user.id, user]));
-
 		return {
-			incomingRequests: incomingIds.map(id => usersById.get(id)).filter(Boolean),
-			outgoingRequests: outgoingIds.map(id => usersById.get(id)).filter(Boolean),
+			incomingRequests,
+			outgoingRequests
 		};
 	},
 

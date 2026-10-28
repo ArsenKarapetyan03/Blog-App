@@ -2,8 +2,10 @@ import {
   Model,
   DataTypes,
   type Sequelize,
-  type CreationOptional
+  type CreationOptional,
+  type NonAttribute
 } from "sequelize";
+import type { User } from "@/models/user.js";
 
 type FriendshipStatus = "pending" | "accepted" | "blocked";
 
@@ -13,6 +15,10 @@ export class Friendship extends Model {
   declare friendId: number;
   declare senderId: number;
   declare status: CreationOptional<FriendshipStatus>;
+
+  declare sender?: NonAttribute<User>;
+  declare user?: NonAttribute<User>;
+  declare friend?: NonAttribute<User>;
 
   static initialize(sequelize: Sequelize) {
     this.init(
@@ -65,5 +71,22 @@ export class Friendship extends Model {
     );
   }
 
-  static configureAssociations() {}
+  static configureAssociations() {
+    const registry = this.sequelize!.models;
+
+    this.belongsTo(registry.User as any, {
+      foreignKey: "senderId",
+      as: "sender",
+    });
+
+    this.belongsTo(registry.User as any, {
+      foreignKey: "userId",
+      as: "user",
+    });
+
+    this.belongsTo(registry.User as any, {
+      foreignKey: "friendId",
+      as: "friend",
+    });
+  }
 }

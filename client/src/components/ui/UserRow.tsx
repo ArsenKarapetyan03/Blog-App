@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Cookies from "js-cookie";
 import { UserType } from "@/types/types";
 import { cn } from "@/lib/cn";
@@ -13,53 +13,45 @@ interface UserRowProps {
 	relationshipStatus: "none" | "incoming" | "outgoing" | "accepted";
 }
 
+type FriendAction = "add" | "accept" | "remove";
+
 export const UserRow = (
 	{
 		user,
-		relationshipStatus: initialRelationshipStatus,
+		relationshipStatus,
 	}: UserRowProps
 ) => {
 	const router = useRouter();
 	const token = Cookies.get("token");
 
-	const [relationshipStatus, setRelationshipStatus] = useState(initialRelationshipStatus);
-	const [isPending, setIsPending] = useState(false);
+	const [isPending, startTransition] = useTransition();
 	const [error, setError] = useState("");
 
-	const toggleFriend = async (action: "add" | "accept" | "remove") => {
-		if (isPending) return;
-
-		setIsPending(true);
+	const toggleFriend = (action: FriendAction) => {
 		setError("");
 
-		try {
-			const path = action === "accept" ? "/friend/accept" : "/friend/";
-			const response = await fetch(`${BASE_URL}${path}`, {
-				method: action === "remove" ? "DELETE" : "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"Authorization": `Bearer ${token}`
-				},
-				body: JSON.stringify({ friendId: user.id })
-			});
+		startTransition(async () => {
+			try {
+				const path = action === "accept" ? "/friend/accept" : "/friend/";
+				const response = await fetch(`${BASE_URL}${path}`, {
+					method: action === "remove" ? "DELETE" : "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"Authorization": `Bearer ${token}`
+					},
+					body: JSON.stringify({friendId: user.id})
+				});
 
-			if (!response.ok) {
-				const result = await response.json();
-				setError(result.message || "Failed to update friend status");
-				return;
+				if (!response.ok) {
+					throw new Error("Failed to update friend status");
+				}
+
+				router.refresh();
+			} catch (error) {
+				console.error("Error updating friendship", error);
+				setError(error instanceof Error ? error.message : "Failed to update friend status");
 			}
-
-			setRelationshipStatus(
-				action === "add" ? "outgoing" : action === "accept" ? "accepted" : "none",
-			);
-			router.refresh();
-
-		} catch (error) {
-			console.error("Error updating friendship", error);
-			setError(error instanceof Error ? error.message : "Failed to update friend status");
-		} finally {
-			setIsPending(false);
-		}
+		});
 	}
 
 	const handleClick = () => toggleFriend(
@@ -77,12 +69,12 @@ export const UserRow = (
 			hover:border-zinc-200 dark:hover:border-zinc-700 hover:shadow-sm"
 		>
 			<div className="flex-1 min-w-0">
-				<InfoRow name={user.name} />
+				<InfoRow name={user.name}/>
 
 				{user.email
 					&& <p className="text-xs text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
-							{user.email}
-						</p>
+						{user.email}
+            </p>
 				}
 			</div>
 
@@ -119,8 +111,8 @@ export const UserRow = (
 				</button>
 			</div>
 			{error && <p role="alert" className="absolute left-4 -bottom-5 text-xs text-red-600">
-									{error}
-								</p>
+				{error}
+      </p>
 			}
 		</div>
 	)
