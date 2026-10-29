@@ -1,4 +1,6 @@
-export default function RootLayout({children}: LayoutProps<"/">) {
+import type { ReactNode } from "react";
+
+export default function RootLayout({children}: { children: ReactNode }) {
 	return (
 		<div className="w-full px-4 py-12">
 			<div className="border-b border-slate-200 py-6">
@@ -9,6 +11,7 @@ export default function RootLayout({children}: LayoutProps<"/">) {
 					Discover and connect with our community writers.
 				</p>
 			</div>
+
 			{children}
 		</div>
 	)
