@@ -10,6 +10,7 @@ import {
 } from "sequelize";
 import type { Post } from "./post.js";
 import type { Comment } from "@/models/comment.js";
+import type { Message } from "@/models/message.js";
 
 export class User extends Model<
 	InferAttributes<User>,
@@ -22,6 +23,8 @@ export class User extends Model<
 
 	declare Posts?: NonAttribute<Post[]>;
 	declare Comments?: NonAttribute<Comment[]>;
+	declare SentMessages?: NonAttribute<Message[]>;
+	declare ReceivedMessages?: NonAttribute<Message[]>;
 	declare LikedPosts?: NonAttribute<Post[]>;
 	declare FriendsAsRequester?: NonAttribute<User[]>;
 	declare FriendsAsReceiver?: NonAttribute<User[]>;
@@ -31,6 +34,8 @@ export class User extends Model<
 	declare static associations: {
 		Posts: Association<User, Post>;
 		Comments: Association<User, Comment>;
+		SentMessages: Association<User, Message>;
+		ReceivedMessages: Association<User, Message>;
 		LikedPosts: Association<User, Post>;
 		FriendsAsRequester: Association<User, User>;
 		FriendsAsReceiver: Association<User, User>;
@@ -80,6 +85,16 @@ export class User extends Model<
 			foreignKey: "userId",
 			as: "Comments"
 		});
+
+		this.hasMany(registry.Message as any, {
+			foreignKey: "senderId",
+			as: "SentMessages",
+		});
+
+		this.hasMany(registry.Message as any, {
+			foreignKey: "receiverId",
+			as: "ReceivedMessages",
+		})
 
 		this.belongsToMany(registry.Post as any, {
 			through: "PostLikes",

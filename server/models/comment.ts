@@ -9,7 +9,6 @@ import {
 } from "sequelize";
 import type { Post } from "./post.js";
 import type { User } from "./user.js";
-import type { PostLikes } from "@/models/postlikes.js";
 
 export class Comment extends Model<
 	InferAttributes<Comment>,

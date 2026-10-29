@@ -3,7 +3,8 @@ import {
   DataTypes,
   type Sequelize,
   type CreationOptional,
-  type NonAttribute
+  type NonAttribute,
+  type ForeignKey
 } from "sequelize";
 import type { User } from "@/models/user.js";
 
@@ -11,8 +12,8 @@ type FriendshipStatus = "pending" | "accepted" | "blocked";
 
 export class Friendship extends Model {
   declare id: CreationOptional<number>;
-  declare requesterId: number;
-  declare receiverId: number;
+  declare requesterId: ForeignKey<number>;
+  declare receiverId: ForeignKey<number>;
   declare status: CreationOptional<FriendshipStatus>;
 
   declare requester?: NonAttribute<User>;
