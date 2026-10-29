@@ -8,18 +8,24 @@ import { postService } from "@/services/post.service.js";
 const readPosts = async (req: Request, res: Response, userId?: number) => {
 	const {limit, offset} = getPaginationDirectives(req.query);
 	const searchString = String(req.query.query ?? "").trim();
-	const {posts, count} = await postService.getPosts({
+
+	const result = await postService.getPosts({
 		searchString,
 		userId,
 		limit,
 		offset
 	});
 
-	return res.status(200).json({
-		posts,
-		totalCount: count,
-		totalPages: Math.ceil(count / limit || 1),
-	});
+	if (!result){
+		throw new AppError("User not found.", 404);
+	}
+
+	const responseData = {
+		posts: result.posts,
+		totalPages: Math.ceil(result.count / limit || 1)
+	}
+
+	return res.status(200).json({ success: true, ...responseData });
 };
 
 export const readAll = (req: Request, res: Response) => readPosts(req, res);

@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import db from "@/models/index.js";
 import type { User } from "@/models/user.js";
+import { Op } from "sequelize";
 
 interface PendingRequestsResult {
 	incomingRequests: User[];
@@ -8,11 +9,17 @@ interface PendingRequestsResult {
 }
 
 export const userService = {
-	findAll: async () => {
-		return await db.User.findAll({
+	findAll: async (searchString: string, limit: number, offset: number) =>
+		await db.User.findAndCountAll({
+			where: {
+				...searchString ? {
+					name: {[Op.iLike]: `%${searchString}%`}
+				} : {}
+			},
 			attributes: ["id", "name", "email"],
-		});
-	},
+			limit,
+			offset
+		}),
 
 	findByEmail: async (email: string) => {
 		return await db.User.findOne({ where: { email } });

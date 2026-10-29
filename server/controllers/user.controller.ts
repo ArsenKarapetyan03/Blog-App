@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { userService } from "@/services/user.service.js";
 import { AppError } from "@/utils/appError.js"
+import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
 
 const formatUser = (user: any) => ({
 	id: user.id,
@@ -14,13 +15,25 @@ const formatUser = (user: any) => ({
 });
 
 export const getAll = async (req: Request, res: Response) => {
-	const users = await userService.findAll();
+	const {limit, offset} = getPaginationDirectives(req.query);
+	const searchString = String(req.query.query ?? "").trim();
 
-	if (users?.length === 0) {
+	const result = await userService.findAll(
+		searchString,
+		limit,
+		offset
+	);
+
+	if (!result){
 		throw new AppError("User not found.", 404);
 	}
 
-	return res.status(200).json({ success: true, users });
+	const responseData = 	{
+		users: result.rows,
+		totalPages: Math.ceil(result.count / limit || 1)
+	}
+
+	return res.status(200).json({ success: true, ...responseData });
 }
 
 export const getCurrentUser = async (req: Request, res: Response) => {

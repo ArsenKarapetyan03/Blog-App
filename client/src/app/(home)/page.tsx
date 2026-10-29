@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BriefPost } from "@/components/BriefPost";
-import { Pagination } from "@/components/Pagination/Pagination";
+import Pagination from "@/components/Pagination";
 import { AddPostButton } from "@/components/PostModal/AddPostButton";
 import { PostFilter } from "@/components/PostFilter";
 import { Search } from "@/components/Search";
@@ -74,7 +74,7 @@ const Page = async ({searchParams}: PageProps) => {
 
 			{!posts.length
 				? <EmptyState message="No posts found" className="m-1 md:m-5 text-zinc-500" />
-				: <div className="flex flex-col gap-12">
+				: <div className="flex flex-col gap-4">
 						{posts.map(post => <BriefPost post={post} key={post.id} />)}
 						{totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} />}
 					</div>

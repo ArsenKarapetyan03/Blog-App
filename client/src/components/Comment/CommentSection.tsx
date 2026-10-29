@@ -1,10 +1,10 @@
 import { Comment } from "@/components/Comment/Comment";
 import { CommentForm } from "@/components/Comment/CommentForm";
-import { PostType, User } from "@/types/types";
+import { PostType, UserType } from "@/types/types";
 
 interface Props {
 	post: PostType;
-	user: User | null;
+	user: UserType | null;
 }
 
 export const CommentSection = (

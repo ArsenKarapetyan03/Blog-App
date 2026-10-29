@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { CommentForm } from "./CommentForm";
-import type { CommentType, User } from "@/types/types";
+import type { CommentType, UserType } from "@/types/types";
 
 interface CommentProps {
 	comment: CommentType;
-	currentUser: User | null;
+	currentUser: UserType | null;
 }
 
 export const Comment = ({comment, currentUser}: CommentProps) => {

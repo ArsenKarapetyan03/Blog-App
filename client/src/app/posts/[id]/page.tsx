@@ -8,7 +8,7 @@ import { InfoRow } from "@/components/ui/InfoRow";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { PostGallery } from "@/components/ui/PostGallery";
 import { type PostType } from "@/types/types";
-import { CommentSection } from "@/components/Comment/CommentSection";
+import CommentSection from "@/components/Comment";
 
 async function getSessionUser() {
 	try {

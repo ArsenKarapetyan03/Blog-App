@@ -2,31 +2,29 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
-import { useDebouncedCallback } from 'use-debounce';
+import { useDebouncedCallback } from "use-debounce";
 import { X } from "lucide-react";
 import { LoadingComponent } from "@/components/ui/LoadingComponent";
 
 const SearchInput = () => {
 	const searchParams = useSearchParams();
 	const pathname = usePathname();
-	const {replace} = useRouter();
+	const { replace } = useRouter();
 
 	const [inputValue, setInputValue] = useState(searchParams.get("query") || "");
 
 	const updateUrl = useDebouncedCallback((value: string) => {
 		const params = new URLSearchParams(searchParams.toString());
-		const trimmed = value.trim();
 		params.set("page", "1");
 
-		if (trimmed) {
-			params.set("query", trimmed);
+		if (value.trim()) {
+			params.set("query", value);
 		} else {
 			params.delete("query");
 		}
 
 		replace(`${pathname}?${params.toString()}`, {scroll: false});
-	}, 300);
+	}, 500);
 
 	const handleChange = (text: string) => {
 		setInputValue(text);
@@ -73,8 +71,8 @@ const SearchInput = () => {
 	)
 }
 
-export const Search = dynamic(() => Promise.resolve(() => (
+export const Search = () => (
 	<Suspense fallback={<LoadingComponent />}>
 		<SearchInput />
 	</Suspense>
-)), {ssr: false});
+);

@@ -69,12 +69,12 @@ export const UserRow = (
 			hover:border-zinc-200 dark:hover:border-zinc-700 hover:shadow-sm"
 		>
 			<div className="flex-1 min-w-0">
-				<InfoRow name={user.name}/>
+				<InfoRow name={user.name} />
 
 				{user.email
 					&& <p className="text-xs text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
-						{user.email}
-            </p>
+						    {user.email}
+             </p>
 				}
 			</div>
 
