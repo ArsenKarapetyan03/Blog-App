@@ -1,9 +1,9 @@
 import {
-	DataTypes,
-	Model,
+  DataTypes,
+  Model,
   type InferAttributes,
   type InferCreationAttributes,
-	type CreationOptional,
+  type CreationOptional,
   type Sequelize,
   type ForeignKey,
 } from "sequelize";

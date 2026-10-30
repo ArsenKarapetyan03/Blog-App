@@ -35,3 +35,18 @@ export interface PostType {
 	createdAt: string;
 	updatedAt: string;
 }
+
+export interface MessageType {
+	id: number,
+	messageText: string,
+	isRead: boolean,
+	senderId: number,
+	receiverId: number,
+	createdAt: string,
+	updatedAt: string,
+}
+
+export interface UserWithLastMessage {
+	chatPartner: UserType,
+	lastMessage: MessageType,
+}

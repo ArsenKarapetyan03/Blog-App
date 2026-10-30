@@ -1,7 +1,9 @@
+import ChatList from "@/components/Messanger/ChatList";
+
 const MessagesPage = () => {
 	return (
 		<div>
-			messages
+			<ChatList />
 		</div>
 	)
 }
