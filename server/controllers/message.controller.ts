@@ -1,28 +1,26 @@
-import type { Request, Response } from "express";
+import { type Request, type Response, text } from "express";
 import { messageService } from "@/services/message.service.js";
 import { AppError } from "@/utils/appError.js";
 
 export const getMessages = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;
 
-	const { partnerId, offset, limit } = req.query;
+	const { partnerId, offset } = req.query;
 
-	if (partnerId === undefined || offset === undefined || limit === undefined) {
+	if (partnerId === undefined) {
 		throw new AppError("Invalid data", 400);
 	}
 
 	const parsedPartnerId = Number(partnerId);
-	const parsedLimit = Number(limit);
-	const parsedOffset = Number(offset);
+	const parsedOffset = offset ? Number(offset) : 0;
 
-	if (isNaN(parsedPartnerId) || isNaN(parsedLimit) || isNaN(parsedOffset)) {
+	if (isNaN(parsedPartnerId)) {
 		throw new AppError("Parameters must be valid numbers", 400);
 	}
 
 	const messages = await messageService.getMessage(
 		userId,
 		parsedPartnerId,
-		parsedLimit,
 		parsedOffset
 	);
 
@@ -34,37 +32,49 @@ export const getChats = async (req: Request, res: Response) => {
 
 	const data = await messageService.getChatsWithLastMessage(userId);
 
-	if (data.length === 0) {
-		throw new AppError("No message found.", 404);
-	}
-
 	res.status(200).json({success: true, data});
 }
 
 export const createMessage = async (req: Request, res: Response) => {
+	if (!req.body) {
+		throw new AppError("Invalid data", 400);
+	}
+
 	const senderId = res.locals.user!.id;
+	const receiverId = Number(req.body.partnerId);
+	const text = String(req.body.messageText || "").trim();
 
-	const { receiverId, messageText } = req.body;
-
-	if (!receiverId || !messageText || String(messageText).trim() === "") {
-		throw new AppError("Receiver ID and message text are required", 400);
+	if (!receiverId || isNaN(receiverId) || !text) {
+		throw new AppError("Invalid data", 400);
 	}
 
-	const parsedReceiverId = Number(receiverId);
-
-	if (isNaN(parsedReceiverId)) {
-		throw new AppError("Receiver ID must be a valid number", 400);
-	}
-
-	if (senderId === parsedReceiverId) {
+	if (senderId === receiverId) {
 		throw new AppError("You cannot send a message to yourself", 400);
 	}
 
-	const newMessage = await messageService.createMessage(
-		senderId,
-		parsedReceiverId,
-		String(messageText).trim()
-	);
+	const newMessage = await messageService.createMessage(senderId, receiverId, text);
+
 
 	res.status(201).json({ success: true, message: newMessage });
+};
+
+export const readMessage = async (req: Request, res: Response) => {
+	if (!req.body) {
+		throw new AppError("Invalid data", 400);
+	}
+
+	const senderId = res.locals.user!.id;
+	const receiverId = Number(req.body.partnerId);
+
+	if (!receiverId || isNaN(receiverId)) {
+		throw new AppError("Invalid data", 400);
+	}
+
+	const response = await messageService.updateMessage(senderId, receiverId, { isRead: true });
+
+	if (!response) {
+		throw new AppError("Unable to update message", 400);
+	}
+
+	res.status(200).json({ success: true, message: "Message updated successfully" });
 };

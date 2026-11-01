@@ -3,7 +3,7 @@ import { Op, QueryTypes } from "sequelize";
 
 
 export const messageService = {
-	getMessage: async (senderId: number, receiverId: number, limit: number, offset = 0) => {
+	getMessage: async (senderId: number, receiverId: number, offset: number) => {
 		return await db.Message.findAll({
 			where: {
 				[Op.or]: [
@@ -11,7 +11,7 @@ export const messageService = {
 					{senderId: receiverId, receiverId: senderId}
 				]
 			},
-			limit,
+			limit: 10,
 			offset,
 			order: [['createdAt', 'DESC']]
 		});
@@ -61,4 +61,16 @@ export const messageService = {
 			isRead: false
 		});
 	},
+
+	updateMessage: async (senderId: number, receiverId: number, payload: any) => {
+		return await db.Message.update(
+			{ ...payload },
+			{
+				where: {
+					senderId: receiverId,
+					receiverId: senderId
+				}
+			}
+		);
+	}
 };

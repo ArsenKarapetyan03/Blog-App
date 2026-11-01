@@ -4,7 +4,7 @@ import authRoutes from "./auth.routes.js";
 import userRoutes from "./user.routes.js";
 import commentRoutes from "./comment.routes.js";
 import friendshipRoutes from "./friendship.routes.js";
-import messageRoutes from "@/routes/message.route.js";
+import messageRoutes from "@/routes/message.routes.js";
 
 const router = Router();
 
