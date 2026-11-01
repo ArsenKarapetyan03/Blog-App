@@ -15,7 +15,7 @@ interface UsersPageProps {
 
 const USER_PER_PAGE = 6;
 
-const UsersPage = async ({searchParams}: UsersPageProps) => {
+const UsersPage = async ({ searchParams }: UsersPageProps) => {
 	const resolvedParams = await searchParams;
 	const query = resolvedParams.query?.trim().toLowerCase() || "";
 	const token = (await cookies()).get("token")?.value;
@@ -32,34 +32,47 @@ const UsersPage = async ({searchParams}: UsersPageProps) => {
 		params.set("query", query);
 	}
 
-	const [usersRes, meRes] = await Promise.all([
-		fetch(`${BASE_URL}/user?${params.toString()}`),
-		fetch(`${BASE_URL}/user/me`, {
-			headers: token ? {"Authorization": `Bearer ${token}`} : {},
-			cache: "no-store"
-		})
-	]);
-
-	if (!usersRes.ok || !meRes.ok) {
-		console.error(`Failed to load users: ${usersRes.status} ${meRes.status}`);
+	const usersRes = await fetch(`${BASE_URL}/user?${params.toString()}`);
+	if (!usersRes.ok) {
+		console.error(`Failed to load users: ${usersRes.status}`);
 		return <EmptyState />;
 	}
 
-	const [rawUsers, rawCurrentUser] = await Promise.all([
-		usersRes.json(),
-		meRes.json()
-	]);
-
-	if (!rawUsers.success || !rawCurrentUser.success) {
+	const rawUsers = await usersRes.json();
+	if (!rawUsers.success) {
 		return <EmptyState />;
 	}
 
-	const currentUser: UserType = rawCurrentUser.user;
-	const friendIds = new Set(currentUser.friends?.map(f => f.id) || []);
-	const incomingRequestIds = new Set(currentUser.incomingRequests?.map(user => user.id) || []);
-	const outgoingRequestIds = new Set(currentUser.outgoingRequests?.map(user => user.id) || []);
+	let currentUser: UserType | null = null;
+	const friendIds = new Set<number>();
+	const incomingRequestIds = new Set<number>();
+	const outgoingRequestIds = new Set<number>();
 
-	const users = rawUsers.users.filter((user: UserType) => currentUser.id !== user.id);
+	if (token) {
+		try {
+			const meRes = await fetch(`${BASE_URL}/user/me`, {
+				headers: { "Authorization": `Bearer ${token}` },
+				cache: "no-store"
+			});
+
+			if (meRes.ok) {
+				const rawCurrentUser = await meRes.json();
+				if (rawCurrentUser.success) {
+					currentUser = rawCurrentUser.user;
+					currentUser?.friends?.forEach(f => friendIds.add(f.id));
+					currentUser?.incomingRequests?.forEach(u => incomingRequestIds.add(u.id));
+					currentUser?.outgoingRequests?.forEach(u => outgoingRequestIds.add(u.id));
+				}
+			}
+		} catch (error) {
+			console.error("Failed to fetch current user profile", error);
+		}
+	}
+
+	const users = currentUser
+		? rawUsers.users.filter((user: UserType) => currentUser!.id !== user.id)
+		: rawUsers.users;
+
 	const totalPages: number = rawUsers.totalPages;
 
 	return (
@@ -89,9 +102,7 @@ const UsersPage = async ({searchParams}: UsersPageProps) => {
 						))}
 
 						{totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} />}
-
-						{/*<Pagination currentPage={currentPage} totalPages={totalPages} />*/}
-				</>
+					</>
 				}
 			</div>
 		</div>

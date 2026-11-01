@@ -7,6 +7,7 @@ import { UserType } from "@/types/types";
 import { cn } from "@/lib/cn";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { BASE_URL } from "@/config/api";
+import { SignInModal } from "@/components/ui/SignInModal";
 
 interface UserRowProps {
 	user: UserType;
@@ -26,6 +27,7 @@ export const UserRow = (
 
 	const [isPending, startTransition] = useTransition();
 	const [error, setError] = useState("");
+	const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
 
 	const toggleFriend = (action: FriendAction) => {
 		setError("");
@@ -54,13 +56,19 @@ export const UserRow = (
 		});
 	}
 
-	const handleClick = () => toggleFriend(
-		relationshipStatus === "none"
-			? "add"
-			: relationshipStatus === "incoming"
-				? "accept"
-				: "remove",
-	);
+	const handleClick = () => {
+		if (!token) {
+			return setIsSignInModalOpen(true);
+		}
+
+		toggleFriend(
+			relationshipStatus === "none"
+				? "add"
+				: relationshipStatus === "incoming"
+					? "accept"
+					: "remove",
+		);
+	}
 
 	return (
 		<div
@@ -69,12 +77,12 @@ export const UserRow = (
 			hover:border-zinc-200 dark:hover:border-zinc-700 hover:shadow-sm"
 		>
 			<div className="flex-1 min-w-0">
-				<InfoRow name={user.name} />
+				<InfoRow name={user.name}/>
 
 				{user.email
 					&& <p className="text-xs text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
-						    {user.email}
-             </p>
+						{user.email}
+            </p>
 				}
 			</div>
 
@@ -114,6 +122,8 @@ export const UserRow = (
 				{error}
       </p>
 			}
+
+			<SignInModal isOpen={isSignInModalOpen} onClose={()=>setIsSignInModalOpen(false)} />
 		</div>
 	)
 }
