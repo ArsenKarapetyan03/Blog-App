@@ -1,7 +1,6 @@
 import db, { sequelize } from "@/models/index.js";
 import { Op, QueryTypes } from "sequelize";
 
-
 export const messageService = {
 	getMessage: async (senderId: number, receiverId: number, offset: number) => {
 		return await db.Message.findAll({
@@ -94,10 +93,7 @@ export const messageService = {
 		return await db.Message.destroy({
 			where: {
 				id: messageId,
-				[Op.or]: [
-					{ senderId },
-					{ receiverId: senderId }
-				]
+				senderId
 			}
 		})
 	}

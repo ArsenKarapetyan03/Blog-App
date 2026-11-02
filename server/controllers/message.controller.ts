@@ -1,10 +1,9 @@
-import { type Request, type Response, text } from "express";
+import { type Request, type Response } from "express";
 import { messageService } from "@/services/message.service.js";
 import { AppError } from "@/utils/appError.js";
 
 export const getMessages = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;
-
 	const { partnerId, offset } = req.query;
 
 	if (partnerId === undefined) {
@@ -61,8 +60,7 @@ export const readMessage = async (req: Request, res: Response) => {
 	if (isNaN(partnerId) || partnerId <= 0) {
 		throw new AppError("Invalid partner ID", 400);
 	}
-
-	const response = await messageService.isReadMessage(currentUserId, partnerId, { isRead: true });
+	await messageService.isReadMessage(currentUserId, partnerId, { isRead: true });
 
 	res.status(200).json({ success: true, message: "Message updated successfully" });
 };

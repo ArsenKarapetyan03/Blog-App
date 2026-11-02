@@ -15,6 +15,8 @@ export const Chats = ({ chats, activePartnerId, onSelectChat }: ChatsProps) => (
 		) : (
 			chats.map(({ chatPartner, lastMessage }) => {
 				const isActive = chatPartner.id === activePartnerId;
+				const isIncoming = lastMessage.senderId === chatPartner.id;
+				const showUnreadIndicator = !lastMessage.isRead && isIncoming
 
 				return (
 				<button
@@ -33,7 +35,7 @@ export const Chats = ({ chats, activePartnerId, onSelectChat }: ChatsProps) => (
 							{lastMessage.messageText}
 						</p>
 
-						{!lastMessage.isRead && <span className="w-3 h-3 bg-blue-600 rounded-full shrink-0 animate-pulse" />}
+						{showUnreadIndicator && <span className="w-3 h-3 bg-blue-600 rounded-full shrink-0 animate-pulse" />}
 					</div>
 				</button>
 			)}
