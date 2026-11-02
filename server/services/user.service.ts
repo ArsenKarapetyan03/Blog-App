@@ -9,9 +9,10 @@ interface PendingRequestsResult {
 }
 
 export const userService = {
-	findAll: async (searchString: string, limit: number, offset: number) =>
+	findAll: async (searchString: string, limit: number, offset: number, currentUserId: number | undefined) =>
 		await db.User.findAndCountAll({
 			where: {
+				...currentUserId ? { id: { [Op.ne]: currentUserId } } : {},
 				...searchString ? {
 					name: {[Op.iLike]: `%${searchString}%`}
 				} : {}

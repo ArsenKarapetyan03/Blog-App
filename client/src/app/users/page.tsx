@@ -32,7 +32,11 @@ const UsersPage = async ({ searchParams }: UsersPageProps) => {
 		params.set("query", query);
 	}
 
-	const usersRes = await fetch(`${BASE_URL}/user?${params.toString()}`);
+	const usersRes = await fetch(`${BASE_URL}/user?${params.toString()}`, {
+		method: "GET",
+		headers: {Authorization: `Bearer ${token}`}
+	});
+
 	if (!usersRes.ok) {
 		console.error(`Failed to load users: ${usersRes.status}`);
 		return <EmptyState />;
@@ -69,11 +73,9 @@ const UsersPage = async ({ searchParams }: UsersPageProps) => {
 		}
 	}
 
-	const users = currentUser
-		? rawUsers.users.filter((user: UserType) => currentUser!.id !== user.id)
-		: rawUsers.users;
+	const users = rawUsers.data.users;
 
-	const totalPages: number = rawUsers.totalPages;
+	const totalPages: number = rawUsers.data.totalPages;
 
 	return (
 		<div>

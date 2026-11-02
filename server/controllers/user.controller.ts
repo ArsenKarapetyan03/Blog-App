@@ -17,23 +17,25 @@ const formatUser = (user: any) => ({
 export const getAll = async (req: Request, res: Response) => {
 	const {limit, offset} = getPaginationDirectives(req.query);
 	const searchString = String(req.query.query ?? "").trim();
+	const currentUserId = res.locals.user?.id;
 
 	const result = await userService.findAll(
 		searchString,
 		limit,
-		offset
+		offset,
+		currentUserId
 	);
 
 	if (!result){
 		throw new AppError("User not found.", 404);
 	}
 
-	const responseData = 	{
+	const data = 	{
 		users: result.rows,
 		totalPages: Math.ceil(result.count / limit || 1)
 	}
 
-	return res.status(200).json({ success: true, ...responseData });
+	return res.status(200).json({ success: true, data });
 }
 
 export const getCurrentUser = async (req: Request, res: Response) => {

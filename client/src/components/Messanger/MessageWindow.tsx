@@ -1,85 +1,42 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { X, Pen } from "lucide-react";
+import { getMessages, markMessagesAsRead, updateMessage, sendMessage, deleteMessage } from "@/actions/message";
 import { MessageType, UserType } from "@/types/types";
 import { MessageItem } from "./MessageItem";
-import { BASE_URL } from "@/config/api";
 
 interface MessageWindowProps {
 	partner: UserType;
 	token: string;
+	refreshTicket?: number;
 }
 
 const PAGE_SIZE = 10;
 
-const getMessages = async (
-	partnerId: number,
-	token: string,
-	offset: number
-): Promise<MessageType[]> => {
-	const params = new URLSearchParams({
-		partnerId: String(partnerId),
-		offset: String(offset),
-	});
-
-	const response = await fetch(`${BASE_URL}/message?${params}`, {
-		headers: { Authorization: `Bearer ${token}` },
-	});
-
-	if (!response.ok) throw new Error("Failed to fetch messages");
-
-	const data = await response.json();
-	return (data.messages || []).reverse();
-};
-
-const sendMessage = async (
-	partnerId: number,
-	token: string,
-	messageText: string
+export const MessageWindow = (
+	{
+		partner,
+		token,
+		refreshTicket = 0
+	}: MessageWindowProps
 ) => {
-	const response = await fetch(`${BASE_URL}/message`, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${token}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({ partnerId, messageText }),
-	});
-
-	if (!response.ok) throw new Error("Failed to send message");
-};
-
-const markMessagesAsRead = async (
-	partnerId: number,
-	token: string
-) => {
-	const response = await fetch(
-		`${BASE_URL}/message/read`,
-		{
-			method: "PATCH",
-			headers: {
-				Authorization: `Bearer ${token}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({partnerId})
-		}
-	);
-
-	if (!response.ok) {
-		throw new Error("Failed to mark messages as read");
-	}
-};
-
-export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 	const [messages, setMessages] = useState<MessageType[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFetchingMore, setIsFetchingMore] = useState(false);
 	const [hasMore, setHasMore] = useState(true);
+	const [editingMessage, setEditingMessage] = useState<MessageType | null>(null);
+	const [inputValue, setInputValue] = useState("");
 
-	const formRef = useRef<HTMLFormElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
-	const previousMessagesCount = useRef(0);
+
+	useEffect(() => {
+		if (containerRef.current) {
+			containerRef.current.style.overflowAnchor = "none";
+		}
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -88,10 +45,11 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 			setIsLoading(true);
 			setMessages([]);
 			setHasMore(true);
+			setEditingMessage(null);
+			setInputValue("");
 
 			try {
 				const data = await getMessages(partner.id, token, 0);
-
 				await markMessagesAsRead(partner.id, token);
 
 				if (cancelled) {
@@ -107,11 +65,20 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 				);
 
 				setHasMore(data.length === PAGE_SIZE);
-				previousMessagesCount.current = 0;
+
+				requestAnimationFrame(() => {
+					if (containerRef.current) {
+						containerRef.current.scrollTop = containerRef.current.scrollHeight;
+					}
+				});
 			} catch (error) {
-				if (!cancelled) console.error(error);
+				if (!cancelled) {
+					console.error(error);
+				}
 			} finally {
-				if (!cancelled) setIsLoading(false);
+				if (!cancelled) {
+					setIsLoading(false);
+				}
 			}
 		};
 
@@ -120,29 +87,7 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 		return () => {
 			cancelled = true;
 		};
-	}, [partner.id, token]);
-
-	useEffect(() => {
-		if (isLoading || isFetchingMore) return;
-
-		const previousCount = previousMessagesCount.current;
-		previousMessagesCount.current = messages.length;
-
-		if (previousCount === 0 && messages.length > 0) {
-			containerRef.current?.scrollTo({
-				top: containerRef.current.scrollHeight,
-				behavior: "auto",
-			});
-			return;
-		}
-
-		if (messages.length > previousCount) {
-			containerRef.current?.scrollTo({
-				top: containerRef.current.scrollHeight,
-				behavior: "smooth",
-			});
-		}
-	}, [messages.length, isLoading, isFetchingMore]);
+	}, [partner.id, token, refreshTicket]);
 
 	const loadMore = useCallback(async () => {
 		if (isFetchingMore || !hasMore || isLoading) {
@@ -154,8 +99,8 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 			return;
 		}
 
-		const oldHeight = container.scrollHeight;
-		const oldTop = container.scrollTop;
+		const previousScrollHeight = container.scrollHeight;
+		const previousScrollTop = container.scrollTop;
 
 		setIsFetchingMore(true);
 
@@ -174,10 +119,19 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 			setMessages((prev) => [...olderMessages, ...prev]);
 			setHasMore(olderMessages.length === PAGE_SIZE);
 
-			requestAnimationFrame(() => {
-				container.scrollTop =
-					oldTop + (container.scrollHeight - oldHeight);
+			const resizeObserver = new ResizeObserver(() => {
+				const currentScrollHeight = container.scrollHeight;
+				const heightDifference = currentScrollHeight - previousScrollHeight;
+
+				if (heightDifference > 0) {
+					container.scrollTop = previousScrollTop + heightDifference;
+				}
+
+				resizeObserver.disconnect();
 			});
+
+			resizeObserver.observe(container);
+
 		} catch (error) {
 			console.error("Failed to load older messages:", error);
 		} finally {
@@ -189,7 +143,9 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 		const container = containerRef.current;
 		const sentinel = sentinelRef.current;
 
-		if (!container || !sentinel || !hasMore) return;
+		if (!container || !sentinel || !hasMore) {
+			return;
+		}
 
 		const observer = new IntersectionObserver(
 			([entry]) => {
@@ -199,7 +155,7 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 			},
 			{
 				root: container,
-				rootMargin: "150px 0px 0px 0px",
+				rootMargin: "80px 0px 0px 0px",
 			}
 		);
 
@@ -208,45 +164,110 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 		return () => observer.disconnect();
 	}, [loadMore, hasMore]);
 
+	const handleStartEdit = (msg: MessageType) => {
+		setEditingMessage(msg);
+		setInputValue(msg.messageText);
+		inputRef.current?.focus();
+	};
+
+	const handleCancelEdit = () => {
+		setEditingMessage(null);
+		setInputValue("");
+	};
+
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		const form = e.currentTarget;
-		const formData = new FormData(form);
-		const text = formData.get("message");
-
-		if (typeof text !== "string" || !text.trim()) {
+		if (!inputValue.trim()) {
 			return;
 		}
 
-		const messageText = text.trim();
+		const messageText = inputValue.trim();
 
-		const tempMessage: MessageType = {
-			id: Date.now(),
-			senderId: 0,
-			receiverId: partner.id,
-			messageText,
-			isRead: false,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-		};
+		if (editingMessage) {
+			const messageId = editingMessage.id;
+			const originalMessages = [...messages];
 
-		form.reset();
-		setMessages((prev) => [...prev, tempMessage]);
+			if (editingMessage.messageText === messageText) {
+				handleCancelEdit();
+				return;
+			}
+
+			setMessages((prev) =>
+				prev.map((msg) =>
+					msg.id === messageId ? { ...msg, messageText } : msg
+				)
+			);
+
+			handleCancelEdit();
+
+			try {
+				await updateMessage(messageId, messageText, token);
+			} catch (error) {
+				console.error("Failed to update message:", error);
+				setMessages(originalMessages);
+			}
+		} else {
+			const tempMessage: MessageType = {
+				id: Date.now(),
+				senderId: 0,
+				receiverId: partner.id,
+				messageText,
+				isRead: false,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
+			setInputValue("");
+
+			setMessages((prev) => [...prev, tempMessage]);
+
+			requestAnimationFrame(() => {
+				if (containerRef.current) {
+					containerRef.current.scrollTo({
+						top: containerRef.current.scrollHeight,
+						behavior: "smooth",
+					});
+				}
+			});
+
+			try {
+				await sendMessage(partner.id, token, messageText);
+			} catch (error) {
+				console.error(error);
+				setMessages((prev) =>
+					prev.filter((msg) => msg.id !== tempMessage.id)
+				);
+			}
+		}
+	};
+
+	const handleDelete = async (messageId: number) => {
+		if (editingMessage?.id === messageId) {
+			handleCancelEdit();
+		}
+
+		const originalMessages = [...messages];
+
+		setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
 
 		try {
-			await sendMessage(partner.id, token, messageText);
+			await deleteMessage(messageId, token);
 		} catch (error) {
-			console.error(error);
-			setMessages((prev) =>
-				prev.filter((msg) => msg.id !== tempMessage.id)
-			);
+			console.error("Failed to delete message:", error);
+			setMessages(originalMessages);
+		}
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "Escape" && editingMessage) {
+			handleCancelEdit();
 		}
 	};
 
 	return (
 		<div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
-			<div className="px-6 py-4 shadow-xl">
+			<div className="px-6 py-4 shadow-xl z-10">
 				<h3 className="font-bold text-gray-900">{partner.name}</h3>
 				<p className="text-xs text-indigo-500">{partner.email}</p>
 			</div>
@@ -256,7 +277,7 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 				className="flex-1 space-y-4 overflow-y-auto bg-slate-50/50 p-6"
 			>
 				{hasMore && !isLoading && (
-					<div ref={sentinelRef} className="h-2" />
+					<div ref={sentinelRef} className="h-1 w-full" />
 				)}
 
 				{isFetchingMore && (
@@ -279,34 +300,55 @@ export const MessageWindow = ({ partner, token }: MessageWindowProps) => {
 							key={msg.id}
 							msg={msg}
 							isPartner={msg.senderId === partner.id}
+							onStartEdit={handleStartEdit}
+							onDelete={handleDelete}
 						/>
 					))
 				)}
 			</div>
 
+			{editingMessage && (
+				<div className="px-6 py-2 bg-blue-50 border-t border-blue-100 flex justify-between items-center text-sm text-blue-700">
+					<div className="flex items-center gap-2 truncate">
+						<Pen size={16} />
+						<span className="truncate">Editing: <span className="font-medium text-blue-900">{editingMessage.messageText}</span></span>
+					</div>
+					<button
+						type="button"
+						onClick={handleCancelEdit}
+						className="p-1 rounded text-gray-400 hover:text-gray-600 focus:outline-none"
+					>
+						<X size={16} />
+					</button>
+				</div>
+			)}
+
 			<div className="p-4 bg-white border-t border-zinc-100">
 				<form
-					ref={formRef}
 					onSubmit={handleSubmit}
 					className="flex items-center gap-2"
 				>
 					<input
+						ref={inputRef}
 						name="message"
 						type="text"
-						placeholder="Type a message..."
+						value={inputValue}
+						onChange={(e) => setInputValue(e.target.value)}
+						onKeyDown={handleKeyDown}
+						placeholder={editingMessage ? "Edit your message..." : "Type a message..."}
 						className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
 					/>
 
 					<button
 						type="submit"
-						className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+						className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors ${
+							editingMessage ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700"
+						}`}
 					>
-						Send
+						{editingMessage ? "Save" : "Send"}
 					</button>
 				</form>
 			</div>
 		</div>
 	);
 };
-
-export default MessageWindow;

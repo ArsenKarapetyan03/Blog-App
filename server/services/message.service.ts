@@ -62,15 +62,43 @@ export const messageService = {
 		});
 	},
 
-	updateMessage: async (senderId: number, receiverId: number, payload: any) => {
-		return await db.Message.update(
-			{ ...payload },
+	isReadMessage: async (senderId: number, receiverId: number, payload: any) => {
+		const [affectedCount] = await db.Message.update(
+			{ isRead: true },
 			{
 				where: {
 					senderId: receiverId,
-					receiverId: senderId
+					receiverId: senderId,
+					isRead: false
+				},
+			}
+		);
+
+		return affectedCount;
+	},
+
+	updateMessage: async (senderId: number, messageId: number, messageText: string) => {
+		const [affectedCount] = await db.Message.update(
+			{messageText},
+			{
+				where: {
+					id: messageId,
+					senderId,
 				}
 			}
 		);
+		return affectedCount;
+	},
+
+	deleteMessage: async (senderId: number, messageId: number) => {
+		return await db.Message.destroy({
+			where: {
+				id: messageId,
+				[Op.or]: [
+					{ senderId },
+					{ receiverId: senderId }
+				]
+			}
+		})
 	}
 };

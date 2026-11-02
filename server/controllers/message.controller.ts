@@ -36,13 +36,9 @@ export const getChats = async (req: Request, res: Response) => {
 }
 
 export const createMessage = async (req: Request, res: Response) => {
-	if (!req.body) {
-		throw new AppError("Invalid data", 400);
-	}
-
 	const senderId = res.locals.user!.id;
-	const receiverId = Number(req.body.partnerId);
-	const text = String(req.body.messageText || "").trim();
+	const receiverId = Number(req.body?.partnerId);
+	const text = String(req.body?.messageText || "").trim();
 
 	if (!receiverId || isNaN(receiverId) || !text) {
 		throw new AppError("Invalid data", 400);
@@ -59,22 +55,49 @@ export const createMessage = async (req: Request, res: Response) => {
 };
 
 export const readMessage = async (req: Request, res: Response) => {
-	if (!req.body) {
-		throw new AppError("Invalid data", 400);
+	const currentUserId = res.locals.user!.id;
+	const partnerId = Number(req.body?.partnerId);
+
+	if (isNaN(partnerId) || partnerId <= 0) {
+		throw new AppError("Invalid partner ID", 400);
 	}
 
-	const senderId = res.locals.user!.id;
-	const receiverId = Number(req.body.partnerId);
+	const response = await messageService.isReadMessage(currentUserId, partnerId, { isRead: true });
 
-	if (!receiverId || isNaN(receiverId)) {
-		throw new AppError("Invalid data", 400);
+	res.status(200).json({ success: true, message: "Message updated successfully" });
+};
+
+export const updateMessage = async (req: Request, res: Response) => {
+	const currentUserId = res.locals.user!.id;
+	const messageId = Number(req.body?.messageId);
+	const messageText = String(req.body.messageText || "").trim();
+
+	if (isNaN(messageId) || messageId <= 0 || !messageText) {
+		throw new AppError("Invalid data provided", 400);
 	}
 
-	const response = await messageService.updateMessage(senderId, receiverId, { isRead: true });
+	const affectedCount = await messageService.updateMessage(currentUserId, messageId, messageText);
 
-	if (!response) {
-		throw new AppError("Unable to update message", 400);
+	if (affectedCount === 0) {
+		throw new AppError("Message not found", 404);
 	}
 
 	res.status(200).json({ success: true, message: "Message updated successfully" });
+}
+
+export const deleteMessage = async (req: Request, res: Response) => {
+	const currentUserId = res.locals.user!.id;
+	const messageId = Number(req.body?.messageId);
+
+	if (isNaN(messageId) || messageId <= 0) {
+		throw new AppError("Invalid data provided", 400);
+	}
+
+	const deletedCount = await messageService.deleteMessage(currentUserId, messageId);
+
+	if (deletedCount === 0) {
+		throw new AppError("Message not found", 404);
+	}
+
+	res.status(200).json({ success: true, message: "Message deleted successfully" });
 };
