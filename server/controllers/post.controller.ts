@@ -3,7 +3,7 @@ import { getValidatedPost } from "@/utils/dataValidation.js";
 import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
 import { deletePhysicalFiles } from "@/utils/deleteFiles.js"
 import { AppError } from "@/utils/appError.js";
-import { postService } from "@/services/post.service.js";
+import { postService } from "@/services/db.services/post.service.js";
 
 const readPosts = async (req: Request, res: Response, userId?: number) => {
 	const {limit, offset} = getPaginationDirectives(req.query);

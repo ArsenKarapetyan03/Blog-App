@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { AppError } from "@/utils/appError.js";
-import { commentService } from "@/services/comment.service.js";
+import { commentService } from "@/services/db.services/comment.service.js";
 
 export const create = async (req: Request, res: Response) => {
 	const {content, postId, replyId} = req.body;

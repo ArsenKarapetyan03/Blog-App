@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import { userService } from "@/services/user.service.js";
+import { userService } from "@/services/db.services/user.service.js";
 import { generateToken } from "@/utils/jwt.js";
 import { AppError } from "@/utils/appError.js";
 

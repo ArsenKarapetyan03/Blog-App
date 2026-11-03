@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 import db from "@/models/index.js";
-import { commentService } from "@/services/comment.service.js";
-import { imageService } from "@/services/image.service.js";
+import { commentService } from "@/services/db.services/comment.service.js";
+import { imageService } from "@/services/db.services/image.service.js";
 
 interface GetPostsFilters {
 	searchString?: string;

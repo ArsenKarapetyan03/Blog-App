@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { X, Pen } from "lucide-react";
-import { getMessages, markMessagesAsRead, updateMessage, sendMessage, deleteMessage } from "@/actions/message";
+import { getMessages, markMessagesAsRead } from "@/actions/message";
 import { MessageType, UserType } from "@/types/types";
 import { MessageItem } from "./MessageItem";
+import { BASE_URL } from "@/config/api";
 
 interface MessageWindowProps {
 	partner: UserType;
@@ -31,6 +32,29 @@ export const MessageWindow = (
 	const inputRef = useRef<HTMLInputElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
+	const wsRef = useRef<WebSocket | null>(null);
+
+	useEffect(() => {
+		if (!token) {
+			return;
+		}
+		const url = new URL(BASE_URL);
+		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+		url.pathname = "";
+		url.searchParams.set("token", `Bearer ${token}`);
+
+		const WS_URL = url.toString();
+		const socket = new WebSocket(WS_URL);
+		wsRef.current = socket;
+
+		socket.onopen = () => {
+			console.log("WebSocket connected");
+		};
+
+		socket.onmessage = event => {
+			console.log("Received message", event.data);
+		}
+	}, []);
 
 	useEffect(() => {
 		if (containerRef.current) {
@@ -178,7 +202,7 @@ export const MessageWindow = (
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		if (!inputValue.trim()) {
+		if (!inputValue.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
 			return;
 		}
 
@@ -198,15 +222,14 @@ export const MessageWindow = (
 					msg.id === messageId ? { ...msg, messageText } : msg
 				)
 			);
-
 			handleCancelEdit();
 
-			try {
-				await updateMessage(messageId, messageText, token);
-			} catch (error) {
-				console.error("Failed to update message:", error);
-				setMessages(originalMessages);
-			}
+			wsRef.current.send(
+				JSON.stringify({
+					type: "UPDATE_MESSAGE",
+					payload: { messageId, messageText }
+				})
+			);
 		} else {
 			const tempMessage: MessageType = {
 				id: Date.now(),
@@ -231,14 +254,12 @@ export const MessageWindow = (
 				}
 			});
 
-			try {
-				await sendMessage(partner.id, token, messageText);
-			} catch (error) {
-				console.error(error);
-				setMessages((prev) =>
-					prev.filter((msg) => msg.id !== tempMessage.id)
-				);
-			}
+			wsRef.current.send(
+				JSON.stringify({
+					type: "CREATE_MESSAGE",
+					payload: { receiverId: partner.id, messageText }
+				})
+			);
 		}
 	};
 
@@ -247,16 +268,18 @@ export const MessageWindow = (
 			handleCancelEdit();
 		}
 
-		const originalMessages = [...messages];
+		if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+			return;
+		}
 
 		setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
 
-		try {
-			await deleteMessage(messageId, token);
-		} catch (error) {
-			console.error("Failed to delete message:", error);
-			setMessages(originalMessages);
-		}
+		wsRef.current.send(
+			JSON.stringify({
+				type: "DELETE_MESSAGE",
+				payload: { messageId }
+			})
+		);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

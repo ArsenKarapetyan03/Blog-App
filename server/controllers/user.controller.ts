@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { userService } from "@/services/user.service.js";
+import { userService } from "@/services/db.services/user.service.js";
 import { AppError } from "@/utils/appError.js"
 import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
 

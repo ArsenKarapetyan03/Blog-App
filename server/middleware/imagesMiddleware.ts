@@ -49,3 +49,5 @@ export const uploadMiddleware = (req: Request, res: Response, next: NextFunction
 		next();
 	});
 };
+
+export default uploadsDirectory;

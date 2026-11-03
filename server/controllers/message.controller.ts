@@ -1,5 +1,5 @@
 import { type Request, type Response } from "express";
-import { messageService } from "@/services/message.service.js";
+import { messageService } from "@/services/db.services/message.service.js";
 import { AppError } from "@/utils/appError.js";
 
 export const getMessages = async (req: Request, res: Response) => {
