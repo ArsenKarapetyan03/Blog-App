@@ -2,7 +2,7 @@ import db, { sequelize } from "@/models/index.js";
 import { Op, QueryTypes } from "sequelize";
 
 export const messageService = {
-	getMessage: async (senderId: number, receiverId: number, offset: number) => {
+	getMessages: async (senderId: number, receiverId: number, offset: number) => {
 		return await db.Message.findAll({
 			where: {
 				[Op.or]: [
@@ -15,6 +15,8 @@ export const messageService = {
 			order: [['createdAt', 'DESC']]
 		});
 	},
+
+	getMessageById: async (messageId: number) =>  await db.Message.findByPk(messageId),
 
 	getChatsWithLastMessage: async (currentUserId: number) => {
 		const query = `
@@ -53,15 +55,17 @@ export const messageService = {
 	},
 
 	createMessage: async (senderId: number, receiverId: number, messageText: string) => {
-		return await db.Message.create({
+		const newMessage =  await db.Message.create({
 			senderId,
 			receiverId,
 			messageText,
 			isRead: false
 		});
+
+		return newMessage.toJSON();
 	},
 
-	isReadMessage: async (senderId: number, receiverId: number, payload: any) => {
+	isReadMessage: async (senderId: number, receiverId: number) => {
 		const [affectedCount] = await db.Message.update(
 			{ isRead: true },
 			{
@@ -77,24 +81,35 @@ export const messageService = {
 	},
 
 	updateMessage: async (senderId: number, messageId: number, messageText: string) => {
-		const [affectedCount] = await db.Message.update(
-			{messageText},
+		const [affectedCount, updatedRows]  = await db.Message.update(
+			{ messageText },
 			{
 				where: {
 					id: messageId,
 					senderId,
-				}
+				},
+				returning: true,
 			}
 		);
-		return affectedCount;
+
+		if (!updatedRows?.[0]) {
+			return null;
+		}
+
+		return updatedRows[0].get({ plain: true });
 	},
 
 	deleteMessage: async (senderId: number, messageId: number) => {
-		return await db.Message.destroy({
-			where: {
-				id: messageId,
-				senderId
-			}
-		})
+		const [affectedCount, updatedRows] = await db.Message.update(
+			{messageText: "Deleted message"},
+			{
+				where: {
+					id: messageId,
+					senderId
+				},
+				returning: true,
+			});
+
+		return updatedRows?.[0]?.get({ plain: true }) || null;
 	}
 };

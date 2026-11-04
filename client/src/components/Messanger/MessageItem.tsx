@@ -30,44 +30,48 @@ export const MessageItem = ({msg, isPartner, onDelete, onStartEdit}: MessageItem
 		>
 			<div
 				className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-0.5 order-first shrink-0">
-				{!isPartner &&
-            <button
-                type="button"
-                onClick={() => onStartEdit(msg)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                title="Edit"
-            >
-                <Pen size={16}/>
-            </button>
+				{!isPartner && !msg.isDeleted
+					&& <div>
+                <button
+                    type="button"
+                    onClick={() => onStartEdit(msg)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                    title="Edit"
+                >
+                    <Pen size={16} />
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => onDelete(msg.id)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    title="Delete"
+                >
+                    <Trash size={16} />
+                </button>
+            </div>
 				}
 
-				<button
-					type="button"
-					onClick={() => onDelete(msg.id)}
-					className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50"
-					title="Delete"
-				>
-					<Trash size={16}/>
-				</button>
+
 			</div>
 
 			<div
 				className={cn("max-w-[70%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
 					isPartner
 						? "bg-white text-gray-900 border border-gray-100 rounded-bl-none"
-						: "bg-blue-600 text-white rounded-br-none"
+						: "bg-blue-600 text-white rounded-br-none",
+					msg.isDeleted && "bg-transparent text-zinc-400",
 				)}
 			>
 				<p className="leading-relaxed wrap-break-word">{msg.messageText}</p>
-				<span
-					className={`block text-[10px] mt-1 text-right ${isPartner ? "text-gray-400" : "text-blue-200"}`}
-				>
-					{msg.createdAt
-						? new Date(msg.createdAt).toLocaleTimeString([], {
-							hour: "2-digit",
-							minute: "2-digit",
-						})
-						: ""}
+				<span	className={cn("block text-[10px] mt-1 text-right", isPartner ? "text-gray-400" : "text-blue-200")}>
+					{msg.createdAt === msg.updatedAt || msg.isDeleted
+						? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+					: <div className="space-x-1">
+							<span>{new Date(msg.updatedAt).toLocaleTimeString([], { hour: "2-digit",	minute: "2-digit" })}</span>
+							<Pen size={12} className="inline" />
+						</div>
+					}
 				</span>
 			</div>
 		</div>

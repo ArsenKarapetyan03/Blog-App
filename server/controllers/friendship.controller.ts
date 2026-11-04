@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { AppError } from "@/utils/appError.js";
-import { friendshipService } from "@/services/db.services/friendship.service.js";
+import { friendshipService } from "@/services/friendship.service.js";
 
 export const add = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;

@@ -5,7 +5,7 @@ import cors from "cors";
 import routes from "./routes/index.js";
 import uploadsDirectory from "@/middleware/imagesMiddleware.js";
 import errorHandler from "@/middleware/errorHandler.js";
-import initWebSocketServer from "@/services/socket.service.js";
+import initWebSocketServer from "./sockets";
 
 const app = express();
 

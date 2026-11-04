@@ -95,6 +95,75 @@ export const ChatList = () => {
 		fetchAllUsers(currentQuery, currentPage);
 	}, [currentQuery, currentPage, isModalOpen]);
 
+	useEffect(() => {
+		if (!token || chats.length === 0) {
+			return;
+		}
+
+		const url = new URL(BASE_URL);
+		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+		url.pathname = "";
+		url.searchParams.set("token", `Bearer ${token}`);
+
+		const socket = new WebSocket(url.toString());
+
+		socket.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+
+				if (data.type === "MESSAGES_READ") {
+					setChats((prevChats) =>
+						prevChats.map((chat) => {
+							if (chat.chatPartner.id === data.payload.readerId) {
+								return {
+									...chat,
+									lastMessage: {
+										...chat.lastMessage,
+										isRead: true
+									}
+								};
+							}
+							return chat;
+						})
+					);
+				}
+
+				if (data.type === "NEW_MESSAGE") {
+					setChats((prevChats) => {
+						const msg = data.payload;
+						const isFromActivePartner = activePartnerId && (msg.senderId === activePartnerId || msg.receiverId === activePartnerId);
+						const targetPartnerId = isFromActivePartner ? activePartnerId : msg.senderId;
+
+						const updatedChats = prevChats.map((chat) => {
+							if (chat.chatPartner.id === targetPartnerId) {
+								return {
+									...chat,
+									lastMessage: {
+										...msg,
+										isRead: targetPartnerId === activePartnerId ? true : msg.isRead
+									}
+								};
+							}
+							return chat;
+						});
+
+						const targetIndex = updatedChats.findIndex(c => c.chatPartner.id === targetPartnerId);
+						if (targetIndex > 0) {
+							const [targetChat] = updatedChats.splice(targetIndex, 1);
+							return [targetChat, ...updatedChats];
+						}
+
+						return updatedChats;
+					});
+				}
+			} catch (e) {
+				console.error("Error updating chats via WS", e);
+			}
+		};
+
+		return () => socket.close();
+	}, [token, chats.length, activePartnerId]);
+
 	const activeChat = chats.find((c) => c.chatPartner.id === activePartnerId);
 
 	const handleCloseModal = () => {
@@ -109,17 +178,43 @@ export const ChatList = () => {
 		handleCloseModal();
 		setActivePartnerId(user.id);
 
-		const chatExists = chats.some((c) => c.chatPartner.id === user.id);
-		if (!chatExists) {
+		setChats((prev) => {
+			const chatExists = prev.some((c) => c.chatPartner.id === user.id);
+			if (chatExists) {
+				return prev.map((c) =>
+					c.chatPartner.id === user.id
+						? { ...c, lastMessage: { ...c.lastMessage, isRead: true } }
+						: c
+				);
+			}
+
 			const newVirtualChat: UserWithLastMessage = {
 				chatPartner: user,
 				lastMessage: {
-					id: 0, senderId: 0, receiverId: user.id, messageText: "No messages yet",
-					isRead: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+					id: 0,
+					senderId: 0,
+					receiverId: user.id,
+					messageText: "No messages yet",
+					isRead: true,
+					isDeleted: false,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
 				},
 			};
-			setChats((prev) => [newVirtualChat, ...prev]);
-		}
+			return [newVirtualChat, ...prev];
+		});
+	};
+
+	const handleSelectChat = (partnerId: number) => {
+		setActivePartnerId(partnerId);
+
+		setChats((prev) =>
+			prev.map((chat) =>
+				chat.chatPartner.id === partnerId
+					? { ...chat, lastMessage: { ...chat.lastMessage, isRead: true } }
+					: chat
+			)
+		);
 	};
 
 	if (isPending && chats.length === 0) {
@@ -169,8 +264,13 @@ export const ChatList = () => {
 			) : (
 				<div className="flex flex-1 overflow-hidden">
 					<div className="w-full md:w-80 border-r border-gray-100 overflow-y-auto">
-						<Chats chats={chats} activePartnerId={activePartnerId} onSelectChat={setActivePartnerId} />
+						<Chats
+							chats={chats}
+							activePartnerId={activePartnerId}
+							onSelectChat={handleSelectChat}
+						/>
 					</div>
+
 					<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">
 						{activeChat && token && activePartnerId ? (
 							<MessageWindow

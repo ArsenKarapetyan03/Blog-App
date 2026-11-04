@@ -17,6 +17,7 @@ export class Message extends Model<
   declare receiverId: ForeignKey<number>;
   declare messageText: string;
   declare isRead: CreationOptional<boolean>;
+  declare isDeleted: CreationOptional<boolean>;
 
   static initialize(sequelize: Sequelize) {
     this.init(
@@ -39,6 +40,10 @@ export class Message extends Model<
           allowNull: false,
         },
         isRead: {
+          type: DataTypes.BOOLEAN,
+          defaultValue: false,
+        },
+        isDeleted: {
           type: DataTypes.BOOLEAN,
           defaultValue: false,
         },

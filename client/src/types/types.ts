@@ -40,10 +40,12 @@ export interface MessageType {
 	id: number,
 	messageText: string,
 	isRead: boolean,
+	isDeleted: boolean;
 	senderId: number,
 	receiverId: number,
 	createdAt: string,
 	updatedAt: string,
+	clientSideId?: string;
 }
 
 export interface UserWithLastMessage {
