@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { AppError } from "@/utils/appError.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 
 export const validateFriendship = (req: Request, res: Response, next: NextFunction) => {
 	const userId = Number(res.locals.user!.id);

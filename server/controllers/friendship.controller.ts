@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { AppError } from "@/utils/appError.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { friendshipService } from "@/services/friendship.service.js";
 
 export const add = async (req: Request, res: Response) => {

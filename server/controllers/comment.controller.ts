@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { AppError } from "@/utils/appError.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { commentService } from "@/services/comment.service.js";
 
 export const create = async (req: Request, res: Response) => {

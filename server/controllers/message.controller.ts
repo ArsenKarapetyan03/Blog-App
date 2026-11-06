@@ -1,6 +1,6 @@
 import { type Request, type Response } from "express";
 import { messageService } from "@/services/message.service.js";
-import { AppError } from "@/utils/appError.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 
 export const getMessages = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;

@@ -11,6 +11,8 @@ import {
 import type { Post } from "./post.js";
 import type { Comment } from "@/models/comment.js";
 import type { Message } from "@/models/message.js";
+import type { Chat } from "@/models/chat.js";
+import type { ChatMember } from "@/models/chatmember.js";
 
 export class User extends Model<
 	InferAttributes<User>,
@@ -24,7 +26,8 @@ export class User extends Model<
 	declare Posts?: NonAttribute<Post[]>;
 	declare Comments?: NonAttribute<Comment[]>;
 	declare SentMessages?: NonAttribute<Message[]>;
-	declare ReceivedMessages?: NonAttribute<Message[]>;
+	declare chats?: NonAttribute<Chat[]>;
+	declare memberships?: NonAttribute<ChatMember[]>;
 	declare LikedPosts?: NonAttribute<Post[]>;
 	declare FriendsAsRequester?: NonAttribute<User[]>;
 	declare FriendsAsReceiver?: NonAttribute<User[]>;
@@ -35,7 +38,8 @@ export class User extends Model<
 		Posts: Association<User, Post>;
 		Comments: Association<User, Comment>;
 		SentMessages: Association<User, Message>;
-		ReceivedMessages: Association<User, Message>;
+		chats: Association<User, Chat>;
+		memberships: Association<User, ChatMember>;
 		LikedPosts: Association<User, Post>;
 		FriendsAsRequester: Association<User, User>;
 		FriendsAsReceiver: Association<User, User>;
@@ -91,10 +95,17 @@ export class User extends Model<
 			as: "SentMessages",
 		});
 
-		this.hasMany(registry.Message as any, {
-			foreignKey: "receiverId",
-			as: "ReceivedMessages",
-		})
+		this.hasMany(registry.ChatMember as any, {
+			foreignKey: "userId",
+			as: "memberships",
+		});
+
+		this.belongsToMany(registry.Chat as any, {
+			through: registry.ChatMember as any,
+			foreignKey: "userId",
+			otherKey: "chatId",
+			as: "chats",
+		});
 
 		this.belongsToMany(registry.Post as any, {
 			through: "PostLikes",

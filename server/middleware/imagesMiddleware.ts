@@ -3,7 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import multer from "multer";
 import type { Request, Response, NextFunction } from "express";
-import { AppError } from "@/utils/appError.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 
 export const uploadsDirectory = path.resolve(import.meta.dirname, ".././uploads");
 mkdirSync(uploadsDirectory, { recursive: true });

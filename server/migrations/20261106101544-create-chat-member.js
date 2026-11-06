@@ -3,40 +3,36 @@
 /** @type {import('sequelize-cli').Migration} */
 export default {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("Messages", {
+    await queryInterface.createTable("ChatMembers", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      senderId: {
+      chatId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: { model: "Chats", key: "id" },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      },
+      userId: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: { model: "Users", key: "id" },
         onDelete: "CASCADE",
         onUpdate: "CASCADE",
       },
-      receiverId: {
-        type: Sequelize.INTEGER,
+      role: {
+        type: Sequelize.STRING,
         allowNull: false,
-        references: { model: "Users", key: "id" },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
+        defaultValue: "member",
       },
-      messageText: {
-        type: Sequelize.TEXT,
-        allowNull: false,
-      },
-      isRead: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
-      isDeleted: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
+      lastReadAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        defaultValue: null,
       },
       createdAt: {
         allowNull: false,
@@ -47,9 +43,14 @@ export default {
         type: Sequelize.DATE,
       },
     });
+
+    await queryInterface.addIndex("ChatMembers", ["chatId", "userId"], {
+      unique: true,
+      name: "chat_member_unique_idx"
+    });
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Messages");
+    await queryInterface.dropTable("ChatMembers");
   },
 };

@@ -59,8 +59,15 @@ export const signIn = async (prevState: any, formData: FormData): Promise<Action
 }
 
 export const logout = async () => {
-	Cookies.remove("token");
-	Cookies.remove("user");
+	// Cookies.remove("token");
+	// Cookies.remove("user");
+	const allCookies = Cookies.get();
+	Object.keys(allCookies).forEach(cookieName => {
+		Cookies.remove(cookieName, { path: '' });
+		Cookies.remove(cookieName, { path: '/' });
+	});
+
+	sessionStorage.clear();
 
 	window.location.href = "/sign-in";
 }

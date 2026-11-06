@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import Cookies from "js-cookie";
 import { MessageSquare, RotateCw, UserPlus, X } from "lucide-react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { BASE_URL } from "@/config/api";
 import { UserWithLastMessage, UserType } from "@/types/types";
+import { useWebSocket } from "@/context/webSocketContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MessageWindow } from "./MessageWindow";
 import { Chats } from "./Chats";
@@ -21,17 +22,15 @@ export const ChatList = () => {
 	const currentQuery = searchParams.get("query") || "";
 	const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
-	const [chats, setChats] = useState<UserWithLastMessage[]>([]);
+	const { chats, setChats, setActivePartnerId, activePartnerId } = useWebSocket();
 	const [allUsers, setAllUsers] = useState<UserType[]>([]);
 	const [totalPages, setTotalPages] = useState(1);
-	const [activePartnerId, setActivePartnerId] = useState<number | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [isPending, startTransition] = useTransition();
 	const [isUsersLoading, setIsUsersLoading] = useState(false);
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [refreshTicket, setRefreshTicket] = useState(0);
 
-	const fetchChats = () => {
+	const fetchChats = useCallback(() => {
 		if (!token) {
 			setError("Authentication token is missing");
 			return;
@@ -49,18 +48,23 @@ export const ChatList = () => {
 				}
 				const result = await response.json();
 				if (!result.success) {
+					setError("Failed to fetch messages.");
 					setChats([]);
 					return;
 				}
 				setChats(result.data || []);
-				setRefreshTicket((prev) => prev + 1);
+
+				const selectedUserId = sessionStorage.getItem("selectedUserId");
+				if (selectedUserId) {
+					setActivePartnerId(JSON.parse(selectedUserId));
+				}
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Something went wrong");
 			}
 		});
-	};
+	}, [token, setChats]);
 
-	const fetchAllUsers = async (query: string, page: number) => {
+	const fetchAllUsers = useCallback(async (query: string, page: number) => {
 		if (!token || !isModalOpen) {
 			return;
 		}
@@ -85,84 +89,15 @@ export const ChatList = () => {
 		} finally {
 			setIsUsersLoading(false);
 		}
-	};
+	}, [token, isModalOpen]);
 
 	useEffect(() => {
 		fetchChats();
-	}, []);
+	}, [fetchChats]);
 
 	useEffect(() => {
 		fetchAllUsers(currentQuery, currentPage);
-	}, [currentQuery, currentPage, isModalOpen]);
-
-	useEffect(() => {
-		if (!token || chats.length === 0) {
-			return;
-		}
-
-		const url = new URL(BASE_URL);
-		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-		url.pathname = "";
-		url.searchParams.set("token", `Bearer ${token}`);
-
-		const socket = new WebSocket(url.toString());
-
-		socket.onmessage = (event) => {
-			try {
-				const data = JSON.parse(event.data);
-
-				if (data.type === "MESSAGES_READ") {
-					setChats((prevChats) =>
-						prevChats.map((chat) => {
-							if (chat.chatPartner.id === data.payload.readerId) {
-								return {
-									...chat,
-									lastMessage: {
-										...chat.lastMessage,
-										isRead: true
-									}
-								};
-							}
-							return chat;
-						})
-					);
-				}
-
-				if (data.type === "NEW_MESSAGE") {
-					setChats((prevChats) => {
-						const msg = data.payload;
-						const isFromActivePartner = activePartnerId && (msg.senderId === activePartnerId || msg.receiverId === activePartnerId);
-						const targetPartnerId = isFromActivePartner ? activePartnerId : msg.senderId;
-
-						const updatedChats = prevChats.map((chat) => {
-							if (chat.chatPartner.id === targetPartnerId) {
-								return {
-									...chat,
-									lastMessage: {
-										...msg,
-										isRead: targetPartnerId === activePartnerId ? true : msg.isRead
-									}
-								};
-							}
-							return chat;
-						});
-
-						const targetIndex = updatedChats.findIndex(c => c.chatPartner.id === targetPartnerId);
-						if (targetIndex > 0) {
-							const [targetChat] = updatedChats.splice(targetIndex, 1);
-							return [targetChat, ...updatedChats];
-						}
-
-						return updatedChats;
-					});
-				}
-			} catch (e) {
-				console.error("Error updating chats via WS", e);
-			}
-		};
-
-		return () => socket.close();
-	}, [token, chats.length, activePartnerId]);
+	}, [currentQuery, currentPage, fetchAllUsers]);
 
 	const activeChat = chats.find((c) => c.chatPartner.id === activePartnerId);
 
@@ -177,13 +112,22 @@ export const ChatList = () => {
 	const handleSelectNewUser = (user: UserType) => {
 		handleCloseModal();
 		setActivePartnerId(user.id);
+		sessionStorage.setItem("selectedUserId", JSON.stringify(user.id));
 
 		setChats((prev) => {
 			const chatExists = prev.some((c) => c.chatPartner.id === user.id);
 			if (chatExists) {
 				return prev.map((c) =>
 					c.chatPartner.id === user.id
-						? { ...c, lastMessage: { ...c.lastMessage, isRead: true } }
+						? {
+							...c,
+							lastMessage: {
+								...c.lastMessage,
+								isRead: c.lastMessage.senderId === user.id
+									? true
+									: c.lastMessage.isRead
+							}
+						}
 						: c
 				);
 			}
@@ -207,11 +151,20 @@ export const ChatList = () => {
 
 	const handleSelectChat = (partnerId: number) => {
 		setActivePartnerId(partnerId);
+		sessionStorage.setItem("selectedUserId", JSON.stringify(partnerId));
 
 		setChats((prev) =>
 			prev.map((chat) =>
 				chat.chatPartner.id === partnerId
-					? { ...chat, lastMessage: { ...chat.lastMessage, isRead: true } }
+					? {
+						...chat,
+						lastMessage: {
+							...chat.lastMessage,
+							isRead: chat.lastMessage.senderId === partnerId
+								? true
+								: chat.lastMessage.isRead
+						}
+					}
 					: chat
 			)
 		);
@@ -254,6 +207,12 @@ export const ChatList = () => {
 				</div>
 			</div>
 
+			{error && (
+				<p role="alert" className="border-b border-red-100 bg-red-50 px-6 py-2 text-sm text-red-700">
+					{error}
+				</p>
+			)}
+
 			{chats.length === 0 ? (
 				<div className="flex flex-1 flex-col items-center justify-center p-8 bg-gray-50/50 gap-4">
 					<EmptyState message="No conversations yet" />
@@ -276,7 +235,6 @@ export const ChatList = () => {
 							<MessageWindow
 								partner={activeChat.chatPartner}
 								token={token}
-								refreshTicket={refreshTicket}
 							/>
 						) : (
 							<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
@@ -326,8 +284,8 @@ export const ChatList = () => {
 						</div>
 
 						{totalPages > 1
-							&& 	<div className="mt-4 border-t border-gray-100 pt-4">
-                    <Pagination
+							&& <div className="mt-4 border-t border-gray-100 pt-4">
+										<Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
                     />

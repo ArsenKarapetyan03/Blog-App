@@ -1,4 +1,4 @@
-import { AppError } from "@/utils/appError.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 
 interface RawPost {
 	title: string,

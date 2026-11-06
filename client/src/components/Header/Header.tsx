@@ -8,11 +8,11 @@ export const Header = async () => {
 	const isAuthenticated = !!token;
 
 	return(
-		<header className="max-w-2/3 mx-auto flex justify-between p-5">
+		<header className="lg:max-w-2/3 mx-auto flex justify-between p-5">
 			<div className="flex items-center gap-5">
 				<HeaderLink text="Home" href="/" />
 				<HeaderLink text="Authors" href="/users" />
-				<HeaderLink text="Messages" href="/messages" />
+				{isAuthenticated && <HeaderLink text="Messages" href="/messages" />}
 			</div>
 
 			{!isAuthenticated

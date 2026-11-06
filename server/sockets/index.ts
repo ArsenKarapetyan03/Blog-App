@@ -1,7 +1,7 @@
 import * as http from "node:http";
 import { WebSocketServer } from "ws";
 import { verifyToken } from "@/utils/jwt.js";
-import type { AuthenticatedWebSocket } from "@/types/socket.types.js";
+import { type AuthenticatedWebSocket } from "@/types/socket.types.js";
 import { activeUsers } from "./active-users.js";
 import { handleSocketMessage } from "./message.handler.js";
 

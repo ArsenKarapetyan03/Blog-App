@@ -57,7 +57,7 @@ export const messageService = {
 	createMessage: async (senderId: number, receiverId: number, messageText: string) => {
 		const newMessage =  await db.Message.create({
 			senderId,
-			receiverId,
+			chatId,
 			messageText,
 			isRead: false
 		});
@@ -101,7 +101,7 @@ export const messageService = {
 
 	deleteMessage: async (senderId: number, messageId: number) => {
 		const [affectedCount, updatedRows] = await db.Message.update(
-			{messageText: "Deleted message"},
+			{messageText: "Deleted message", isDeleted: true},
 			{
 				where: {
 					id: messageId,

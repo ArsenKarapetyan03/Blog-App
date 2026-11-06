@@ -1,6 +1,13 @@
 import type { ReactNode } from "react"
+import { cookies } from "next/headers";
+import { HeaderLink } from "@/components/Header/HeaderLink";
+import { WebSocketProvider } from "@/context/webSocketContext";
 
-export default function MessagesLayout({children}: { children: ReactNode }) {
+export default async function MessagesLayout({children}: { children: ReactNode }) {
+	const cookieStore = await cookies();
+	const token = cookieStore.get("token")?.value;
+	const isAuthenticated = !!token;
+
 	return (
 		<div className="w-full px-4 py-12">
 			<div className="border-b border-slate-200 py-6">
@@ -13,7 +20,15 @@ export default function MessagesLayout({children}: { children: ReactNode }) {
 			</div>
 
 			<div className="mt-8">
-				{children}
+				{isAuthenticated
+					? <WebSocketProvider token={token}>
+								{children}
+						</WebSocketProvider>
+					: <div className="flex flex-col items-center gap-5">
+							<div className="text-3xl font-semibold">Sign in to continue.</div>
+							<HeaderLink text="Sign in" href="/sign-in" />
+						</div>
+				}
 			</div>
 		</div>
 	)

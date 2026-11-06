@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MessageType } from "@/types/types";
 import { Pen, Trash } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Modal } from "antd";
 
 interface MessageItemProps {
 	msg: MessageType;
@@ -10,8 +11,32 @@ interface MessageItemProps {
 	onStartEdit: (msg: MessageType) => void;
 }
 
+function areDatesEqual(dateStr1: string, dateStr2: string): boolean {
+	const d1 = new Date(dateStr1.replace(" ", "T"));
+	const d2 = new Date(dateStr2.replace(" ", "T"));
+
+	d1.setMilliseconds(0);
+	d2.setMilliseconds(0);
+
+	return d1.getTime() === d2.getTime();
+}
+
 export const MessageItem = ({msg, isPartner, onDelete, onStartEdit}: MessageItemProps) => {
 	const [isVisible, setIsVisible] = useState(false);
+
+	const showDeleteConfirm = () => {
+		Modal.confirm({
+			title: "Are you sure delete this message?",
+			content: "This action cannot be undone.",
+			okText: "Delete",
+			okType: "danger",
+			centered: true,
+			icon: <Trash size={20} className="text-red-500"/>,
+			async onOk() {
+				onDelete(msg.id);
+			},
+		});
+	};
 
 	useEffect(() => {
 		const frame = requestAnimationFrame(() => {
@@ -43,7 +68,7 @@ export const MessageItem = ({msg, isPartner, onDelete, onStartEdit}: MessageItem
 
                 <button
                     type="button"
-                    onClick={() => onDelete(msg.id)}
+                    onClick={showDeleteConfirm}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50"
                     title="Delete"
                 >
@@ -65,7 +90,7 @@ export const MessageItem = ({msg, isPartner, onDelete, onStartEdit}: MessageItem
 			>
 				<p className="leading-relaxed wrap-break-word">{msg.messageText}</p>
 				<span	className={cn("block text-[10px] mt-1 text-right", isPartner ? "text-gray-400" : "text-blue-200")}>
-					{msg.createdAt === msg.updatedAt || msg.isDeleted
+					{areDatesEqual(msg.createdAt, msg.updatedAt) || msg.isDeleted
 						? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 					: <div className="space-x-1">
 							<span>{new Date(msg.updatedAt).toLocaleTimeString([], { hour: "2-digit",	minute: "2-digit" })}</span>

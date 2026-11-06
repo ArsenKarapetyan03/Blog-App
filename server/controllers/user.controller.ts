@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { userService } from "@/services/user.service.js";
-import { AppError } from "@/utils/appError.js"
+import { AppError } from "@/utils/ErrorHandlers/app.error.js"
 import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
 
 const formatUser = (user: any) => ({

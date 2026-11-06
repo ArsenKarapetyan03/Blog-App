@@ -8,6 +8,8 @@ import { PostLikes } from "./postlikes.js";
 import { Image } from "./image.js";
 import { Friendship } from "./friendship.js";
 import { Message } from "./message.js";
+import { Chat } from "./chat.js";
+import { ChatMember } from "./chatmember.js";
 
 const env = (process.env.NODE_ENV || "development") as keyof typeof configJson;
 const config = configJson[env] as typeof configJson[typeof env] & {
@@ -18,7 +20,17 @@ const config = configJson[env] as typeof configJson[typeof env] & {
 
 export const sequelize = new Sequelize(config.database, config.username, config.password, config as any);
 
-const models = [User, Post, Comment, PostLikes, Image, Friendship, Message];
+const models = [
+	User,
+	Post,
+	Comment,
+	PostLikes,
+	Image,
+	Friendship,
+	Message,
+	Chat,
+	ChatMember
+];
 
 models.forEach((model) => model.initialize(sequelize));
 
@@ -33,6 +45,8 @@ const db = {
 	Image,
 	Friendship,
 	Message,
+	Chat,
+	ChatMember,
 };
 
 export default db;

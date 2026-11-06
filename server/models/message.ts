@@ -5,8 +5,9 @@ import {
   type InferCreationAttributes,
   type CreationOptional,
   type Sequelize,
-  type ForeignKey,
+  type ForeignKey, type NonAttribute,
 } from "sequelize";
+import type { User } from "@/models/user.js";
 
 export class Message extends Model<
 	InferAttributes<Message>,
@@ -14,10 +15,14 @@ export class Message extends Model<
 > {
   declare id: CreationOptional<number>;
   declare senderId: ForeignKey<number>;
-  declare receiverId: ForeignKey<number>;
+  declare chatId: ForeignKey<number>;
   declare messageText: string;
   declare isRead: CreationOptional<boolean>;
   declare isDeleted: CreationOptional<boolean>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare sender: NonAttribute<User>;
 
   static initialize(sequelize: Sequelize) {
     this.init(
@@ -31,7 +36,7 @@ export class Message extends Model<
           type: DataTypes.INTEGER,
           allowNull: false,
         },
-        receiverId: {
+        chatId: {
           type: DataTypes.INTEGER,
           allowNull: false,
         },
@@ -46,6 +51,14 @@ export class Message extends Model<
         isDeleted: {
           type: DataTypes.BOOLEAN,
           defaultValue: false,
+        },
+        createdAt: {
+          type: DataTypes.DATE,
+          allowNull: false,
+        },
+        updatedAt: {
+          type: DataTypes.DATE,
+          allowNull: false,
         },
       },
       {
@@ -63,9 +76,9 @@ export class Message extends Model<
       as: "sender",
     });
 
-    this.belongsTo(registry.User as any, {
-      foreignKey: "receiverId",
-      as: "receiver",
-    })
+    this.belongsTo(registry.Chat as any, {
+      foreignKey: "chatId",
+      as: "chat",
+    });
   }
 }

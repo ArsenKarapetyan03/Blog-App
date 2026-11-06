@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { getValidatedPost } from "@/utils/dataValidation.js";
 import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
 import { deletePhysicalFiles } from "@/utils/deleteFiles.js"
-import { AppError } from "@/utils/appError.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { postService } from "@/services/post.service.js";
 
 const readPosts = async (req: Request, res: Response, userId?: number) => {

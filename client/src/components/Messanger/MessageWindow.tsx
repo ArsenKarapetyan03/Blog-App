@@ -5,7 +5,7 @@ import { X, Pen } from "lucide-react";
 import { getMessages, markMessagesAsRead } from "@/actions/message";
 import { MessageType, UserType } from "@/types/types";
 import { MessageItem } from "./MessageItem";
-import { BASE_URL } from "@/config/api";
+import { useWebSocket } from "@/context/webSocketContext";
 
 interface MessageWindowProps {
 	partner: UserType;
@@ -19,10 +19,10 @@ export const MessageWindow = (
 	{
 		partner,
 		token,
-		refreshTicket = 0
 	}: MessageWindowProps
 ) => {
-	const [messages, setMessages] = useState<MessageType[]>([]);
+	const { messages, setMessages, isTyping, setIsTyping, sendSocketMessage } = useWebSocket();
+
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFetchingMore, setIsFetchingMore] = useState(false);
 	const [hasMore, setHasMore] = useState(true);
@@ -32,137 +32,36 @@ export const MessageWindow = (
 	const inputRef = useRef<HTMLInputElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
-	const wsRef = useRef<WebSocket | null>(null);
 	const messagesLengthRef = useRef(0);
+	const partnerIdRef = useRef(partner.id);
+	const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const isCurrentlyTypingRef = useRef<boolean>(false);
 
-	const partnerRef = useRef(partner);
 	useEffect(() => {
-		partnerRef.current = partner;
-	}, [partner]);
+		partnerIdRef.current = partner.id;
+	}, [partner.id]);
 
 	useEffect(() => {
 		messagesLengthRef.current = messages.length;
 	}, [messages.length]);
 
 	useEffect(() => {
-		if (!token) {
-			return;
-		}
+		requestAnimationFrame(() => {
+			const container = containerRef.current;
+			if (container) {
+				const threshold = 150;
+				const isNearBottom =
+					container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
 
-		const url = new URL(BASE_URL);
-		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-		url.pathname = "";
-		url.searchParams.set("token", `Bearer ${token}`);
-
-		const socket = new WebSocket(url.toString());
-		wsRef.current = socket;
-
-		socket.onopen = () => console.log("WebSocket connected");
-
-		socket.onmessage = (event) => {
-			try {
-				const data = JSON.parse(event.data);
-				const currentPartner = partnerRef.current;
-
-				switch (data.type) {
-					case "NEW_MESSAGE": {
-						const isCurrentChat =
-							data.payload.senderId === currentPartner.id ||
-							data.payload.receiverId === currentPartner.id;
-
-						if (!isCurrentChat) {
-							return;
-						}
-
-						if (data.payload.senderId === currentPartner.id) {
-							data.payload.isRead = true;
-
-							if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-								wsRef.current.send(JSON.stringify({
-									type: "MARK_AS_READ",
-									payload: { receiverId: currentPartner.id }
-								}));
-							}
-						}
-
-						setMessages((prev) => {
-							if (prev.some(msg => msg.id === data.payload.id)) {
-								return prev;
-							}
-
-							if (data.payload.clientSideId) {
-								const tempIndex = prev.findIndex(
-									msg => msg.clientSideId === data.payload.clientSideId
-								);
-
-								if (tempIndex !== -1) {
-									const updated = [...prev];
-									updated[tempIndex] = data.payload;
-									return updated;
-								}
-							}
-
-							return [...prev, data.payload];
-						});
-
-						requestAnimationFrame(() => {
-							const container = containerRef.current;
-							if (container) {
-								const threshold = 150;
-								const isNearBottom =
-									container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
-
-								if (isNearBottom) {
-									container.scrollTo({
-										top: container.scrollHeight,
-										behavior: "smooth"
-									});
-								}
-							}
-						});
-						break;
-					}
-
-					case "MESSAGES_READ":
-						if (data.payload.readerId === partnerRef.current.id) {
-							setMessages((prev) =>
-								prev.map((msg) =>
-									msg.receiverId === data.payload.readerId ? { ...msg, isRead: true } : msg
-								)
-							);
-						}
-						break;
-
-					case "MESSAGE_UPDATED":
-						setMessages((prev) =>
-							prev.map(msg => msg.id === data.payload.id ? data.payload : msg)
-						);
-						break;
-
-					case "MESSAGE_DELETED":
-						setMessages((prev) =>
-							prev.map(msg =>
-								msg.id === data.payload.messageId
-									? {
-										...msg,
-										messageText: "Deleted message",
-										isDeleted: true,
-									}
-									: msg
-							)
-						);
-						break;
+				if (isNearBottom) {
+					container.scrollTo({
+						top: container.scrollHeight,
+						behavior: "smooth"
+					});
 				}
-			} catch (e) {
-				console.error("Error parsing WS message", e);
 			}
-		};
-
-		return () => {
-			socket.close();
-			wsRef.current = null;
-		};
-	}, [token, partner.id]);
+		});
+	}, [messages.length]);
 
 	useEffect(() => {
 		if (containerRef.current) {
@@ -188,20 +87,22 @@ export const MessageWindow = (
 					return;
 				}
 
-				if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-					wsRef.current.send(JSON.stringify({
-						type: "MARK_AS_READ",
-						payload: { receiverId: partner.id }
-					}));
-				}
+				sendSocketMessage("MARK_AS_READ", { receiverId: partner.id });
 
-				const chronologicalMessages = [...data];
-
-				setMessages(
-					chronologicalMessages.map((msg) =>
-						msg.senderId === partner.id ? { ...msg, isRead: true } : msg
-					)
+				const loadedMessages = data.map((msg) =>
+					msg.senderId === partner.id ? { ...msg, isRead: true } : msg
 				);
+				setMessages((currentMessages) => {
+					const merged = new Map<number, MessageType>();
+					[...loadedMessages, ...currentMessages].forEach((message) => {
+						if (message.senderId === partner.id || message.receiverId === partner.id) {
+							merged.set(message.id, message);
+						}
+					});
+					return [...merged.values()].sort((a, b) =>
+						a.createdAt.localeCompare(b.createdAt)
+					);
+				});
 
 				setHasMore(data.length === PAGE_SIZE);
 
@@ -211,9 +112,13 @@ export const MessageWindow = (
 					}
 				});
 			} catch (error) {
-				if (!cancelled) console.error(error);
+				if (!cancelled) {
+					console.error(error);
+				}
 			} finally {
-				if (!cancelled) setIsLoading(false);
+				if (!cancelled) {
+					setIsLoading(false);
+				}
 			}
 		};
 
@@ -222,7 +127,7 @@ export const MessageWindow = (
 		return () => {
 			cancelled = true;
 		};
-	}, [partner.id, token, refreshTicket]);
+	}, [partner.id, token, sendSocketMessage, setMessages]);
 
 	const loadMore = useCallback(async () => {
 		if (isFetchingMore || !hasMore || isLoading) {
@@ -241,6 +146,9 @@ export const MessageWindow = (
 		try {
 			const currentLength = messagesLengthRef.current;
 			const olderMessages = await getMessages(partner.id, token, currentLength);
+			if (partnerIdRef.current !== partner.id) {
+				return;
+			}
 
 			if (!olderMessages.length) {
 				setHasMore(false);
@@ -266,13 +174,15 @@ export const MessageWindow = (
 		} finally {
 			setIsFetchingMore(false);
 		}
-	}, [partner.id, token, isFetchingMore, hasMore, isLoading]);
+	}, [partner.id, token, isFetchingMore, hasMore, isLoading, setMessages]);
 
 	useEffect(() => {
 		const container = containerRef.current;
 		const sentinel = sentinelRef.current;
 
-		if (!container || !sentinel || !hasMore) return;
+		if (!container || !sentinel || !hasMore) {
+			return;
+		}
 
 		const observer = new IntersectionObserver(
 			([entry]) => {
@@ -290,24 +200,53 @@ export const MessageWindow = (
 		return () => observer.disconnect();
 	}, [loadMore, hasMore]);
 
+	const isTypingHandler = () => {
+		if (!isCurrentlyTypingRef.current) {
+			isCurrentlyTypingRef.current = true;
+			sendSocketMessage("TYPING_START", { receiverId: partner.id });
+		}
+
+		if (typingTimeoutRef.current) {
+			clearTimeout(typingTimeoutRef.current);
+		}
+
+		typingTimeoutRef.current = setTimeout(() => {
+			sendSocketMessage("TYPING_END", { receiverId: partner.id });
+			isCurrentlyTypingRef.current = false;
+		}, 2000);
+	}
+
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>{
+		setInputValue(e.target.value)
+		isTypingHandler();
+	}
+
 	const handleStartEdit = (msg: MessageType) => {
+		isTypingHandler();
+
 		setEditingMessage(msg);
 		setInputValue(msg.messageText);
 		setTimeout(() => inputRef.current?.focus(), 0);
 	};
 
 	const handleCancelEdit = () => {
+		if (typingTimeoutRef.current) {
+			clearTimeout(typingTimeoutRef.current);
+		}
+		sendSocketMessage("TYPING_END", { receiverId: partner.id });
+		isCurrentlyTypingRef.current = false;
+
 		setEditingMessage(null);
 		setInputValue("");
 	};
 
 	const handleDelete = async (messageId: number) => {
-		if (editingMessage?.id === messageId) {
-			handleCancelEdit();
+		if (!sendSocketMessage("DELETE_MESSAGE", {messageId, receiverId: partner.id})) {
+			return;
 		}
 
-		if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-			return;
+		if (editingMessage?.id === messageId) {
+			handleCancelEdit();
 		}
 
 		setMessages((prev) =>
@@ -318,15 +257,6 @@ export const MessageWindow = (
 			)
 		);
 
-		wsRef.current.send(
-			JSON.stringify({
-				type: "DELETE_MESSAGE",
-				payload: {
-					messageId,
-					receiverId: partner.id
-				}
-			})
-		);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -338,7 +268,7 @@ export const MessageWindow = (
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		if (!inputValue.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+		if (!inputValue.trim()) {
 			return;
 		}
 
@@ -352,23 +282,20 @@ export const MessageWindow = (
 				return;
 			}
 
+			if (!sendSocketMessage("UPDATE_MESSAGE", {
+				messageId,
+				messageText,
+				receiverId: partner.id
+			})) {
+				return;
+			}
+
 			setMessages((prev) =>
 				prev.map((msg) =>
 					msg.id === messageId ? { ...msg, messageText } : msg
 				)
 			);
 			handleCancelEdit();
-
-			wsRef.current.send(
-				JSON.stringify({
-					type: "UPDATE_MESSAGE",
-					payload: {
-						messageId,
-						messageText,
-						receiverId: partner.id
-					}
-				})
-			);
 		} else {
 			const clientSideId = crypto.randomUUID();
 
@@ -384,6 +311,20 @@ export const MessageWindow = (
 				updatedAt: new Date().toISOString(),
 			};
 
+			if (!sendSocketMessage("CREATE_MESSAGE", {
+				receiverId: partner.id,
+				messageText,
+				clientSideId
+			})) {
+				return;
+			}
+
+			if (typingTimeoutRef.current) {
+				clearTimeout(typingTimeoutRef.current);
+			}
+			sendSocketMessage("TYPING_END", { receiverId: partner.id });
+			isCurrentlyTypingRef.current = false;
+
 			setInputValue("");
 			setMessages((prev) => [...prev, tempMessage]);
 
@@ -396,12 +337,6 @@ export const MessageWindow = (
 				}
 			});
 
-			wsRef.current.send(
-				JSON.stringify({
-					type: "CREATE_MESSAGE",
-					payload: { receiverId: partner.id, messageText, clientSideId }
-				})
-			);
 		}
 	};
 	return (
@@ -446,6 +381,8 @@ export const MessageWindow = (
 				)}
 			</div>
 
+			{isTyping && <span className="px-4 py-2 text-zinc-500 text-sm bg-slate-50/50 animate-pulse">{partner.name} is typing...</span>}
+
 			{editingMessage && (
 				<div className="px-6 py-2 bg-blue-50 border-t border-blue-100 flex justify-between items-center text-sm text-blue-700">
 					<div className="flex items-center gap-2 truncate">
@@ -472,7 +409,7 @@ export const MessageWindow = (
 						name="message"
 						type="text"
 						value={inputValue}
-						onChange={(e) => setInputValue(e.target.value)}
+						onChange={handleInputChange}
 						onKeyDown={handleKeyDown}
 						placeholder={editingMessage ? "Edit your message..." : "Type a message..."}
 						className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"

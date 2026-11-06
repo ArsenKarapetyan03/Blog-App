@@ -19,14 +19,14 @@ export const Chats = ({ chats, activePartnerId, onSelectChat }: ChatsProps) => (
 				const showUnreadIndicator = !lastMessage.isRead && isIncoming
 
 				return (
-				<button
-					key={chatPartner.id}
-					onClick={() => onSelectChat(chatPartner.id)}
-					className={cn(
-						"flex flex-col p-4 hover:bg-gray-50 transition-colors w-full min-w-0",
-						isActive && "bg-blue-50/70"
-					)}
-				>
+					<button
+						key={chatPartner.id}
+						onClick={() => onSelectChat(chatPartner.id)}
+						className={cn(
+							"flex flex-col p-4 hover:bg-gray-50 transition-colors w-full min-w-0",
+							isActive && "bg-blue-50/70"
+						)}
+					>
 					<InfoRow name={chatPartner.name} createdAt={lastMessage.createdAt} />
 
 					<div className="flex items-center justify-between gap-2 w-full min-w-0">
@@ -37,9 +37,9 @@ export const Chats = ({ chats, activePartnerId, onSelectChat }: ChatsProps) => (
 
 						{showUnreadIndicator && <span className="w-3 h-3 bg-blue-600 rounded-full shrink-0 animate-pulse" />}
 					</div>
-				</button>
-			)}
-			)
+					</button>
+				)
+			})
 		)}
 	</div>
 );
