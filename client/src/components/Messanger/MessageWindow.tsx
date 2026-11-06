@@ -8,7 +8,7 @@ import { MessageItem } from "./MessageItem";
 import { useWebSocket } from "@/context/webSocketContext";
 
 interface MessageWindowProps {
-	partner: UserType;
+	partners: UserType[];
 	token: string;
 	refreshTicket?: number;
 }
@@ -17,7 +17,7 @@ const PAGE_SIZE = 10;
 
 export const MessageWindow = (
 	{
-		partner,
+		partners,
 		token,
 	}: MessageWindowProps
 ) => {

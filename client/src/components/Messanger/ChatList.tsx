@@ -22,9 +22,9 @@ export const ChatList = () => {
 	const currentQuery = searchParams.get("query") || "";
 	const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
-	const { chats, setChats, setActivePartnerId, activePartnerId } = useWebSocket();
+	const { chats, setChats, activeChatId, setActiveChatId } = useWebSocket();
 	const [allUsers, setAllUsers] = useState<UserType[]>([]);
-	const [totalPages, setTotalPages] = useState(1);
+	const [totalUsersPages, setTotalUsersPages] = useState(1);
 	const [error, setError] = useState<string | null>(null);
 	const [isPending, startTransition] = useTransition();
 	const [isUsersLoading, setIsUsersLoading] = useState(false);
@@ -39,7 +39,7 @@ export const ChatList = () => {
 		startTransition(async () => {
 			try {
 				setError(null);
-				const response = await fetch(`${BASE_URL}/message/chats`, {
+				const response = await fetch(`${BASE_URL}/chat`, {
 					headers: { Authorization: `Bearer ${token}` },
 				});
 				if (!response.ok) {
@@ -82,7 +82,7 @@ export const ChatList = () => {
 				const result = await response.json();
 
 				setAllUsers(result.data.users || result || []);
-				setTotalPages(result.data.totalPages || 1);
+				setTotalUsersPages(result.data.totalPages || 1);
 			}
 		} catch (err) {
 			console.error("Failed to fetch users:", err);
@@ -99,7 +99,7 @@ export const ChatList = () => {
 		fetchAllUsers(currentQuery, currentPage);
 	}, [currentQuery, currentPage, fetchAllUsers]);
 
-	const activeChat = chats.find((c) => c.chatPartner.id === activePartnerId);
+	const activeChat = chats.find((c) => c.id === activeChatId);
 
 	const handleCloseModal = () => {
 		setIsModalOpen(false);
@@ -225,26 +225,26 @@ export const ChatList = () => {
 					<div className="w-full md:w-80 border-r border-gray-100 overflow-y-auto">
 						<Chats
 							chats={chats}
-							activePartnerId={activePartnerId}
+							activeChatId={activeChatId}
 							onSelectChat={handleSelectChat}
 						/>
 					</div>
 
-					<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">
-						{activeChat && token && activePartnerId ? (
-							<MessageWindow
-								partner={activeChat.chatPartner}
-								token={token}
-							/>
-						) : (
-							<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-								<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-500">
-									<MessageSquare size={32} />
-								</div>
-								<h3 className="font-semibold text-gray-900">No chat selected</h3>
-							</div>
-						)}
-					</div>
+					{/*<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">*/}
+					{/*	{activeChat && token && activePartnerId ? (*/}
+					{/*		<MessageWindow*/}
+					{/*			partner={activeChat.chatPartner}*/}
+					{/*			token={token}*/}
+					{/*		/>*/}
+					{/*	) : (*/}
+					{/*		<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">*/}
+					{/*			<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-500">*/}
+					{/*				<MessageSquare size={32} />*/}
+					{/*			</div>*/}
+					{/*			<h3 className="font-semibold text-gray-900">No chat selected</h3>*/}
+					{/*		</div>*/}
+					{/*	)}*/}
+					{/*</div>*/}
 				</div>
 			)}
 
@@ -283,11 +283,11 @@ export const ChatList = () => {
 							)}
 						</div>
 
-						{totalPages > 1
+						{totalUsersPages > 1
 							&& <div className="mt-4 border-t border-gray-100 pt-4">
 										<Pagination
                         currentPage={currentPage}
-                        totalPages={totalPages}
+                        totalPages={totalUsersPages}
                     />
                 </div>
 						}

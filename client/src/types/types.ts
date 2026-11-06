@@ -49,6 +49,10 @@ export interface MessageType {
 }
 
 export interface UserWithLastMessage {
-	chatPartner: UserType,
+	id: number;
+	title: string;
+	isGroup: boolean;
+	users: UserType[],
 	lastMessage: MessageType,
+	unreadCount: number;
 }

@@ -4,19 +4,19 @@ import { cn } from "@/lib/cn";
 
 interface ChatsProps {
 	chats: UserWithLastMessage[];
-	activePartnerId: number | null;
+	activeChatId: number | null;
 	onSelectChat: (id: number) => void;
 }
 
-export const Chats = ({ chats, activePartnerId, onSelectChat }: ChatsProps) => (
+export const Chats = ({ chats, activeChatId, onSelectChat }: ChatsProps) => (
 	<div className="divide-y divide-gray-100 max-h-140 overflow-y-auto">
 		{chats.length === 0 ? (
 			<div className="p-8 text-center text-gray-500">No active chat</div>
 		) : (
-			chats.map(({ chatPartner, lastMessage }) => {
-				const isActive = chatPartner.id === activePartnerId;
-				const isIncoming = lastMessage.senderId === chatPartner.id;
-				const showUnreadIndicator = !lastMessage.isRead && isIncoming
+			chats.map((chat) => {
+				const isActive = chat.id === activeChatId;
+				// const isIncoming = chat.lastMessage.senderId === .id;
+				// const showUnreadIndicator = !chat.lastMessage.isRead && isIncoming
 
 				return (
 					<button
@@ -35,7 +35,7 @@ export const Chats = ({ chats, activePartnerId, onSelectChat }: ChatsProps) => (
 							{lastMessage.messageText}
 						</p>
 
-						{showUnreadIndicator && <span className="w-3 h-3 bg-blue-600 rounded-full shrink-0 animate-pulse" />}
+						{/*{showUnreadIndicator && <span className="w-3 h-3 bg-blue-600 rounded-full shrink-0 animate-pulse" />}*/}
 					</div>
 					</button>
 				)

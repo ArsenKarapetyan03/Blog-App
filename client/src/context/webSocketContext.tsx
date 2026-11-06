@@ -21,25 +21,25 @@ export interface WebSocketContextType {
 	setChats: Dispatch<SetStateAction<UserWithLastMessage[]>>;
 	isTyping: boolean;
 	setIsTyping: Dispatch<SetStateAction<boolean>>;
-	activePartnerId: number | null;
-	setActivePartnerId: Dispatch<SetStateAction<number | null>>;
+	activeChatId: number | null;
+	setActiveChatId: Dispatch<SetStateAction<number | null>>;
 	sendSocketMessage: (type: string, payload: Record<string, unknown>) => boolean;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export const WebSocketProvider = ({token, children}: { token: string, children: ReactNode }) => {
-	const [activePartnerId, setActivePartnerId] = useState<number | null>(null);
+	const [activeChatId, setActiveChatId] = useState<number | null>(null);
 	const [chats, setChats] = useState<UserWithLastMessage[]>([]);
 	const [messages, setMessages] = useState<MessageType[]>([]);
 	const [isTyping, setIsTyping] = useState<boolean>(false);
 
 	const socketRef = useRef<WebSocket | null>(null);
-	const activePartnerIdRef = useRef(activePartnerId);
+	const activeChatIdRef = useRef(activeChatId);
 
 	useEffect(() => {
-		activePartnerIdRef.current = activePartnerId;
-	}, [activePartnerId]);
+		activeChatIdRef.current = activeChatId;
+	}, [activeChatId]);
 
 	const sendSocketMessage = useCallback((type: string, payload: Record<string, unknown>) => {
 		const socket = socketRef.current;
@@ -68,7 +68,7 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 		socket.onmessage = (event) => {
 			try {
 				const data = JSON.parse(event.data);
-				const currentActivePartnerId = activePartnerIdRef.current;
+				const currentActiveChatId = activeChatIdRef.current;
 
 				if (data.type === "MESSAGES_READ") {
 					const {readerId, partnerId} = data.payload;
@@ -81,11 +81,11 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 						)
 					);
 
-					if (currentActivePartnerId === readerId || currentActivePartnerId === partnerId) {
+					if (currentActiveChatId === readerId || currentActiveChatId === partnerId) {
 						setMessages((prev) =>
 							prev.map((message) =>
-								((currentActivePartnerId === readerId && message.receiverId === readerId) ||
-									(currentActivePartnerId === partnerId && message.senderId === currentActivePartnerId))
+								((currentActiveChatId === readerId && message.receiverId === readerId) ||
+									(currentActiveChatId === partnerId && message.senderId === currentActiveChatId))
 									? {...message, isRead: true}
 									: message
 							)
@@ -102,9 +102,9 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 								chatPartner.id === message.senderId || chatPartner.id === message.receiverId
 							)?.chatPartner.id;
 
-							const targetPartnerId = currentActivePartnerId &&
-							(message.senderId === currentActivePartnerId || message.receiverId === currentActivePartnerId)
-								? currentActivePartnerId
+							const targetPartnerId = currentActiveChatId &&
+							(message.senderId === currentActiveChatId || message.receiverId === currentActiveChatId)
+								? currentActiveChatId
 								: existingPartner ?? message.senderId;
 							const isIncoming = message.senderId === targetPartnerId;
 
@@ -114,7 +114,7 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 										...chat,
 										lastMessage: {
 											...message,
-											isRead: isIncoming && targetPartnerId === currentActivePartnerId
+											isRead: isIncoming && targetPartnerId === currentActiveChatId
 												? true
 												: message.isRead
 										}
@@ -133,19 +133,19 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 						});
 
 						const isCurrentChat =
-							currentActivePartnerId !== null &&
-							(message.senderId === currentActivePartnerId ||
-								message.receiverId === currentActivePartnerId);
+							currentActiveChatId !== null &&
+							(message.senderId === currentActiveChatId ||
+								message.receiverId === currentActiveChatId);
 
 						if (!isCurrentChat) {
 							break;
 						}
 
-						const isIncoming = message.senderId === currentActivePartnerId;
+						const isIncoming = message.senderId === currentActiveChatId;
 						const currentMessage = isIncoming ? {...message, isRead: true} : message;
 
 						if (isIncoming) {
-							sendSocketMessageRef.current("MARK_AS_READ", {receiverId: currentActivePartnerId});
+							sendSocketMessageRef.current("MARK_AS_READ", {receiverId: currentActiveChatId});
 						}
 
 						setMessages((prev) => {
@@ -209,7 +209,7 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 							return
 						}
 
-						if (senderId === currentActivePartnerId) {
+						if (senderId === currentActiveChatId) {
 							setIsTyping(isTyping);
 						}
 					}
@@ -234,8 +234,8 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 				setMessages,
 				chats,
 				setChats,
-				activePartnerId,
-				setActivePartnerId,
+				activeChatId,
+				setActiveChatId,
 				isTyping,
 				setIsTyping,
 				sendSocketMessage,
