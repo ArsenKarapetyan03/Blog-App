@@ -10,7 +10,6 @@ import { useWebSocket } from "@/context/webSocketContext";
 interface MessageWindowProps {
 	partners: UserType[];
 	token: string;
-	refreshTicket?: number;
 }
 
 const PAGE_SIZE = 10;

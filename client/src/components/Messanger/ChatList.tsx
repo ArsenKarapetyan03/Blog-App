@@ -54,9 +54,9 @@ export const ChatList = () => {
 				}
 				setChats(result.data || []);
 
-				const selectedUserId = sessionStorage.getItem("selectedUserId");
-				if (selectedUserId) {
-					setActivePartnerId(JSON.parse(selectedUserId));
+				const selectedChatId = sessionStorage.getItem("selectedChatId");
+				if (selectedChatId) {
+					setActiveChatId(JSON.parse(selectedChatId));
 				}
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Something went wrong");
@@ -81,7 +81,7 @@ export const ChatList = () => {
 			if (response.ok) {
 				const result = await response.json();
 
-				setAllUsers(result.data.users || result || []);
+				setAllUsers(result.data.users || []);
 				setTotalUsersPages(result.data.totalPages || 1);
 			}
 		} catch (err) {
@@ -109,65 +109,49 @@ export const ChatList = () => {
 		replace(`${pathname}?${params.toString()}`, { scroll: false });
 	};
 
-	const handleSelectNewUser = (user: UserType) => {
-		handleCloseModal();
-		setActivePartnerId(user.id);
-		sessionStorage.setItem("selectedUserId", JSON.stringify(user.id));
+	// const handleSelectNewChat = (user: UserType) => {
+	// 	handleCloseModal();
+	// 	// setActiveChatId(user.id);
+	// 	sessionStorage.setItem("selectedUserId", JSON.stringify(user.id));
+	//
+	// 	setChats((prev) => {
+	// 		const chatExists = prev.some((c) => c.id === user.id);
+	// 		if (chatExists) {
+	// 			return prev.map((c) =>
+	// 				c.chatPartner.id === user.id
+	// 					? {
+	// 						...c,
+	// 						lastMessage: {
+	// 							...c.lastMessage,
+	// 							isRead: c.lastMessage.senderId === user.id
+	// 								? true
+	// 								: c.lastMessage.isRead
+	// 						}
+	// 					}
+	// 					: c
+	// 			);
+	// 		}
+	//
+	// 		const newVirtualChat: UserWithLastMessage = {
+	// 			chatPartner: user,
+	// 			lastMessage: {
+	// 				id: 0,
+	// 				senderId: 0,
+	// 				receiverId: user.id,
+	// 				messageText: "No messages yet",
+	// 				isRead: true,
+	// 				isDeleted: false,
+	// 				createdAt: new Date().toISOString(),
+	// 				updatedAt: new Date().toISOString(),
+	// 			},
+	// 		};
+	// 		return [newVirtualChat, ...prev];
+	// 	});
+	// };
 
-		setChats((prev) => {
-			const chatExists = prev.some((c) => c.chatPartner.id === user.id);
-			if (chatExists) {
-				return prev.map((c) =>
-					c.chatPartner.id === user.id
-						? {
-							...c,
-							lastMessage: {
-								...c.lastMessage,
-								isRead: c.lastMessage.senderId === user.id
-									? true
-									: c.lastMessage.isRead
-							}
-						}
-						: c
-				);
-			}
-
-			const newVirtualChat: UserWithLastMessage = {
-				chatPartner: user,
-				lastMessage: {
-					id: 0,
-					senderId: 0,
-					receiverId: user.id,
-					messageText: "No messages yet",
-					isRead: true,
-					isDeleted: false,
-					createdAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-				},
-			};
-			return [newVirtualChat, ...prev];
-		});
-	};
-
-	const handleSelectChat = (partnerId: number) => {
-		setActivePartnerId(partnerId);
-		sessionStorage.setItem("selectedUserId", JSON.stringify(partnerId));
-
-		setChats((prev) =>
-			prev.map((chat) =>
-				chat.chatPartner.id === partnerId
-					? {
-						...chat,
-						lastMessage: {
-							...chat.lastMessage,
-							isRead: chat.lastMessage.senderId === partnerId
-								? true
-								: chat.lastMessage.isRead
-						}
-					}
-					: chat
-			)
-		);
+	const handleSelectChat = (chatId: number) => {
+		setActiveChatId(chatId);
+		sessionStorage.setItem("selectedUserId", JSON.stringify(chatId));
 	};
 
 	if (isPending && chats.length === 0) {
@@ -230,21 +214,21 @@ export const ChatList = () => {
 						/>
 					</div>
 
-					{/*<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">*/}
-					{/*	{activeChat && token && activePartnerId ? (*/}
-					{/*		<MessageWindow*/}
-					{/*			partner={activeChat.chatPartner}*/}
-					{/*			token={token}*/}
-					{/*		/>*/}
-					{/*	) : (*/}
-					{/*		<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">*/}
-					{/*			<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-500">*/}
-					{/*				<MessageSquare size={32} />*/}
-					{/*			</div>*/}
-					{/*			<h3 className="font-semibold text-gray-900">No chat selected</h3>*/}
-					{/*		</div>*/}
-					{/*	)}*/}
-					{/*</div>*/}
+					<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">
+						{activeChat && token && activeChatId ? (
+							<MessageWindow
+								partners={activeChat.users}
+								token={token}
+							/>
+						) : (
+							<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+								<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-500">
+									<MessageSquare size={32} />
+								</div>
+								<h3 className="font-semibold text-gray-900">No chat selected</h3>
+							</div>
+						)}
+					</div>
 				</div>
 			)}
 
@@ -273,7 +257,7 @@ export const ChatList = () => {
 								allUsers.map((user) => (
 									<button
 										key={user.id}
-										onClick={() => handleSelectNewUser(user)}
+										onClick={() => handleSelectNewChat(user)}
 										className="w-full flex flex-col items-start gap-0.5 rounded-xl px-4 py-3 text-left transition-colors hover:bg-slate-50"
 									>
 										<span className="font-semibold text-sm text-gray-900">{user.name}</span>
