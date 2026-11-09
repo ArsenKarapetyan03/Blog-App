@@ -2,13 +2,15 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { X, Pen } from "lucide-react";
-import { getMessages, markMessagesAsRead } from "@/actions/message";
-import { MessageType, UserType } from "@/types/types";
+import { getMessages } from "@/actions/message";
+import { ChatType, MessageType } from "@/types/types";
 import { MessageItem } from "./MessageItem";
 import { useWebSocket } from "@/context/webSocketContext";
+import { useAuth } from "@/context/useAuth";
+import { HeaderLink } from "@/components/Header/HeaderLink";
 
 interface MessageWindowProps {
-	partners: UserType[];
+	chat: ChatType;
 	token: string;
 }
 
@@ -16,11 +18,11 @@ const PAGE_SIZE = 10;
 
 export const MessageWindow = (
 	{
-		partners,
+		chat,
 		token,
 	}: MessageWindowProps
 ) => {
-	const { messages, setMessages, isTyping, setIsTyping, sendSocketMessage } = useWebSocket();
+	const { messages, setMessages, typingUsers, sendSocketMessage } = useWebSocket();
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -28,17 +30,27 @@ export const MessageWindow = (
 	const [editingMessage, setEditingMessage] = useState<MessageType | null>(null);
 	const [inputValue, setInputValue] = useState("");
 
+	const { user } = useAuth();
 	const inputRef = useRef<HTMLInputElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const messagesLengthRef = useRef(0);
-	const partnerIdRef = useRef(partner.id);
+	const chatIdRef = useRef(chat.id);
 	const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isCurrentlyTypingRef = useRef<boolean>(false);
 
+	if (!user) {
+		return (
+			<div className="flex flex-col items-center gap-5">
+				<div className="text-3xl font-semibold">Sign in to continue.</div>
+				<HeaderLink text="Sign in" href="/sign-in" />
+			</div>
+		)
+	}
+
 	useEffect(() => {
-		partnerIdRef.current = partner.id;
-	}, [partner.id]);
+		chatIdRef.current = chat.id;
+	}, [chat.id]);
 
 	useEffect(() => {
 		messagesLengthRef.current = messages.length;
@@ -79,26 +91,16 @@ export const MessageWindow = (
 			setInputValue("");
 
 			try {
-				const data = await getMessages(partner.id, token, 0);
-				await markMessagesAsRead(partner.id, token);
+				const data = await getMessages(chatIdRef.current, token, 0);
 
 				if (cancelled) {
 					return;
 				}
 
-				sendSocketMessage("MARK_AS_READ", { receiverId: partner.id });
+				sendSocketMessage("MARK_AS_READ", { chatId: chatIdRef.current });
 
-				const loadedMessages = data.map((msg) =>
-					msg.senderId === partner.id ? { ...msg, isRead: true } : msg
-				);
-				setMessages((currentMessages) => {
-					const merged = new Map<number, MessageType>();
-					[...loadedMessages, ...currentMessages].forEach((message) => {
-						if (message.senderId === partner.id || message.receiverId === partner.id) {
-							merged.set(message.id, message);
-						}
-					});
-					return [...merged.values()].sort((a, b) =>
+				setMessages(() => {
+					return [...data].sort((a, b) =>
 						a.createdAt.localeCompare(b.createdAt)
 					);
 				});
@@ -126,7 +128,7 @@ export const MessageWindow = (
 		return () => {
 			cancelled = true;
 		};
-	}, [partner.id, token, sendSocketMessage, setMessages]);
+	}, [chat.id, token, sendSocketMessage, setMessages]);
 
 	const loadMore = useCallback(async () => {
 		if (isFetchingMore || !hasMore || isLoading) {
@@ -144,10 +146,7 @@ export const MessageWindow = (
 		setIsFetchingMore(true);
 		try {
 			const currentLength = messagesLengthRef.current;
-			const olderMessages = await getMessages(partner.id, token, currentLength);
-			if (partnerIdRef.current !== partner.id) {
-				return;
-			}
+			const olderMessages = await getMessages(chat.id, token, currentLength);
 
 			if (!olderMessages.length) {
 				setHasMore(false);
@@ -173,7 +172,7 @@ export const MessageWindow = (
 		} finally {
 			setIsFetchingMore(false);
 		}
-	}, [partner.id, token, isFetchingMore, hasMore, isLoading, setMessages]);
+	}, [chat.id, token, isFetchingMore, hasMore, isLoading, setMessages]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -202,7 +201,7 @@ export const MessageWindow = (
 	const isTypingHandler = () => {
 		if (!isCurrentlyTypingRef.current) {
 			isCurrentlyTypingRef.current = true;
-			sendSocketMessage("TYPING_START", { receiverId: partner.id });
+			sendSocketMessage("TYPING_START", { chatId: chat.id });
 		}
 
 		if (typingTimeoutRef.current) {
@@ -210,19 +209,18 @@ export const MessageWindow = (
 		}
 
 		typingTimeoutRef.current = setTimeout(() => {
-			sendSocketMessage("TYPING_END", { receiverId: partner.id });
+			sendSocketMessage("TYPING_END", { chatId: chat.id });
 			isCurrentlyTypingRef.current = false;
 		}, 2000);
-	}
+	};
 
-	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>{
-		setInputValue(e.target.value)
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setInputValue(e.target.value);
 		isTypingHandler();
-	}
+	};
 
 	const handleStartEdit = (msg: MessageType) => {
 		isTypingHandler();
-
 		setEditingMessage(msg);
 		setInputValue(msg.messageText);
 		setTimeout(() => inputRef.current?.focus(), 0);
@@ -232,7 +230,7 @@ export const MessageWindow = (
 		if (typingTimeoutRef.current) {
 			clearTimeout(typingTimeoutRef.current);
 		}
-		sendSocketMessage("TYPING_END", { receiverId: partner.id });
+		sendSocketMessage("TYPING_END", { chatId: chat.id });
 		isCurrentlyTypingRef.current = false;
 
 		setEditingMessage(null);
@@ -240,7 +238,7 @@ export const MessageWindow = (
 	};
 
 	const handleDelete = async (messageId: number) => {
-		if (!sendSocketMessage("DELETE_MESSAGE", {messageId, receiverId: partner.id})) {
+		if (!sendSocketMessage("DELETE_MESSAGE", { messageId, chatId: chat.id })) {
 			return;
 		}
 
@@ -255,7 +253,6 @@ export const MessageWindow = (
 					: msg
 			)
 		);
-
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -283,8 +280,8 @@ export const MessageWindow = (
 
 			if (!sendSocketMessage("UPDATE_MESSAGE", {
 				messageId,
+				chatId: chat.id,
 				messageText,
-				receiverId: partner.id
 			})) {
 				return;
 			}
@@ -301,8 +298,8 @@ export const MessageWindow = (
 			const tempMessage: MessageType = {
 				id: clientSideId as unknown as number,
 				clientSideId,
+				chatId: chat.id,
 				senderId: 0,
-				receiverId: partner.id,
 				messageText,
 				isRead: false,
 				isDeleted: false,
@@ -311,7 +308,7 @@ export const MessageWindow = (
 			};
 
 			if (!sendSocketMessage("CREATE_MESSAGE", {
-				receiverId: partner.id,
+				chatId: chat.id,
 				messageText,
 				clientSideId
 			})) {
@@ -321,7 +318,7 @@ export const MessageWindow = (
 			if (typingTimeoutRef.current) {
 				clearTimeout(typingTimeoutRef.current);
 			}
-			sendSocketMessage("TYPING_END", { receiverId: partner.id });
+			sendSocketMessage("TYPING_END", { chatId: chat.id });
 			isCurrentlyTypingRef.current = false;
 
 			setInputValue("");
@@ -335,14 +332,20 @@ export const MessageWindow = (
 					});
 				}
 			});
-
 		}
 	};
+
+	const typingUsersCount = Object.keys(typingUsers).length;
+
 	return (
 		<div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
-			<div className="px-6 py-4 shadow-xl z-10">
-				<h3 className="font-bold text-gray-900">{partner.name}</h3>
-				<p className="text-xs text-indigo-500">{partner.email}</p>
+			<div className="px-6 py-4 shadow-sm border-b border-gray-100 z-10 bg-white">
+				<h3 className="font-bold text-gray-900">
+					{chat.title || "Group chat"}
+				</h3>
+				<p className="text-xs text-gray-500">
+					Members: {chat.users?.length || 0}
+				</p>
 			</div>
 
 			<div
@@ -372,7 +375,7 @@ export const MessageWindow = (
 						<MessageItem
 							key={msg.id}
 							msg={msg}
-							isPartner={msg.senderId === partner.id}
+							currentUserId={user!.id}
 							onStartEdit={handleStartEdit}
 							onDelete={handleDelete}
 						/>
@@ -380,7 +383,13 @@ export const MessageWindow = (
 				)}
 			</div>
 
-			{isTyping && <span className="px-4 py-2 text-zinc-500 text-sm bg-slate-50/50 animate-pulse">{partner.name} is typing...</span>}
+			{typingUsersCount > 0 && (
+				<span className="px-6 py-1.5 text-zinc-500 text-xs bg-slate-50/50 font-medium animate-pulse border-t border-zinc-100">
+					{typingUsersCount === 1
+						? "Typing..."
+						: `${typingUsersCount} are typing`}
+				</span>
+			)}
 
 			{editingMessage && (
 				<div className="px-6 py-2 bg-blue-50 border-t border-blue-100 flex justify-between items-center text-sm text-blue-700">

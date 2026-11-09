@@ -3,6 +3,7 @@ import { messageService } from "@/services/message.service.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { broadcastToUser } from "./active-users.js";
 import { catchAsyncWs } from "@/utils/ErrorHandlers/ws.error.js";
+import { chatService } from "@/services/chat.service.js";
 
 const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) => {
 	const parsedData = JSON.parse(rawData.toString());
@@ -20,19 +21,31 @@ const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) =>
 	const messageText = String(payload.messageText || "").trim();
 	const messageId = payload.messageId ? Number(payload.messageId) : null;
 	const clientSideId = payload.clientSideId || null;
-	let receiverId = payload.receiverId ? Number(payload.receiverId) : null;
+	const chatId = payload.chatId ? Number(payload.chatId) : null;
+
 	let responseData = null;
+
+	if (!chatId || isNaN(chatId)) {
+		throw new AppError("Valid chatId is required", 400);
+	}
+
+	const chat = await chatService.getChat(chatId);
+	if (!chat) {
+		throw new AppError("Chat not found", 404);
+	}
+
+	const isMember = chat.users?.some((user) => user.id === senderId);
+	if (!isMember) {
+		throw new AppError("You are not a member of this chat", 403);
+	}
 
 	switch (parsedData.type) {
 		case "CREATE_MESSAGE": {
-			if (!receiverId || isNaN(receiverId) || !messageText) {
-				throw new AppError("Missing receiverId or messageText", 400);
-			}
-			if (senderId === receiverId) {
-				throw new AppError("You cannot send a message to yourself", 400);
+			if (!messageText) {
+				throw new AppError("Missing messageText", 400);
 			}
 
-			const newMessage = await messageService.createMessage(senderId, receiverId, messageText);
+			const newMessage = await messageService.createMessage(senderId, chatId, messageText);
 			responseData = {type: "NEW_MESSAGE", payload: {...newMessage, clientSideId}};
 			break;
 		}
@@ -49,7 +62,6 @@ const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) =>
 				throw new AppError("Message not found or unauthorized to update", 404);
 			}
 
-			receiverId = updatedMessage.receiverId || receiverId;
 			responseData = {type: "MESSAGE_UPDATED", payload: updatedMessage};
 			break;
 		}
@@ -70,30 +82,16 @@ const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) =>
 			break;
 		}
 		case "MARK_AS_READ": {
-			if (!receiverId || isNaN(receiverId)) {
-				throw new AppError("Missing receiverId", 400);
-			}
-
-			await messageService.isReadMessage(senderId, receiverId);
-			responseData = {type: "MESSAGES_READ", payload: {readerId: senderId, partnerId: receiverId}};
+			await messageService.isReadMessage(senderId, chatId);
+			responseData = {type: "MESSAGES_READ", payload: {readerId: senderId, chatId}};
 			break;
 		}
 		case "TYPING_START": {
-			receiverId = payload.receiverId ? Number(payload.receiverId) : null;
-			if (!receiverId || isNaN(receiverId)) {
-				throw new AppError("Missing or invalid receiverId for typing status", 400);
-			}
-
-			responseData = { type: "TYPING_STATUS", payload: { senderId, isTyping: true } };
+			responseData = { type: "TYPING_STATUS", payload: { senderId, chatId, isTyping: true } };
 			break;
 		}
 		case "TYPING_END": {
-			receiverId = payload.receiverId ? Number(payload.receiverId) : null;
-			if (!receiverId || isNaN(receiverId)) {
-				throw new AppError("Missing or invalid receiverId for typing status", 400);
-			}
-
-			responseData = { type: "TYPING_STATUS", payload: { senderId, isTyping: false } };
+			responseData = { type: "TYPING_STATUS", payload: { senderId, chatId, isTyping: false } };
 			break;
 		}
 		default:
@@ -101,10 +99,9 @@ const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) =>
 	}
 
 	if (responseData) {
-		if (receiverId) {
-			broadcastToUser(receiverId, responseData);
-		}
-		broadcastToUser(senderId, responseData);
+		chat.users?.forEach((user) => {
+			broadcastToUser(user.id, responseData);
+		})
 	}
 };
 

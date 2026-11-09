@@ -4,12 +4,12 @@ import { MessageType } from "@/types/types";
 import { BASE_URL } from "@/config/api";
 
 export const getMessages = async (
-	partnerId: number,
+	chatId: number,
 	token: string,
 	offset: number
 ): Promise<MessageType[]> => {
 	const params = new URLSearchParams({
-		partnerId: String(partnerId),
+		chatId: String(chatId),
 		offset: String(offset),
 	});
 

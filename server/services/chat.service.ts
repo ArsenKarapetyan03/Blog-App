@@ -1,6 +1,21 @@
 import { Op } from "sequelize";
 import db, { sequelize } from "@/models/index.js";
 
+interface FormattedChat {
+	id: number;
+	title: string | undefined | null;
+	isGroup: boolean;
+	unreadCount: number;
+	users: any[];
+	lastMessage: {
+		id: number;
+		messageText: string;
+		createdAt: Date;
+		sender: any;
+	} | null;
+	updatedAt: Date;
+}
+
 export const chatService = {
 	getChats: async (userId: number) => {
 		const myMemberships = await db.ChatMember.findAll({
@@ -53,7 +68,7 @@ export const chatService = {
 
 			return {
 				id: chat.id,
-				title: chat.isGroup ? chat.title : (displayUsers[0]?.name || "Приватный чат"),
+				title: chat.isGroup ? chat.title : (displayUsers[0]?.name),
 				isGroup: chat.isGroup,
 				unreadCount,
 				users: displayUsers,
@@ -69,37 +84,28 @@ export const chatService = {
 		
 		return formattedChats.sort((a, b) =>
 			new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-		);
+		) as FormattedChat[];
 	},
 
-	getOrCreateDirectChat: async (userIds: [number, number]) => {
-		const [userA, userB] = userIds;
-
-		const existingChat = await db.Chat.findOne({
-			where: {isGroup: false},
+	getChat: async (chatId: number) => {
+		const chat = await db.Chat.findByPk(chatId, {
 			include: [
+				{
+					model: db.User,
+					as: "users",
+					attributes: ["id", "name", "email"],
+				},
 				{
 					model: db.ChatMember,
 					as: "memberships",
-					where: {userId: {[Op.in]: [userA, userB]}},
+					attributes: ["userId", "lastReadAt"]
 				}
-			],
-			group: ["Chat.id"],
-			having: sequelize.literal(`COUNT(DISTINCT "memberships"."userId") = 2`)
+			]
 		});
 
-		if (existingChat) return existingChat;
+		const users = chat?.users.map(user => user.toJSON());
 
-		return await sequelize.transaction(async (t) => {
-			const newChat = await db.Chat.create({title: null, isGroup: false}, {transaction: t});
-
-			await db.ChatMember.bulkCreate([
-				{chatId: newChat.id, userId: userA, role: "member"},
-				{chatId: newChat.id, userId: userB, role: "member"}
-			], {transaction: t});
-
-			return newChat;
-		});
+		return ({...chat?.toJSON(), users});
 	},
 
 	createGroupChat: async (creatorId: number, title: string, participantIds: number[]) => {

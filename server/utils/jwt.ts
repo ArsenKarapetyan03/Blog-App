@@ -8,6 +8,7 @@ if (!JWT_SECRET) {
 
 interface TokenPayload extends jwt.JwtPayload {
 	id: number;
+	name: string;
 	email: string;
 }
 

@@ -2,21 +2,14 @@ import db, { sequelize } from "@/models/index.js";
 import { Op, QueryTypes } from "sequelize";
 
 export const messageService = {
-	getMessages: async (senderId: number, receiverId: number, offset: number) => {
+	getMessages: async (chatId: number, offset: number) => {
 		return await db.Message.findAll({
-			where: {
-				[Op.or]: [
-					{senderId, receiverId},
-					{senderId: receiverId, receiverId: senderId}
-				]
-			},
+			where: { chatId },
 			limit: 10,
 			offset,
 			order: [['createdAt', 'DESC']]
 		});
 	},
-
-	getMessageById: async (messageId: number) =>  await db.Message.findByPk(messageId),
 
 	getChatsWithLastMessage: async (currentUserId: number) => {
 		const query = `
@@ -54,7 +47,7 @@ export const messageService = {
 		});
 	},
 
-	createMessage: async (senderId: number, receiverId: number, messageText: string) => {
+	createMessage: async (senderId: number, chatId: number, messageText: string) => {
 		const newMessage =  await db.Message.create({
 			senderId,
 			chatId,
@@ -71,7 +64,7 @@ export const messageService = {
 			{
 				where: {
 					senderId: receiverId,
-					receiverId: senderId,
+					chatId: senderId,
 					isRead: false
 				},
 			}

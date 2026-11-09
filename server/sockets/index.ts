@@ -50,7 +50,7 @@ const initWebSocketServer = (server: http.Server): WebSocketServer => {
 		}
 		const currentUserId = ws.user.id;
 
-		console.log(`User connected to live chat line. ID: ${currentUserId}`);
+		console.log(`User connected to live chat. ID: ${currentUserId}`);
 
 		if (!activeUsers.has(currentUserId)) {
 			activeUsers.set(currentUserId, new Set());

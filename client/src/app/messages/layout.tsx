@@ -2,11 +2,27 @@ import type { ReactNode } from "react"
 import { cookies } from "next/headers";
 import { HeaderLink } from "@/components/Header/HeaderLink";
 import { WebSocketProvider } from "@/context/webSocketContext";
+import { BASE_URL } from "@/config/api";
+
+const getCurrentUser = async (token: string | undefined)=> {
+	const response = await fetch(`${BASE_URL}/user/me`, {headers: { Authorization: `Bearer ${token}` }});
+	if (!response.ok) {
+		return;
+	}
+	const data = await response.json();
+
+	if (!data.success) {
+		return;
+	}
+
+	return data.user;
+}
 
 export default async function MessagesLayout({children}: { children: ReactNode }) {
 	const cookieStore = await cookies();
 	const token = cookieStore.get("token")?.value;
 	const isAuthenticated = !!token;
+	const user = await getCurrentUser(token);
 
 	return (
 		<div className="w-full px-4 py-12">
@@ -20,8 +36,8 @@ export default async function MessagesLayout({children}: { children: ReactNode }
 			</div>
 
 			<div className="mt-8">
-				{isAuthenticated
-					? <WebSocketProvider token={token}>
+				{isAuthenticated && user
+					? <WebSocketProvider token={token} user={user}>
 								{children}
 						</WebSocketProvider>
 					: <div className="flex flex-col items-center gap-5">

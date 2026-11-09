@@ -12,15 +12,15 @@ import {
 	SetStateAction
 } from "react";
 import { WS_URL } from "@/config/api";
-import { MessageType, UserWithLastMessage } from "@/types/types";
+import { ChatType, MessageType, UserType } from "@/types/types";
 
 export interface WebSocketContextType {
 	messages: MessageType[];
 	setMessages: Dispatch<SetStateAction<MessageType[]>>;
-	chats: UserWithLastMessage[];
-	setChats: Dispatch<SetStateAction<UserWithLastMessage[]>>;
-	isTyping: boolean;
-	setIsTyping: Dispatch<SetStateAction<boolean>>;
+	chats: ChatType[];
+	setChats: Dispatch<SetStateAction<ChatType[]>>;
+	typingUsers: Record<number, boolean>;
+	setTypingUsers: Dispatch<SetStateAction<Record<number, boolean>>>;
 	activeChatId: number | null;
 	setActiveChatId: Dispatch<SetStateAction<number | null>>;
 	sendSocketMessage: (type: string, payload: Record<string, unknown>) => boolean;
@@ -28,17 +28,31 @@ export interface WebSocketContextType {
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
-export const WebSocketProvider = ({token, children}: { token: string, children: ReactNode }) => {
+export const WebSocketProvider = (
+	{
+		token,
+		user,
+		children
+	}: {
+		token: string,
+		user: {
+			id: number;
+			name: string;
+			email: string;
+		},
+		children: ReactNode
+	}
+) => {
 	const [activeChatId, setActiveChatId] = useState<number | null>(null);
-	const [chats, setChats] = useState<UserWithLastMessage[]>([]);
+	const [chats, setChats] = useState<ChatType[]>([]);
 	const [messages, setMessages] = useState<MessageType[]>([]);
-	const [isTyping, setIsTyping] = useState<boolean>(false);
-
+	const [typingUsers, setTypingUsers] = useState<Record<number, boolean>>({});
 	const socketRef = useRef<WebSocket | null>(null);
 	const activeChatIdRef = useRef(activeChatId);
 
 	useEffect(() => {
 		activeChatIdRef.current = activeChatId;
+		setTypingUsers({});
 	}, [activeChatId]);
 
 	const sendSocketMessage = useCallback((type: string, payload: Record<string, unknown>) => {
@@ -57,7 +71,9 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 	}, [sendSocketMessage]);
 
 	useEffect(() => {
-		if (!token) return;
+		if (!token) {
+			return;
+		}
 
 		const url = new URL(WS_URL);
 		url.searchParams.set("token", `Bearer ${token}`);
@@ -71,59 +87,50 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 				const currentActiveChatId = activeChatIdRef.current;
 
 				if (data.type === "MESSAGES_READ") {
-					const {readerId, partnerId} = data.payload;
+					const { readerId, chatId } = data.payload;
+
 					setChats((prevChats) =>
 						prevChats.map((chat) =>
-							(chat.chatPartner.id === readerId || chat.chatPartner.id === partnerId) &&
-							chat.lastMessage.receiverId === readerId
-								? {...chat, lastMessage: {...chat.lastMessage, isRead: true}}
+							chat.id === chatId && chat.lastMessage
+								? { ...chat, lastMessage: { ...chat.lastMessage, isRead: true } }
 								: chat
 						)
 					);
 
-					if (currentActiveChatId === readerId || currentActiveChatId === partnerId) {
+					if (currentActiveChatId === chatId) {
 						setMessages((prev) =>
 							prev.map((message) =>
-								((currentActiveChatId === readerId && message.receiverId === readerId) ||
-									(currentActiveChatId === partnerId && message.senderId === currentActiveChatId))
-									? {...message, isRead: true}
+								message.chatId === chatId && message.senderId !== readerId
+									? { ...message, isRead: true }
 									: message
 							)
 						);
 					}
+					return;
 				}
 
 				switch (data.type) {
 					case "NEW_MESSAGE": {
 						const message = data.payload as MessageType;
+						const msgChatId = message.chatId;
 
 						setChats((prevChats) => {
-							const existingPartner = prevChats.find(({chatPartner}) =>
-								chatPartner.id === message.senderId || chatPartner.id === message.receiverId
-							)?.chatPartner.id;
-
-							const targetPartnerId = currentActiveChatId &&
-							(message.senderId === currentActiveChatId || message.receiverId === currentActiveChatId)
-								? currentActiveChatId
-								: existingPartner ?? message.senderId;
-							const isIncoming = message.senderId === targetPartnerId;
+							const isIncoming = msgChatId === currentActiveChatId;
 
 							const updatedChats = prevChats.map((chat) => {
-								if (chat.chatPartner.id === targetPartnerId) {
+								if (chat.id === msgChatId) {
 									return {
 										...chat,
 										lastMessage: {
 											...message,
-											isRead: isIncoming && targetPartnerId === currentActiveChatId
-												? true
-												: message.isRead
+											isRead: isIncoming ? true : message.isRead
 										}
 									};
 								}
 								return chat;
 							});
 
-							const targetIndex = updatedChats.findIndex(c => c.chatPartner.id === targetPartnerId);
+							const targetIndex = updatedChats.findIndex(c => c.id === msgChatId);
 							if (targetIndex > 0) {
 								const [targetChat] = updatedChats.splice(targetIndex, 1);
 								return [targetChat, ...updatedChats];
@@ -132,21 +139,13 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 							return updatedChats;
 						});
 
-						const isCurrentChat =
-							currentActiveChatId !== null &&
-							(message.senderId === currentActiveChatId ||
-								message.receiverId === currentActiveChatId);
-
-						if (!isCurrentChat) {
+						if (currentActiveChatId !== msgChatId) {
 							break;
 						}
 
-						const isIncoming = message.senderId === currentActiveChatId;
-						const currentMessage = isIncoming ? {...message, isRead: true} : message;
+						const currentMessage = { ...message, isRead: true };
 
-						if (isIncoming) {
-							sendSocketMessageRef.current("MARK_AS_READ", {receiverId: currentActiveChatId});
-						}
+						sendSocketMessageRef.current("MARK_AS_READ", { chatId: msgChatId });
 
 						setMessages((prev) => {
 							const existingIndex = prev.findIndex(
@@ -166,28 +165,30 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 					}
 
 					case "MESSAGE_UPDATED": {
+						const updatedMsg = data.payload;
 						setMessages((prev) =>
-							prev.map(msg => msg.id === data.payload.id ? data.payload : msg)
+							prev.map(msg => msg.id === updatedMsg.id ? updatedMsg : msg)
 						);
 						setChats((prev) =>
-							prev.map((chat) => chat.lastMessage.id === data.payload.id
-								? {...chat, lastMessage: data.payload}
+							prev.map((chat) => chat.lastMessage?.id === updatedMsg.id
+								? {...chat, lastMessage: updatedMsg}
 								: chat
 							)
 						);
+						break;
 					}
-					break;
 
 					case "MESSAGE_DELETED": {
+						const { messageId } = data.payload;
 						setMessages((prev) =>
 							prev.map(msg =>
-								msg.id === data.payload.messageId
+								msg.id === messageId
 									? {...msg, messageText: "Deleted message", isDeleted: true}
 									: msg
 							)
 						);
 						setChats((prev) =>
-							prev.map((chat) => chat.lastMessage.id === data.payload.messageId
+							prev.map((chat) => chat.lastMessage?.id === messageId
 								? {
 									...chat,
 									lastMessage: {
@@ -199,21 +200,27 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 								: chat
 							)
 						);
+						break;
 					}
-					break;
 
-					case "TYPING_STATUS":{
-						const { senderId, isTyping } = data.payload;
+					case "TYPING_STATUS": {
+						const { senderId, chatId, isTyping } = data.payload;
 
-						if (isTyping === undefined) {
-							return
+						if (isTyping === undefined || currentActiveChatId !== chatId || senderId === user?.id) {
+							return;
 						}
 
-						if (senderId === currentActiveChatId) {
-							setIsTyping(isTyping);
-						}
+						setTypingUsers((prev) => {
+							const updated = { ...prev };
+							if (isTyping) {
+								updated[senderId] = true;
+							} else {
+								delete updated[senderId];
+							}
+							return updated;
+						});
+						break;
 					}
-					break;
 				}
 
 			} catch (e) {
@@ -236,8 +243,8 @@ export const WebSocketProvider = ({token, children}: { token: string, children: 
 				setChats,
 				activeChatId,
 				setActiveChatId,
-				isTyping,
-				setIsTyping,
+				typingUsers,
+				setTypingUsers,
 				sendSocketMessage,
 			}}>
 			{children}

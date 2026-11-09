@@ -41,18 +41,19 @@ export interface MessageType {
 	messageText: string,
 	isRead: boolean,
 	isDeleted: boolean;
+	chatId: number;
 	senderId: number,
-	receiverId: number,
 	createdAt: string,
 	updatedAt: string,
 	clientSideId?: string;
 }
 
-export interface UserWithLastMessage {
+export interface ChatType {
 	id: number;
 	title: string;
 	isGroup: boolean;
 	users: UserType[],
 	lastMessage: MessageType,
 	unreadCount: number;
+	updatedAt: string;
 }

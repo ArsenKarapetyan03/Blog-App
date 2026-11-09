@@ -46,7 +46,7 @@ export const signIn = async (req: Request, res: Response) => {
 		throw new AppError("Invalid credentials.", 401);
 	}
 
-	const token = generateToken({id: user.id, email: user.email});
+	const token = generateToken({id: user.id, name: user.name, email: user.email});
 
 	return res.status(200).json({
 		success: true,

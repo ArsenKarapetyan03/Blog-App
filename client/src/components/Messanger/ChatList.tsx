@@ -5,8 +5,9 @@ import Cookies from "js-cookie";
 import { MessageSquare, RotateCw, UserPlus, X } from "lucide-react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { BASE_URL } from "@/config/api";
-import { UserWithLastMessage, UserType } from "@/types/types";
+import { UserType, ChatType } from "@/types/types";
 import { useWebSocket } from "@/context/webSocketContext";
+import { useAuth } from "@/context/useAuth";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MessageWindow } from "./MessageWindow";
 import { Chats } from "./Chats";
@@ -23,12 +24,18 @@ export const ChatList = () => {
 	const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
 	const { chats, setChats, activeChatId, setActiveChatId } = useWebSocket();
+	const { user } = useAuth();
 	const [allUsers, setAllUsers] = useState<UserType[]>([]);
 	const [totalUsersPages, setTotalUsersPages] = useState(1);
 	const [error, setError] = useState<string | null>(null);
 	const [isPending, startTransition] = useTransition();
 	const [isUsersLoading, setIsUsersLoading] = useState(false);
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [isCreatingChat, setIsCreatingChat] = useState(false);
+
+	if (!user) {
+		return "Authentication required";
+	}
 
 	const fetchChats = useCallback(() => {
 		if (!token) {
@@ -62,7 +69,7 @@ export const ChatList = () => {
 				setError(err instanceof Error ? err.message : "Something went wrong");
 			}
 		});
-	}, [token, setChats]);
+	}, [token, setChats, setActiveChatId]);
 
 	const fetchAllUsers = useCallback(async (query: string, page: number) => {
 		if (!token || !isModalOpen) {
@@ -70,7 +77,7 @@ export const ChatList = () => {
 		}
 		setIsUsersLoading(true);
 		try {
-			const params = new URLSearchParams({page: String(page)});
+			const params = new URLSearchParams({ page: String(page) });
 			if (query) {
 				params.set("query", query);
 			}
@@ -80,7 +87,6 @@ export const ChatList = () => {
 			});
 			if (response.ok) {
 				const result = await response.json();
-
 				setAllUsers(result.data.users || []);
 				setTotalUsersPages(result.data.totalPages || 1);
 			}
@@ -109,49 +115,53 @@ export const ChatList = () => {
 		replace(`${pathname}?${params.toString()}`, { scroll: false });
 	};
 
-	// const handleSelectNewChat = (user: UserType) => {
-	// 	handleCloseModal();
-	// 	// setActiveChatId(user.id);
-	// 	sessionStorage.setItem("selectedUserId", JSON.stringify(user.id));
-	//
-	// 	setChats((prev) => {
-	// 		const chatExists = prev.some((c) => c.id === user.id);
-	// 		if (chatExists) {
-	// 			return prev.map((c) =>
-	// 				c.chatPartner.id === user.id
-	// 					? {
-	// 						...c,
-	// 						lastMessage: {
-	// 							...c.lastMessage,
-	// 							isRead: c.lastMessage.senderId === user.id
-	// 								? true
-	// 								: c.lastMessage.isRead
-	// 						}
-	// 					}
-	// 					: c
-	// 			);
-	// 		}
-	//
-	// 		const newVirtualChat: UserWithLastMessage = {
-	// 			chatPartner: user,
-	// 			lastMessage: {
-	// 				id: 0,
-	// 				senderId: 0,
-	// 				receiverId: user.id,
-	// 				messageText: "No messages yet",
-	// 				isRead: true,
-	// 				isDeleted: false,
-	// 				createdAt: new Date().toISOString(),
-	// 				updatedAt: new Date().toISOString(),
-	// 			},
-	// 		};
-	// 		return [newVirtualChat, ...prev];
-	// 	});
-	// };
+	const handleSelectNewChat = async (user: UserType) => {
+		if (!token || isCreatingChat) {
+			return;
+		}
+
+		setIsCreatingChat(true);
+		setError(null);
+
+		try {
+			const response = await fetch(`${BASE_URL}/chat`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify({
+					userIds: [user.id],
+					isGroup: false
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error("Failed to start conversation");
+			}
+
+			const result = await response.json();
+			if (result.success && result.data) {
+				const targetChat = result.data as ChatType;
+
+				setChats((prev) => {
+					if (prev.some((c) => c.id === targetChat.id)) return prev;
+					return [targetChat, ...prev];
+				});
+
+				handleSelectChat(targetChat.id);
+				handleCloseModal();
+			}
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Could not create chat room");
+		} finally {
+			setIsCreatingChat(false);
+		}
+	};
 
 	const handleSelectChat = (chatId: number) => {
 		setActiveChatId(chatId);
-		sessionStorage.setItem("selectedUserId", JSON.stringify(chatId));
+		sessionStorage.setItem("selectedChatId", JSON.stringify(chatId));
 	};
 
 	if (isPending && chats.length === 0) {
@@ -209,6 +219,7 @@ export const ChatList = () => {
 					<div className="w-full md:w-80 border-r border-gray-100 overflow-y-auto">
 						<Chats
 							chats={chats}
+							currentUserId={user.id}
 							activeChatId={activeChatId}
 							onSelectChat={handleSelectChat}
 						/>
@@ -217,7 +228,7 @@ export const ChatList = () => {
 					<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">
 						{activeChat && token && activeChatId ? (
 							<MessageWindow
-								partners={activeChat.users}
+								chat={activeChat}
 								token={token}
 							/>
 						) : (
@@ -247,7 +258,7 @@ export const ChatList = () => {
 						</div>
 
 						<div className="mt-4 flex-1 overflow-y-auto space-y-1 pr-1">
-							{isUsersLoading ? (
+							{isUsersLoading || isCreatingChat ? (
 								<div className="flex justify-center py-8">
 									<div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
 								</div>
@@ -257,8 +268,9 @@ export const ChatList = () => {
 								allUsers.map((user) => (
 									<button
 										key={user.id}
+										disabled={isCreatingChat}
 										onClick={() => handleSelectNewChat(user)}
-										className="w-full flex flex-col items-start gap-0.5 rounded-xl px-4 py-3 text-left transition-colors hover:bg-slate-50"
+										className="w-full flex flex-col items-start gap-0.5 rounded-xl px-4 py-3 text-left transition-colors hover:bg-slate-50 disabled:opacity-50"
 									>
 										<span className="font-semibold text-sm text-gray-900">{user.name}</span>
 										<span className="text-xs text-gray-500">{user.email}</span>
@@ -267,19 +279,14 @@ export const ChatList = () => {
 							)}
 						</div>
 
-						{totalUsersPages > 1
-							&& <div className="mt-4 border-t border-gray-100 pt-4">
-										<Pagination
-                        currentPage={currentPage}
-                        totalPages={totalUsersPages}
-                    />
-                </div>
-						}
+						{totalUsersPages > 1 && (
+							<div className="mt-2 pt-2 border-t border-gray-100">
+								<Pagination totalPages={totalUsersPages} currentPage={currentPage} />
+							</div>
+						)}
 					</div>
 				</div>
 			)}
 		</div>
 	);
 };
-
-export default ChatList;

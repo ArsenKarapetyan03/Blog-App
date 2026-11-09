@@ -47,7 +47,7 @@ export const signIn = async (prevState: any, formData: FormData): Promise<Action
 		Cookies.set("token", data.token, {
 			sameSite: "strict",
 			path: "/",
-			expires: 7,
+			expires: 3,
 			secure: process.env.NODE_ENV === "production"
 		});
 
@@ -59,8 +59,6 @@ export const signIn = async (prevState: any, formData: FormData): Promise<Action
 }
 
 export const logout = async () => {
-	// Cookies.remove("token");
-	// Cookies.remove("user");
 	const allCookies = Cookies.get();
 	Object.keys(allCookies).forEach(cookieName => {
 		Cookies.remove(cookieName, { path: '' });
