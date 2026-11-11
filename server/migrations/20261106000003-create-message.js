@@ -28,6 +28,11 @@ export default {
         type: Sequelize.TEXT,
         allowNull: false,
       },
+      isRead: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       isDeleted: {
         type: Sequelize.BOOLEAN,
         allowNull: false,

@@ -75,4 +75,30 @@ export const remove = async (req: Request, res: Response) => {
 	}
 
 	return res.status(200).json({ success: true, message: "Friendship or request removed successfully", friendId });
-}
+};
+
+export const getFriends = async (req: Request, res: Response) => {
+	const userId = res.locals.user!.id;
+
+	const response = await friendshipService.findAll(userId);
+
+	if (!response || response.length === 0) {
+		throw new AppError("Friends not found", 404);
+	}
+
+	const friends = response.map(f => {
+		const friendData = f.requesterId === userId ? f.receiver : f.requester;
+
+		if (!friendData) {
+			throw new AppError("Friend not found", 404);
+		}
+
+		return {
+			id: friendData?.id,
+			name: friendData?.name,
+			email: friendData?.email,
+		};
+	});
+
+	return res.status(200).json({ success: true, friends });
+};

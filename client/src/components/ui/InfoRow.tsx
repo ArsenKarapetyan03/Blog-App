@@ -9,7 +9,7 @@ export const InfoRow = (
 ) =>
 	(
 		<div className="flex flex-wrap items-center gap-4 text-inherit text-slate-500">
-			<div className="flex-1 flex items-center gap-2 py-5">
+			<div className="flex-1 flex items-center gap-2 py-2">
 				<span className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
 					{name[0]}
 				</span>

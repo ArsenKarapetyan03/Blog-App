@@ -1,49 +1,22 @@
 import db, { sequelize } from "@/models/index.js";
-import { Op, QueryTypes } from "sequelize";
+import { Op } from "sequelize";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 
 export const messageService = {
-	getMessages: async (chatId: number, offset: number) => {
+	getMessages: async (userId: number, chatId: number, offset: number) => {
+		const hasAccess = await db.ChatMember.findOne({
+			where: { userId, chatId }
+		});
+
+		if (!hasAccess) {
+			throw new AppError("Access denied", 404);
+		}
+
 		return await db.Message.findAll({
 			where: { chatId },
 			limit: 10,
 			offset,
 			order: [['createdAt', 'DESC']]
-		});
-	},
-
-	getChatsWithLastMessage: async (currentUserId: number) => {
-		const query = `
-    WITH ranked_messages AS (
-      SELECT
-          to_jsonb(m.*) AS "lastMessage",
-          m."createdAt",
-        CASE 
-          WHEN "senderId" = :currentUserId THEN "receiverId"
-          ELSE "senderId"
-        END AS partner_id,
-        ROW_NUMBER() OVER(
-          PARTITION BY CASE WHEN "senderId" = :currentUserId THEN "receiverId" ELSE "senderId" END
-          ORDER BY "createdAt" DESC, id DESC
-        ) as rn
-      FROM "Messages" m
-      WHERE m."senderId" = :currentUserId OR m."receiverId" = :currentUserId
-    )
-    SELECT 
-      json_build_object(
-              'id', u.id,
-              'name', u.name,
-              'email', u.email
-      ) AS "chatPartner",
-      rm."lastMessage"
-    FROM ranked_messages rm
-    JOIN "Users" u ON u.id = rm.partner_id
-    WHERE rm.rn = 1
-    ORDER BY rm."createdAt" DESC;
-  `;
-
-		return await sequelize.query(query, {
-			replacements: {currentUserId},
-			type: QueryTypes.SELECT,
 		});
 	},
 
@@ -58,19 +31,33 @@ export const messageService = {
 		return newMessage.toJSON();
 	},
 
-	isReadMessage: async (senderId: number, receiverId: number) => {
-		const [affectedCount] = await db.Message.update(
-			{ isRead: true },
-			{
-				where: {
-					senderId: receiverId,
-					chatId: senderId,
-					isRead: false
-				},
-			}
-		);
+	markMessagesAsRead: async (userId: number, chatId: number) => {
+		return await sequelize.transaction(async (transaction) => {
+			const membership = await db.ChatMember.findOne({
+				where: { userId, chatId },
+				transaction,
+			});
 
-		return affectedCount;
+			if (!membership) {
+				throw new AppError("Unauthorized", 404);
+			}
+
+			const readAt = new Date();
+			await membership.update({ lastReadAt: readAt }, { transaction });
+			await db.Message.update(
+				{ isRead: true },
+				{
+					where: {
+						chatId,
+						senderId: { [Op.ne]: userId },
+						isRead: false,
+					},
+					transaction,
+				}
+			);
+
+			return readAt;
+		});
 	},
 
 	updateMessage: async (senderId: number, messageId: number, messageText: string) => {
@@ -86,7 +73,7 @@ export const messageService = {
 		);
 
 		if (!updatedRows?.[0]) {
-			return null;
+			throw new AppError("Not found", 404);
 		}
 
 		return updatedRows[0].get({ plain: true });

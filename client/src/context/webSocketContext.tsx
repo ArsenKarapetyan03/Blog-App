@@ -113,39 +113,45 @@ export const WebSocketProvider = (
 					case "NEW_MESSAGE": {
 						const message = data.payload as MessageType;
 						const msgChatId = message.chatId;
+						const isCurrentChatActive = msgChatId === currentActiveChatId;
+
+						const shouldMarkAsReadNow = isCurrentChatActive && message.senderId !== user.id;
 
 						setChats((prevChats) => {
-							const isIncoming = msgChatId === currentActiveChatId;
-
 							const updatedChats = prevChats.map((chat) => {
 								if (chat.id === msgChatId) {
 									return {
 										...chat,
 										lastMessage: {
 											...message,
-											isRead: isIncoming ? true : message.isRead
+											isRead: shouldMarkAsReadNow ? true : message.isRead
 										}
 									};
 								}
 								return chat;
 							});
 
-							const targetIndex = updatedChats.findIndex(c => c.id === msgChatId);
-							if (targetIndex > 0) {
-								const [targetChat] = updatedChats.splice(targetIndex, 1);
-								return [targetChat, ...updatedChats];
+							const targetChat = updatedChats.find(c => c.id === msgChatId);
+							if (targetChat) {
+								const filteredChats = updatedChats.filter(c => c.id !== msgChatId);
+								return [targetChat, ...filteredChats];
 							}
 
 							return updatedChats;
 						});
 
-						if (currentActiveChatId !== msgChatId) {
+						if (!isCurrentChatActive) {
 							break;
 						}
 
-						const currentMessage = { ...message, isRead: true };
+						if (message.senderId !== user.id && !message.isRead) {
+							sendSocketMessageRef.current("MARK_AS_READ", { chatId: msgChatId });
+						}
 
-						sendSocketMessageRef.current("MARK_AS_READ", { chatId: msgChatId });
+						const currentMessage = {
+							...message,
+							isRead: shouldMarkAsReadNow ? true : message.isRead
+						};
 
 						setMessages((prev) => {
 							const existingIndex = prev.findIndex(
@@ -153,9 +159,7 @@ export const WebSocketProvider = (
 									(!!currentMessage.clientSideId && msg.clientSideId === currentMessage.clientSideId)
 							);
 							if (existingIndex !== -1) {
-								const updated = [...prev];
-								updated[existingIndex] = currentMessage;
-								return updated;
+								return prev.map((msg, idx) => idx === existingIndex ? currentMessage : msg);
 							}
 
 							return [...prev, currentMessage];

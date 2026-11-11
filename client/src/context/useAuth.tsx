@@ -3,11 +3,9 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { UserType } from "@/types/types";
 
-interface UserPayload {
-	id: number;
-	name: string;
-	email: string;
+interface UserPayload extends UserType{
 	exp: number;
 }
 

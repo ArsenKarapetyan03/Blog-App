@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useTransition, useCallback } from "react";
 import Cookies from "js-cookie";
-import { MessageSquare, RotateCw, UserPlus, X } from "lucide-react";
+import { Check, MessageSquare, RotateCw, UserPlus, X } from "lucide-react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import { BASE_URL } from "@/config/api";
+import { cn } from "@/lib/cn";
 import { UserType, ChatType } from "@/types/types";
+import { getFriends } from "@/actions/friend";
+import { createChat, fetchChatsApi } from "@/actions/chat";
+import { fetchAllUsersApi } from "@/actions/user";
 import { useWebSocket } from "@/context/webSocketContext";
 import { useAuth } from "@/context/useAuth";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { MessageWindow } from "./MessageWindow";
 import { Chats } from "./Chats";
 import { Search } from "@/components/Search";
@@ -26,16 +28,15 @@ export const ChatList = () => {
 	const { chats, setChats, activeChatId, setActiveChatId } = useWebSocket();
 	const { user } = useAuth();
 	const [allUsers, setAllUsers] = useState<UserType[]>([]);
+	const [friendsList, setFriendsList] = useState<UserType[]>([]);
 	const [totalUsersPages, setTotalUsersPages] = useState(1);
 	const [error, setError] = useState<string | null>(null);
 	const [isPending, startTransition] = useTransition();
 	const [isUsersLoading, setIsUsersLoading] = useState(false);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [isCreatingChat, setIsCreatingChat] = useState(false);
-
-	if (!user) {
-		return "Authentication required";
-	}
+	const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+	const [groupName, setGroupName] = useState("");
 
 	const fetchChats = useCallback(() => {
 		if (!token) {
@@ -46,20 +47,9 @@ export const ChatList = () => {
 		startTransition(async () => {
 			try {
 				setError(null);
-				const response = await fetch(`${BASE_URL}/chat`, {
-					headers: { Authorization: `Bearer ${token}` },
-				});
-				if (!response.ok) {
-					setError("Failed to fetch messages.");
-					return;
-				}
-				const result = await response.json();
-				if (!result.success) {
-					setError("Failed to fetch messages.");
-					setChats([]);
-					return;
-				}
-				setChats(result.data || []);
+				const chatsData = await fetchChatsApi(token);
+
+				setChats(chatsData);
 
 				const selectedChatId = sessionStorage.getItem("selectedChatId");
 				if (selectedChatId) {
@@ -67,9 +57,29 @@ export const ChatList = () => {
 				}
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Something went wrong");
+				setChats([]);
 			}
 		});
 	}, [token, setChats, setActiveChatId]);
+
+	const fetchFriends = useCallback(async () => {
+		if (!user || !token) {
+			return;
+		}
+
+		try {
+			const result = await getFriends(token);
+			if (Array.isArray(result)) {
+				setFriendsList(result);
+			}
+		} catch (err) {
+			console.error("Failed to fetch friends:", err);
+		}
+	}, [user, token]);
+
+	useEffect(() => {
+		fetchFriends();
+	}, [fetchFriends]);
 
 	const fetchAllUsers = useCallback(async (query: string, page: number) => {
 		if (!token || !isModalOpen) {
@@ -77,19 +87,10 @@ export const ChatList = () => {
 		}
 		setIsUsersLoading(true);
 		try {
-			const params = new URLSearchParams({ page: String(page) });
-			if (query) {
-				params.set("query", query);
-			}
+			const { users, totalPages } = await fetchAllUsersApi({ query, page, token });
 
-			const response = await fetch(`${BASE_URL}/user?${params.toString()}`, {
-				headers: { Authorization: `Bearer ${token}` },
-			});
-			if (response.ok) {
-				const result = await response.json();
-				setAllUsers(result.data.users || []);
-				setTotalUsersPages(result.data.totalPages || 1);
-			}
+			setAllUsers(users);
+			setTotalUsersPages(totalPages);
 		} catch (err) {
 			console.error("Failed to fetch users:", err);
 		} finally {
@@ -113,43 +114,47 @@ export const ChatList = () => {
 		params.delete("query");
 		params.delete("page");
 		replace(`${pathname}?${params.toString()}`, { scroll: false });
+		setSelectedUserIds([]);
+		setGroupName("");
 	};
 
-	const handleSelectNewChat = async (user: UserType) => {
-		if (!token || isCreatingChat) {
+	const toggleUserSelection = (userId: number) => {
+		setSelectedUserIds((prev) =>
+			prev.includes(userId)
+				? prev.filter((id) => id !== userId)
+				: [...prev, userId]
+		);
+	};
+
+	const handleCreateChatSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+
+		if (!token || isCreatingChat || selectedUserIds.length === 0) {
 			return;
 		}
+
+		const isGroup = selectedUserIds.length > 1;
+		const title = isGroup ? groupName.trim() : null;
 
 		setIsCreatingChat(true);
 		setError(null);
 
 		try {
-			const response = await fetch(`${BASE_URL}/chat`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`,
-				},
-				body: JSON.stringify({
-					userIds: [user.id],
-					isGroup: false
-				}),
-			});
+			const newChat = await createChat(
+				{ participantIds: selectedUserIds, isGroup, title },
+				token
+			);
 
-			if (!response.ok) {
-				throw new Error("Failed to start conversation");
-			}
-
-			const result = await response.json();
-			if (result.success && result.data) {
-				const targetChat = result.data as ChatType;
-
+			if (newChat) {
 				setChats((prev) => {
-					if (prev.some((c) => c.id === targetChat.id)) return prev;
-					return [targetChat, ...prev];
+					const filtered = prev.filter(
+						(c) => !selectedUserIds.includes(Math.abs(c.id)) || c.id > 0
+					);
+					if (filtered.some((c) => c.id === newChat.id)) return filtered;
+					return [newChat, ...filtered];
 				});
 
-				handleSelectChat(targetChat.id);
+				handleSelectChat(newChat.id);
 				handleCloseModal();
 			}
 		} catch (err) {
@@ -159,10 +164,36 @@ export const ChatList = () => {
 		}
 	};
 
+	const handleStartChatWithFriend = (friend: UserType) => {
+		const tempChatId = -friend.id;
+
+		if (chats.some(c => c.id === tempChatId)) {
+			handleSelectChat(tempChatId);
+			return;
+		}
+
+		const tempChat: ChatType = {
+			id: tempChatId,
+			title: friend.name,
+			isGroup: false,
+			users: [user!, friend],
+			lastMessage: null as any,
+			unreadCount: 0,
+			updatedAt: new Date().toISOString()
+		};
+
+		setChats((prev) => [tempChat, ...prev]);
+		handleSelectChat(tempChatId);
+	};
+
 	const handleSelectChat = (chatId: number) => {
 		setActiveChatId(chatId);
 		sessionStorage.setItem("selectedChatId", JSON.stringify(chatId));
 	};
+
+	if (!user) {
+		return "Authentication required";
+	}
 
 	if (isPending && chats.length === 0) {
 		return (
@@ -188,7 +219,7 @@ export const ChatList = () => {
 						className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
 					>
 						<UserPlus size="18" />
-						New Chat
+						New Chat / Group
 					</button>
 					<button
 						onClick={fetchChats}
@@ -207,83 +238,151 @@ export const ChatList = () => {
 				</p>
 			)}
 
-			{chats.length === 0 ? (
-				<div className="flex flex-1 flex-col items-center justify-center p-8 bg-gray-50/50 gap-4">
-					<EmptyState message="No conversations yet" />
-					<button onClick={() => setIsModalOpen(true)} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-						Start a new conversation
-					</button>
+			<div className="flex flex-1 overflow-hidden">
+				<div className="w-full md:w-80 border-r border-gray-100 overflow-y-auto">
+					<Chats
+						chats={chats}
+						activeChatId={activeChatId}
+						friends={friendsList}
+						currentUserId={user.id}
+						onSelectChat={handleSelectChat}
+						onStartChatWithFriend={handleStartChatWithFriend}
+					/>
 				</div>
-			) : (
-				<div className="flex flex-1 overflow-hidden">
-					<div className="w-full md:w-80 border-r border-gray-100 overflow-y-auto">
-						<Chats
-							chats={chats}
-							currentUserId={user.id}
-							activeChatId={activeChatId}
-							onSelectChat={handleSelectChat}
-						/>
-					</div>
 
-					<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">
-						{activeChat && token && activeChatId ? (
-							<MessageWindow
-								chat={activeChat}
-								token={token}
-							/>
-						) : (
-							<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-								<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-500">
-									<MessageSquare size={32} />
-								</div>
-								<h3 className="font-semibold text-gray-900">No chat selected</h3>
+				<div className="hidden md:flex flex-1 flex-col bg-slate-50/60">
+					{activeChat && token && activeChatId ? (
+						<MessageWindow
+							chat={activeChat}
+							currentUserId={user.id}
+							token={token}
+						/>
+					) : (
+						<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+							<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-500">
+								<MessageSquare size={32} />
 							</div>
-						)}
-					</div>
+							<h3 className="font-semibold text-gray-900">No chat selected</h3>
+						</div>
+					)}
 				</div>
-			)}
+			</div>
 
 			{isModalOpen && (
 				<div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-					<div className="flex h-130 w-full max-w-md flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl">
+					<form id="create-chat-form" onSubmit={handleCreateChatSubmit} className="hidden" />
+
+					<div className="flex h-140 w-full max-w-md flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl">
 						<div className="flex items-center justify-between pb-4 border-b border-gray-100">
-							<h3 className="text-lg font-bold text-gray-900">Start new conversation</h3>
-							<button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50">
+							<h3 className="text-lg font-bold text-gray-900">
+								{selectedUserIds.length > 1 ? "Create Group Chat" : "Start New Conversation"}
+							</h3>
+							<button
+								type="button"
+								onClick={handleCloseModal}
+								className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50"
+							>
 								<X size={20} />
 							</button>
 						</div>
 
-						<div className="mt-4 [&>form]:w-full">
-							<Search />
-						</div>
-
-						<div className="mt-4 flex-1 overflow-y-auto space-y-1 pr-1">
-							{isUsersLoading || isCreatingChat ? (
-								<div className="flex justify-center py-8">
-									<div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+						<div className="flex-1 overflow-y-auto py-4 space-y-4">
+							{selectedUserIds.length > 1 && (
+								<div className="space-y-1.5">
+									<label htmlFor="groupName" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+										Group Name
+									</label>
+									<input
+										id="groupName"
+										type="text"
+										required
+										value={groupName}
+										onChange={(e) => setGroupName(e.target.value)}
+										placeholder="Enter group name..."
+										className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+									/>
 								</div>
-							) : allUsers.length === 0 ? (
-								<p className="text-center text-sm text-gray-400 py-8">No users found</p>
-							) : (
-								allUsers.map((user) => (
-									<button
-										key={user.id}
-										disabled={isCreatingChat}
-										onClick={() => handleSelectNewChat(user)}
-										className="w-full flex flex-col items-start gap-0.5 rounded-xl px-4 py-3 text-left transition-colors hover:bg-slate-50 disabled:opacity-50"
-									>
-										<span className="font-semibold text-sm text-gray-900">{user.name}</span>
-										<span className="text-xs text-gray-500">{user.email}</span>
-									</button>
-								))
+							)}
+
+							<div className="space-y-1.5">
+								<label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+									Select Users
+								</label>
+								<Search />
+							</div>
+
+							<div className="space-y-1 max-h-60 overflow-y-auto pr-1">
+								{isUsersLoading ? (
+									<div className="flex py-8 items-center justify-center">
+										<div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+									</div>
+								) : allUsers.length === 0 ? (
+									<p className="text-center py-6 text-sm text-gray-500">No users found</p>
+								) : (
+									allUsers.map((item) => {
+										const isSelected = selectedUserIds.includes(item.id);
+										return (
+											<button
+												key={item.id}
+												type="button"
+												onClick={() => toggleUserSelection(item.id)}
+												className={cn(
+													"flex w-full items-center justify-between rounded-xl p-3 text-left transition-colors hover:bg-gray-50",
+													isSelected && "bg-blue-50/50 hover:bg-blue-50"
+												)}
+											>
+												<div className="min-w-0 flex-1">
+													<p className="text-sm font-semibold text-gray-900 truncate">
+														{item.name || `User #${item.id}`}
+													</p>
+													{item.name && (
+														<p className="text-xs text-gray-400 truncate">@{item.name}</p>
+													)}
+												</div>
+												<div className={cn(
+													"flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+													isSelected
+														? "border-blue-600 bg-blue-600 text-white"
+														: "border-gray-300 bg-white"
+												)}>
+													{isSelected && <Check size={14} strokeWidth={3} />}
+												</div>
+											</button>
+										);
+									})
+								)}
+							</div>
+
+							{!isUsersLoading && allUsers.length > 0 && (
+								<div className="pt-2 border-t border-gray-50">
+									<Pagination totalPages={totalUsersPages} currentPage={currentPage} />
+								</div>
 							)}
 						</div>
 
-						{totalUsersPages > 1 && (
-							<div className="mt-2 pt-2 border-t border-gray-100">
-								<Pagination totalPages={totalUsersPages} currentPage={currentPage} />
-							</div>
-						)}
+						<div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+							<button
+								type="button"
+								onClick={handleCloseModal}
+								className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+							>
+								Cancel
+							</button>
+							<button
+								type="submit"
+								form="create-chat-form"
+								disabled={isCreatingChat || selectedUserIds.length === 0}
+								className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 min-w-28"
+							>
+								{isCreatingChat ? (
+									<div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+								) : selectedUserIds.length > 1 ? (
+									"Create Group"
+								) : (
+									"Start Chat"
+								)}
+							</button>
+						</div>
 					</div>
 				</div>
 			)}

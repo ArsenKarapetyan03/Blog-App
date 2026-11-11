@@ -82,7 +82,7 @@ const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) =>
 			break;
 		}
 		case "MARK_AS_READ": {
-			await messageService.isReadMessage(senderId, chatId);
+			await messageService.markMessagesAsRead(senderId, chatId);
 			responseData = {type: "MESSAGES_READ", payload: {readerId: senderId, chatId}};
 			break;
 		}

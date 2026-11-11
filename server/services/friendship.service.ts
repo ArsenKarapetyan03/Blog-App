@@ -13,6 +13,22 @@ export const friendshipService = {
 		});
 	},
 
+	findAll: async function (userId: number) {
+		return await db.Friendship.findAll({
+			where: {
+				status: "accepted",
+				[Op.or]: [
+					{ requesterId: userId },
+					{ receiverId: userId }
+				]
+			},
+			include: [
+				{ model: db.User, as: "requester" },
+				{ model: db.User, as: "receiver" }
+			]
+		})
+	},
+
 	create: async function (userId: number, friendId: number) {
 		const result = await db.Friendship.create({
 			requesterId: userId,

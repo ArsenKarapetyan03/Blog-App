@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { authMiddleware } from "@/middleware/authMiddleware.js";
 import { validateFriendship } from "@/middleware/validateFriendId.js";
-import { add, accept, remove } from "@/controllers/friendship.controller.js";
+import { add, accept, remove, getFriends } from "@/controllers/friendship.controller.js";
 
 const router = Router();
 
+router.get("/", authMiddleware, getFriends);
 router.post("/", authMiddleware, validateFriendship, add);
 router.post("/accept", authMiddleware, validateFriendship, accept);
 router.delete("/", authMiddleware, validateFriendship, remove);

@@ -36,19 +36,16 @@ export const getAll = async (req: Request, res: Response) => {
 	}
 
 	return res.status(200).json({ success: true, data });
-}
+};
 
 export const getCurrentUser = async (req: Request, res: Response) => {
-	const currentUser = res.locals.user;
-	if (!currentUser) {
-		throw new AppError("Unauthorized. User data not found in request.", 401);
-	}
+	const userId = res.locals.user!.id;
 
-	const foundUser = await userService.findById(currentUser.id);
+	const foundUser = await userService.findById(userId);
 	if (!foundUser) {
 		throw new AppError("User not found.", 404);
 	}
-	const { incomingRequests, outgoingRequests } = await userService.findPendingRequests(currentUser.id);
+	const { incomingRequests, outgoingRequests } = await userService.findPendingRequests(userId);
 
 	return res.status(200).json({
 		success: true,
@@ -77,4 +74,4 @@ export const getOne = async (req: Request, res: Response) => {
 		success: true,
 		user: formatUser(user),
 	});
-}
+};

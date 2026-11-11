@@ -1,11 +1,13 @@
-import { cookies } from "next/headers";
+"use client";
+
 import { HeaderLink } from "./HeaderLink";
 import { LogoutButton } from "@/components/ui/LogoutButton";
+import { InfoRow } from "@/components/ui/InfoRow";
+import { useAuth } from "@/context/useAuth";
 
-export const Header = async () => {
-	const cookieStore = await cookies();
-	const token = cookieStore.get("token")?.value;
-	const isAuthenticated = !!token;
+export const Header = () => {
+	const { user } = useAuth();
+	const isAuthenticated = !!user;
 
 	return(
 		<header className="lg:max-w-2/3 mx-auto flex justify-between p-5">
@@ -20,7 +22,10 @@ export const Header = async () => {
 						<HeaderLink text="Sign up" href="/sign-up" />
 						<HeaderLink text="Sign in" href="/sign-in" />
 					</div>
-				: <LogoutButton />
+				: <div className="flex gap-4">
+						<InfoRow name={user.name} />
+						<LogoutButton />
+					</div>
 			}
 			</header>
 	)

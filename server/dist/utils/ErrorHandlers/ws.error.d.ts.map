@@ -1,0 +1,1 @@
+{"version":3,"file":"ws.error.d.ts","sourceRoot":"","sources":["../../../utils/ErrorHandlers/ws.error.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,yBAAyB,CAAC;AAGtE,KAAK,SAAS,GAAG,CAAC,EAAE,EAAE,sBAAsB,EAAE,OAAO,EAAE,GAAG,KAAK,OAAO,CAAC,IAAI,CAAC,CAAC;AAE7E,eAAO,MAAM,YAAY,YAAa,SAAS,UAC5B,sBAAsB,WAAW,GAAG,kBAkCtD,CAAC"}

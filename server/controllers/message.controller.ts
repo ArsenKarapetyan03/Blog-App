@@ -18,6 +18,7 @@ export const getMessages = async (req: Request, res: Response) => {
 	}
 
 	const messages = await messageService.getMessages(
+		userId,
 		parsedChatId,
 		parsedOffset
 	);
@@ -25,22 +26,18 @@ export const getMessages = async (req: Request, res: Response) => {
 	res.status(200).json({ success: true, messages });
 };
 
-export const getChats = async (req: Request, res: Response) => {
-	const userId = res.locals.user!.id;
-
-	const data = await messageService.getChatsWithLastMessage(userId);
-
-	res.status(200).json({success: true, data});
-};
-
 export const readMessage = async (req: Request, res: Response) => {
 	const currentUserId = res.locals.user!.id;
-	const partnerId = Number(req.body?.partnerId);
+	const chatId = Number(req.body?.chatId);
 
-	if (isNaN(partnerId) || partnerId <= 0) {
-		throw new AppError("Invalid partner ID", 400);
+	if (!Number.isInteger(chatId) || chatId <= 0) {
+		throw new AppError("Invalid chat ID", 400);
 	}
-	await messageService.isReadMessage(currentUserId, partnerId);
+	const readAt = await messageService.markMessagesAsRead(currentUserId, chatId);
 
-	res.status(200).json({ success: true, message: "Message updated successfully" });
+	if (!readAt) {
+		throw new AppError("You are not a member of this chat", 403);
+	}
+
+	res.status(200).json({ success: true, readAt });
 };

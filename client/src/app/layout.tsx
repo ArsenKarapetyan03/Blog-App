@@ -20,14 +20,14 @@ export default function RootLayout({children}: LayoutProps<"/">) {
 			className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
 		>
 			<body>
-			<Header />
-				<div className="flex flex-col items-center">
-					<main className="flex flex-1 w-full max-w-3xl lg:max-w-4xl flex-col items-center sm:items-start font-sans lg:text-lg">
-						<AuthProvider>
+				<AuthProvider>
+					<Header />
+					<div className="flex flex-col items-center">
+						<main className="flex flex-1 w-full max-w-3xl lg:max-w-4xl flex-col items-center sm:items-start font-sans lg:text-lg">
 							{children}
-						</AuthProvider>
-					</main>
-				</div>
+						</main>
+					</div>
+				</AuthProvider>
 			</body>
 		</html>
 	);

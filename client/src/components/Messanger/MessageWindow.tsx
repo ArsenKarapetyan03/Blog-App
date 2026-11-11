@@ -2,15 +2,18 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { X, Pen } from "lucide-react";
-import { getMessages } from "@/actions/message";
+import { getMessages, markMessagesAsRead } from "@/actions/message";
 import { ChatType, MessageType } from "@/types/types";
 import { MessageItem } from "./MessageItem";
 import { useWebSocket } from "@/context/webSocketContext";
 import { useAuth } from "@/context/useAuth";
 import { HeaderLink } from "@/components/Header/HeaderLink";
+import { getChatTitle } from "@/lib/helperFunctions";
+import { createChat } from "@/actions/chat";
 
 interface MessageWindowProps {
 	chat: ChatType;
+	currentUserId: number;
 	token: string;
 }
 
@@ -19,10 +22,11 @@ const PAGE_SIZE = 10;
 export const MessageWindow = (
 	{
 		chat,
+		currentUserId,
 		token,
 	}: MessageWindowProps
 ) => {
-	const { messages, setMessages, typingUsers, sendSocketMessage } = useWebSocket();
+	const { messages, setMessages, setChats, setActiveChatId, typingUsers, sendSocketMessage } = useWebSocket();
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -82,8 +86,18 @@ export const MessageWindow = (
 
 	useEffect(() => {
 		let cancelled = false;
+		const chatId = chat.id;
 
 		const loadMessages = async () => {
+			if (chat.id < 0) {
+				setMessages([]);
+				setIsLoading(false);
+				setHasMore(false);
+				setEditingMessage(null);
+				setInputValue("");
+				return;
+			}
+
 			setIsLoading(true);
 			setMessages([]);
 			setHasMore(true);
@@ -91,13 +105,11 @@ export const MessageWindow = (
 			setInputValue("");
 
 			try {
-				const data = await getMessages(chatIdRef.current, token, 0);
+				const data = await getMessages(chatId, token, 0);
 
 				if (cancelled) {
 					return;
 				}
-
-				sendSocketMessage("MARK_AS_READ", { chatId: chatIdRef.current });
 
 				setMessages(() => {
 					return [...data].sort((a, b) =>
@@ -106,6 +118,42 @@ export const MessageWindow = (
 				});
 
 				setHasMore(data.length === PAGE_SIZE);
+
+				try {
+					const readAt = await markMessagesAsRead(chatId, token);
+					if (cancelled) {
+						return;
+					}
+
+					sendSocketMessage("MARK_AS_READ", { chatId });
+
+					const readAtTime = new Date(readAt).getTime();
+
+					setMessages((prev) =>
+						prev.map((message) =>
+							message.chatId === chatId &&
+							message.senderId !== currentUserId &&
+							new Date(message.createdAt).getTime() <= readAtTime
+								? { ...message, isRead: true }
+								: message
+						)
+					);
+					setChats((prev) =>
+						prev.map((currentChat) =>
+							currentChat.id === chatId &&
+							currentChat.lastMessage &&
+							currentChat.lastMessage.senderId !== currentUserId &&
+							new Date(currentChat.lastMessage.createdAt).getTime() <= readAtTime
+								? {
+									...currentChat,
+									lastMessage: { ...currentChat.lastMessage, isRead: true },
+								}
+								: currentChat
+						)
+					);
+				} catch (error) {
+					console.error("Failed to mark chat messages as read:", error);
+				}
 
 				requestAnimationFrame(() => {
 					if (containerRef.current) {
@@ -128,7 +176,7 @@ export const MessageWindow = (
 		return () => {
 			cancelled = true;
 		};
-	}, [chat.id, token, sendSocketMessage, setMessages]);
+	}, [chat.id, token, currentUserId, sendSocketMessage, setChats, setMessages]);
 
 	const loadMore = useCallback(async () => {
 		if (isFetchingMore || !hasMore || isLoading) {
@@ -293,13 +341,42 @@ export const MessageWindow = (
 			);
 			handleCancelEdit();
 		} else {
+			let targetChatId = chat.id;
+
+			if (chat.id < 0) {
+				const friendId = Math.abs(chat.id);
+
+				try {
+					const realChat = await createChat({
+						participantIds: [friendId],
+						isGroup: false,
+						title: null
+					}, token);
+
+					if (!realChat) {
+						return;
+					}
+
+					setChats((prev) => {
+						const filtered = prev.filter(c => c.id !== chat.id);
+						return [realChat, ...filtered];
+					});
+					setActiveChatId(realChat.id);
+
+					targetChatId = realChat.id;
+				} catch (err) {
+					console.error("Failed to create chat before sending message:", err);
+					return;
+				}
+			}
+
 			const clientSideId = crypto.randomUUID();
 
 			const tempMessage: MessageType = {
 				id: clientSideId as unknown as number,
 				clientSideId,
-				chatId: chat.id,
-				senderId: 0,
+				chatId: targetChatId,
+				senderId: currentUserId,
 				messageText,
 				isRead: false,
 				isDeleted: false,
@@ -308,7 +385,7 @@ export const MessageWindow = (
 			};
 
 			if (!sendSocketMessage("CREATE_MESSAGE", {
-				chatId: chat.id,
+				chatId: targetChatId,
 				messageText,
 				clientSideId
 			})) {
@@ -318,7 +395,7 @@ export const MessageWindow = (
 			if (typingTimeoutRef.current) {
 				clearTimeout(typingTimeoutRef.current);
 			}
-			sendSocketMessage("TYPING_END", { chatId: chat.id });
+			sendSocketMessage("TYPING_END", { chatId: targetChatId });
 			isCurrentlyTypingRef.current = false;
 
 			setInputValue("");
@@ -341,11 +418,13 @@ export const MessageWindow = (
 		<div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
 			<div className="px-6 py-4 shadow-sm border-b border-gray-100 z-10 bg-white">
 				<h3 className="font-bold text-gray-900">
-					{chat.title || "Group chat"}
+					{getChatTitle(chat, currentUserId)}
 				</h3>
-				<p className="text-xs text-gray-500">
-					Members: {chat.users?.length || 0}
-				</p>
+				{chat.isGroup
+					&& <p className="text-xs text-gray-500">
+							Members: {chat.users?.length || 0}
+						</p>
+				}
 			</div>
 
 			<div
@@ -376,6 +455,7 @@ export const MessageWindow = (
 							key={msg.id}
 							msg={msg}
 							currentUserId={user!.id}
+							chatUsers={chat.users}
 							onStartEdit={handleStartEdit}
 							onDelete={handleDelete}
 						/>

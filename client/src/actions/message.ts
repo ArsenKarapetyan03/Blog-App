@@ -25,7 +25,7 @@ export const getMessages = async (
 	return (data.messages || []).reverse();
 };
 
-export const markMessagesAsRead = async (partnerId: number, token: string) => {
+export const markMessagesAsRead = async (chatId: number, token: string): Promise<string> => {
 	const response = await fetch(
 		`${BASE_URL}/message/read`,
 		{
@@ -34,11 +34,14 @@ export const markMessagesAsRead = async (partnerId: number, token: string) => {
 				Authorization: `Bearer ${token}`,
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({partnerId})
+			body: JSON.stringify({chatId})
 		}
 	);
 
 	if (!response.ok) {
 		throw new Error("Failed to mark messages as read");
 	}
+
+	const data = await response.json();
+	return data.readAt;
 };

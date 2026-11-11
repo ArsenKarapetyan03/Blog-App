@@ -9,11 +9,11 @@ import {
 } from "sequelize";
 import type { Message } from "@/models/message.js";
 import type { User } from "@/models/user.js";
-
+import type { ChatMember } from "@/models/chatmember.js";
 
 export class Chat extends Model<
-  InferAttributes<Chat>,
-  InferCreationAttributes<Chat>
+  InferAttributes<Chat, { omit: "messages" | "users" | "memberships" }>,
+  InferCreationAttributes<Chat, { omit: "messages" | "users" | "memberships" }>
 > {
   declare id: CreationOptional<number>;
   declare title: string | null;
@@ -21,8 +21,9 @@ export class Chat extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare messages: NonAttribute<Message[]>;
   declare users: NonAttribute<User[]>;
+  declare messages: NonAttribute<Message[]>;
+  declare memberships: NonAttribute<ChatMember[]>;
 
   static initialize(sequelize: Sequelize) {
     this.init(
@@ -63,6 +64,7 @@ export class Chat extends Model<
     this.hasMany(registry.Message as any, {
       foreignKey: "chatId",
       as: "messages",
+      onDelete: "CASCADE",
     });
 
     this.hasMany(registry.ChatMember as any, {
