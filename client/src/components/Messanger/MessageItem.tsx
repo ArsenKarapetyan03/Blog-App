@@ -27,7 +27,6 @@ export const MessageItem = (
 ) => {
 	const [isVisible, setIsVisible] = useState(false);
 
-	const sender = chatUsers?.find((user) => user.id === msg.senderId) || "Incoming message";
 	const isIncoming = msg.senderId !== currentUserId;
 
 	const showDeleteConfirm = () => {
@@ -103,7 +102,7 @@ export const MessageItem = (
 						isIncoming
 							? "bg-white text-gray-900 border border-gray-100 rounded-bl-none"
 							: "bg-blue-600 text-white rounded-br-none",
-						msg.isDeleted && "bg-transparent text-zinc-400 border-none shadow-none px-0 py-1",
+						msg.isDeleted && "bg-zinc-100 text-zinc-400",
 					)}
 				>
 					<p className="leading-relaxed break-words whitespace-pre-wrap">{msg.messageText}</p>
@@ -112,14 +111,13 @@ export const MessageItem = (
 				{areDatesEqual(msg.createdAt, msg.updatedAt) || msg.isDeleted
 					? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 					: <div className="space-x-1 inline-flex items-center">
-						<span>{new Date(msg.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-						<Pen size={10} className="inline" />
-					</div>
+							<span>{new Date(msg.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+							<Pen size={10} className="inline" />
+						</div>
 				}
 			</span>
 				</div>
 			</div>
 		</div>
-
 	);
 };

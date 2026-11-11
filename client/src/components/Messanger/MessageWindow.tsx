@@ -10,6 +10,7 @@ import { useAuth } from "@/context/useAuth";
 import { HeaderLink } from "@/components/Header/HeaderLink";
 import { getChatTitle } from "@/lib/helperFunctions";
 import { createChat } from "@/actions/chat";
+import { MessageWindowHeader } from "@/components/Messanger/MessageWindowHeader";
 
 interface MessageWindowProps {
 	chat: ChatType;
@@ -42,6 +43,7 @@ export const MessageWindow = (
 	const chatIdRef = useRef(chat.id);
 	const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isCurrentlyTypingRef = useRef<boolean>(false);
+	const headerRef = useRef<HTMLDivElement>(null);
 
 	if (!user) {
 		return (
@@ -415,17 +417,8 @@ export const MessageWindow = (
 	const typingUsersCount = Object.keys(typingUsers).length;
 
 	return (
-		<div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
-			<div className="px-6 py-4 shadow-sm border-b border-gray-100 z-10 bg-white">
-				<h3 className="font-bold text-gray-900">
-					{getChatTitle(chat, currentUserId)}
-				</h3>
-				{chat.isGroup
-					&& <p className="text-xs text-gray-500">
-							Members: {chat.users?.length || 0}
-						</p>
-				}
-			</div>
+		<div ref={headerRef} className="flex h-full flex-1 flex-col relative overflow-hidden bg-white">
+			<MessageWindowHeader currentUserId={currentUserId} chat={chat} headerRef={headerRef} />
 
 			<div
 				ref={containerRef}
