@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, SubmitEvent } from "react";
 import { X, Pen } from "lucide-react";
 import { getMessages, markMessagesAsRead } from "@/actions/message";
 import { ChatType, MessageType } from "@/types/types";
@@ -8,7 +8,6 @@ import { MessageItem } from "./MessageItem";
 import { useWebSocket } from "@/context/webSocketContext";
 import { useAuth } from "@/context/useAuth";
 import { HeaderLink } from "@/components/Header/HeaderLink";
-import { getChatTitle } from "@/lib/helperFunctions";
 import { createChat } from "@/actions/chat";
 import { MessageWindowHeader } from "@/components/Messanger/MessageWindowHeader";
 
@@ -311,7 +310,7 @@ export const MessageWindow = (
 		}
 	};
 
-	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
 		if (!inputValue.trim()) {
@@ -355,17 +354,17 @@ export const MessageWindow = (
 						title: null
 					}, token);
 
-					if (!realChat) {
+					if (!realChat || !realChat.data) {
 						return;
 					}
 
 					setChats((prev) => {
 						const filtered = prev.filter(c => c.id !== chat.id);
-						return [realChat, ...filtered];
+						return [realChat.data, ...filtered];
 					});
-					setActiveChatId(realChat.id);
+					setActiveChatId(realChat.data.id);
 
-					targetChatId = realChat.id;
+					targetChatId = realChat.data.id;
 				} catch (err) {
 					console.error("Failed to create chat before sending message:", err);
 					return;
@@ -418,7 +417,12 @@ export const MessageWindow = (
 
 	return (
 		<div ref={headerRef} className="flex h-full flex-1 flex-col relative overflow-hidden bg-white">
-			<MessageWindowHeader currentUserId={currentUserId} chat={chat} headerRef={headerRef} />
+			<MessageWindowHeader
+				currentUserId={currentUserId}
+				chat={chat}
+				headerRef={headerRef}
+				token={token}
+			/>
 
 			<div
 				ref={containerRef}

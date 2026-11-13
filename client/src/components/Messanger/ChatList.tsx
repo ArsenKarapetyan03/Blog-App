@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from "react";
-import Cookies from "js-cookie";
-import { Check, MessageSquare, RotateCw, UserPlus, X } from "lucide-react";
+import { useState, useEffect, useTransition, useCallback, SubmitEvent } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { Check, MessageSquare, RotateCw, UserPlus, X } from "lucide-react";
+import Cookies from "js-cookie";
 import { cn } from "@/lib/cn";
 import { UserType, ChatType } from "@/types/types";
 import { getFriends } from "@/actions/friend";
-import { createChat, fetchChatsApi } from "@/actions/chat";
+import { createChat, getChats } from "@/actions/chat";
 import { fetchAllUsersApi } from "@/actions/user";
 import { useWebSocket } from "@/context/webSocketContext";
 import { useAuth } from "@/context/useAuth";
@@ -47,7 +47,7 @@ export const ChatList = () => {
 		startTransition(async () => {
 			try {
 				setError(null);
-				const chatsData = await fetchChatsApi(token);
+				const chatsData = await getChats(token);
 
 				setChats(chatsData);
 
@@ -126,7 +126,7 @@ export const ChatList = () => {
 		);
 	};
 
-	const handleCreateChatSubmit = async (e: React.FormEvent) => {
+	const handleCreateChatSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
 		if (!token || isCreatingChat || selectedUserIds.length === 0) {
@@ -145,16 +145,18 @@ export const ChatList = () => {
 				token
 			);
 
-			if (newChat) {
+			if (newChat.success && newChat.data) {
 				setChats((prev) => {
 					const filtered = prev.filter(
 						(c) => !selectedUserIds.includes(Math.abs(c.id)) || c.id > 0
 					);
-					if (filtered.some((c) => c.id === newChat.id)) return filtered;
-					return [newChat, ...filtered];
+					if (filtered.some((c) => c.id === newChat.data.id)) {
+						return filtered;
+					}
+					return [newChat.data, ...filtered];
 				});
 
-				handleSelectChat(newChat.id);
+				handleSelectChat(newChat.data.id);
 				handleCloseModal();
 			}
 		} catch (err) {
@@ -177,6 +179,7 @@ export const ChatList = () => {
 			title: friend.name,
 			isGroup: false,
 			users: [user!, friend],
+			adminId: user!.id,
 			lastMessage: null as any,
 			unreadCount: 0,
 			updatedAt: new Date().toISOString()

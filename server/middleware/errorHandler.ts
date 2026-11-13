@@ -8,6 +8,13 @@ const errorHandler = (
 	res: Response,
 	next: NextFunction
 ) => {
+	if (err instanceof SyntaxError && "status" in err && err.status === 400 && "body" in err) {
+		return res.status(400).json({
+			success: false,
+			message: "Invalid JSON format in request body.",
+		});
+	}
+
 	if (err instanceof AppError) {
 		return res.status(err.statusCode).json({
 			success: false,

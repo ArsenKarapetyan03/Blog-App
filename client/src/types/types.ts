@@ -53,6 +53,7 @@ export interface ChatType {
 	title: string;
 	isGroup: boolean;
 	users: UserType[],
+	adminId?: number;
 	lastMessage: MessageType,
 	unreadCount: number;
 	updatedAt: string;

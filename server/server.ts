@@ -10,7 +10,7 @@ import initWebSocketServer from "./sockets/index.js";
 const app = express();
 
 app.use(cors({ origin: "http://localhost:3000"}));
-app.use(express.json());
+app.use(express.json({ limit: "10kb", strict: true }));
 app.use("/uploads", express.static(uploadsDirectory));
 app.use("/api", routes);
 app.use(errorHandler);
