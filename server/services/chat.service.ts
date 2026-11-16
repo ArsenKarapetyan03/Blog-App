@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 import db, { sequelize } from "@/models/index.js";
 import type { User } from "@/models/user.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
+import type { RoleName } from "@/models/role.js";
 
 interface FormattedChat {
 	id: number;
@@ -78,7 +79,12 @@ export const chatService = {
 				{
 					model: db.ChatMember,
 					as: "memberships",
-					attributes: ["userId", "role", "lastReadAt"]
+					attributes: ["userId", "lastReadAt"],
+					include: [{
+						model: db.Role,
+						as: "roleDetails",
+						attributes: ["name"],
+					}]
 				}
 			],
 			order: [
@@ -99,7 +105,7 @@ export const chatService = {
 			const chatUsers = chat.users || [];
 
 			const adminId = chat.isGroup
-				? (chat.memberships?.find(m => m.role === "admin")?.userId)
+				? (chat.memberships?.find(m => m.isAdmin)?.userId)
 				: null;
 
 			const displayTitle = chat.isGroup
@@ -141,7 +147,12 @@ export const chatService = {
 				{
 					model: db.ChatMember,
 					as: "memberships",
-					attributes: ["userId", "role", "lastReadAt"]
+					attributes: ["userId", "lastReadAt"],
+					include: [{
+						model: db.Role,
+						as: "roleDetails",
+						attributes: ["name"],
+					}]
 				}
 			]
 		});
@@ -155,7 +166,7 @@ export const chatService = {
 			name: chat.title,
 			isGroup: chat.isGroup,
 			users: chat.users.map(user => user.toJSON()),
-			adminId: chat.memberships.find(u => u.role === "admin")?.userId,
+			adminId: chat.memberships.find(u => u.isAdmin)?.userId,
 			createdAt: chat.createdAt,
 			updatedAt: chat.updatedAt
 		};
@@ -166,8 +177,8 @@ export const chatService = {
 			const groupChat = await db.Chat.create({title, isGroup: true}, {transaction: t});
 
 			const membersData = [
-				{chatId: groupChat.id, userId: creatorId, role: "admin"},
-				...participantIds.map(userId => ({chatId: groupChat.id, userId, role: "member"}))
+				{chatId: groupChat.id, userId: creatorId, role: "admin" as RoleName},
+				...participantIds.map(userId => ({chatId: groupChat.id, userId, role: "member" as RoleName}))
 			];
 
 			await db.ChatMember.bulkCreate(membersData, {transaction: t});
@@ -203,11 +214,13 @@ export const chatService = {
 				throw new AppError("Group chat not found.", 404);
 			}
 
+			const adminRoleId = await db.Role.getId("admin");
+
 			const membership = await db.ChatMember.findOne({
 				where: {
 					chatId,
 					userId: adminId,
-					role: "admin",
+					roleId: adminRoleId,
 				},
 				transaction: t,
 			});
@@ -303,7 +316,7 @@ export const chatService = {
 
 			const uniqueMemberIds = [...new Set(memberIds)];
 
-			const chat = await db.Chat.findByPk(chatId);
+			const chat = await db.Chat.findByPk(chatId, { transaction: t });
 			if (!chat) {
 				throw new AppError("Chat not found", 404);
 			}
@@ -313,15 +326,18 @@ export const chatService = {
 			}
 
 			const adminMembership = await db.ChatMember.findOne({
-				where: {chatId, userId: adminId},
+				where: { chatId, userId: adminId },
+				include: [{ model: db.Role, as: "roleDetails", attributes: ["name"] }],
+				transaction: t,
 			});
 
-			if (!adminMembership || adminMembership.role !== "admin") {
+			if (!adminMembership?.isAdmin) {
 				throw new AppError("Only chat admins can add members", 403);
 			}
 
 			const existingUsers = await db.User.findAll({
-				where: {id: uniqueMemberIds},
+				where: { id: uniqueMemberIds },
+				transaction: t,
 			});
 
 			if (existingUsers.length !== uniqueMemberIds.length) {
@@ -333,6 +349,7 @@ export const chatService = {
 					chatId,
 					userId: uniqueMemberIds,
 				},
+				transaction: t,
 			});
 
 			if (existingMemberships.length > 0) {
@@ -342,10 +359,10 @@ export const chatService = {
 			const newMembersData = uniqueMemberIds.map((userId) => ({
 				chatId,
 				userId,
-				role: "member",
+				role: "member" as const,
 			}));
 
-			await db.ChatMember.bulkCreate(newMembersData, {transaction: t});
+			await db.ChatMember.bulkCreate(newMembersData, { transaction: t });
 
 			return {
 				chatId,
@@ -354,9 +371,9 @@ export const chatService = {
 		});
 	},
 
-	deleteChatMember: async (adminId: number, memberId: number, chatId: number) => {
+	deleteChatMember: async (userId: number, memberId: number, chatId: number) => {
 		return await sequelize.transaction(async (t) => {
-			const chat = await db.Chat.findByPk(chatId);
+			const chat = await db.Chat.findByPk(chatId, { transaction: t });
 			if (!chat) {
 				throw new AppError("Chat not found", 404);
 			}
@@ -366,35 +383,123 @@ export const chatService = {
 			}
 
 			const adminMembership = await db.ChatMember.findOne({
-				where: {chatId, userId: adminId},
+				where: { chatId, userId },
+				include: [{ model: db.Role, as: "roleDetails", attributes: ["name"] }],
+				transaction: t,
 			});
 
-			if (!adminMembership || adminMembership.role !== "admin") {
+			if (!adminMembership?.isAdmin) {
 				throw new AppError("Only chat admins can remove members", 403);
 			}
 
-			if (adminId === memberId) {
+			if (userId === memberId) {
 				throw new AppError("Admins cannot remove themselves; use the leave chat action instead", 400);
 			}
 
 			const targetMembership = await db.ChatMember.findOne({
-				where: {chatId, userId: memberId},
+				where: { chatId, userId: memberId },
+				include: [{ model: db.Role, as: "roleDetails", attributes: ["name"] }],
+				transaction: t,
 			});
 
 			if (!targetMembership) {
 				throw new AppError("User is not a member of this chat", 404);
 			}
 
-			if (targetMembership.role === "admin") {
+			if (targetMembership.isAdmin) {
 				throw new AppError("Cannot remove another admin from the chat", 403);
 			}
 
-			await targetMembership.destroy({transaction: t});
+			await targetMembership.destroy({ transaction: t });
 
 			return {
 				chatId,
 				removedUserId: memberId,
+			};
+		});
+	},
+
+	leaveChat: async (userId: number, chatId: number) => {
+		return await sequelize.transaction(async (t) => {
+			const chat = await db.Chat.findByPk(chatId, { transaction: t });
+			if (!chat) {
+				throw new AppError("Chat not found", 404);
 			}
+
+			if (!chat.isGroup) {
+				throw new AppError("Cannot leave a private 1-on-1 chat", 403);
+			}
+
+			const membership = await db.ChatMember.findOne({
+				where: { chatId, userId },
+				include: [{ model: db.Role, as: "roleDetails", attributes: ["name"] }],
+				transaction: t,
+			});
+
+			if (!membership) {
+				throw new AppError("You are not a member of this chat", 404);
+			}
+
+			const wasAdmin = membership.isAdmin;
+			await membership.destroy({ transaction: t });
+
+			const remainingMembers = await db.ChatMember.findAll({
+				where: { chatId },
+				include: [{ model: db.Role, as: "roleDetails", attributes: ["name"] }],
+				order: [["createdAt", "ASC"]],
+				transaction: t,
+			});
+
+			if (remainingMembers.length === 0) {
+				await chat.destroy({ transaction: t });
+				return { chatId, leftUserId: userId, newAdminId: null, chatDeleted: true };
+			}
+
+			let newAdminId: number | null = null;
+			const hasRemainingAdmin = remainingMembers.some(m => m.isAdmin);
+
+			if (wasAdmin && !hasRemainingAdmin) {
+				const nextAdmin = remainingMembers[0]!;
+				nextAdmin.roleId = await db.Role.getId("admin");
+				await nextAdmin.save({ transaction: t });
+				newAdminId = nextAdmin.userId;
+			}
+
+			return {
+				chatId,
+				leftUserId: userId,
+				newAdminId,
+				chatDeleted: false,
+			};
+		});
+	},
+
+	deleteChat: async (userId: number, chatId: number) => {
+		return await sequelize.transaction(async (t) => {
+			const chat = await db.Chat.findByPk(chatId, { transaction: t });
+			if (!chat) {
+				throw new AppError("Chat not found", 404);
+			}
+
+			const membership = await db.ChatMember.findOne({
+				where: { chatId, userId },
+				transaction: t,
+			});
+
+			if (!membership) {
+				throw new AppError("You are not a member of this chat", 403);
+			}
+
+			if (chat.isGroup && membership.isAdmin) {
+				throw new AppError("Only chat admins can delete this group", 403);
+			}
+
+			await chat.destroy({ transaction: t });
+
+			return {
+				chatId,
+				deletedBy: userId,
+			};
 		});
 	}
 }

@@ -1,20 +1,15 @@
 "use client";
 
-import {
-	RefObject,
-	useState,
-	useEffect,
-	useRef,
-	type SubmitEvent,
-	type KeyboardEvent,
-} from "react";
-import { Ellipsis, Pencil, Check, X, Loader2, Trash, Plus } from "lucide-react";
+import { RefObject, useState, useEffect, useRef, type SubmitEvent, type KeyboardEvent } from "react";
+import { Ellipsis, Pencil, Check, X, Loader2, Trash, Plus, LogOut } from "lucide-react";
 import { Drawer, message, Modal } from "antd";
 import { getChatTitle } from "@/lib/helperFunctions";
 import { ChatType, UserType } from "@/types/types";
-import { deleteChatMember, updateChatTitle } from "@/actions/chat";
+import { deleteChatMember, updateChatTitle, deleteChat } from "@/actions/chat";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { cn } from "@/lib/cn";
+import { SelectUsers } from "@/components/Messanger/SelectUsers";
+import { useWebSocket } from "@/context/webSocketContext";
 
 export const MessageWindowHeader = (
 	{
@@ -23,14 +18,14 @@ export const MessageWindowHeader = (
 		headerRef,
 		token,
 	}: {
-	chat: ChatType;
-	currentUserId: number;
-	headerRef: RefObject<HTMLDivElement | null>;
-	token: string;
-}) => {
+		chat: ChatType;
+		currentUserId: number;
+		headerRef: RefObject<HTMLDivElement | null>;
+		token: string;
+	}) => {
 	const initialTitle = getChatTitle(chat, currentUserId);
 
-	const isAdmin = chat.adminId === currentUserId;
+	const { setChats } = useWebSocket();
 
 	const [members, setMembers] = useState(chat.users || []);
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -40,17 +35,28 @@ export const MessageWindowHeader = (
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [userToDelete, setUserToDelete] = useState<UserType | null>(null);
 	const [isDeletingUser, setIsDeletingUser] = useState(false);
+	const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+	const [isDeleteChatOpen, setIsDeleteChatOpen] = useState(false);
+	const [isDeletingChat, setIsDeletingChat] = useState(false);
 
 	const inputRef = useRef<HTMLInputElement>(null);
+
+	const isAdmin = chat.adminId === currentUserId;
+	const hasChanges = inputTitle.trim() !== "" && inputTitle.trim() !== displayTitle;
+	const isLeaving = userToDelete?.id === currentUserId;
 
 	useEffect(() => {
 		const updated = getChatTitle(chat, currentUserId);
 		setDisplayTitle(updated);
 		setInputTitle(updated);
 		setMembers(chat.users || []);
-		setIsDrawerOpen(false);
 		setIsEditing(false);
+		setIsDeleteChatOpen(false);
 	}, [chat, currentUserId]);
+
+	useEffect(()=>{
+		setIsDrawerOpen(false);
+	},[chat.id])
 
 	useEffect(() => {
 		if (isEditing) {
@@ -95,6 +101,7 @@ export const MessageWindowHeader = (
 			}
 
 			setDisplayTitle(trimmedTitle);
+			setChats(prevState => prevState.map(ch => ch.id === chat.id ? {...ch, title: trimmedTitle} : ch))
 			setIsEditing(false);
 			 message.success(result.message);
 		} catch {
@@ -113,22 +120,51 @@ export const MessageWindowHeader = (
 			setIsDeletingUser(true);
 			const result = await deleteChatMember(chat.id, userToDelete.id, token);
 			if (!result.success) {
-			  message.error(result.message);
-			  return;
+				message.error(result.message);
+				return;
 			}
 
-			setMembers((prev) => prev.filter((member) => member.id !== userToDelete.id));
+			if (isLeaving) {
+				setChats((prev) => prev.filter((c) => c.id !== chat.id));
+				setIsDrawerOpen(false);
+				message.success(result.message);
+			} else {
+				setMembers((prev) => prev.filter((member) => member.id !== userToDelete.id));
+				message.success(result.message);
+			}
 
-			message.success(`${userToDelete.name} was removed from the chat.`);
 			setUserToDelete(null);
 		} catch {
-			message.error("Failed to remove user.");
+			message.error(isLeaving ? "Failed to leave chat." : "Failed to remove user.");
 		} finally {
 			setIsDeletingUser(false);
 		}
 	};
 
-	const hasChanges = inputTitle.trim() !== "" && inputTitle.trim() !== displayTitle;
+	const handleLeave = () => {
+		const currentUser = members.find((u) => u.id === currentUserId) ?? null;
+		setUserToDelete(currentUser);
+	};
+
+	const handleConfirmDeleteChat = async () => {
+		try {
+			setIsDeletingChat(true);
+			const result = await deleteChat(chat.id, token);
+			if (!result.success) {
+				message.error(result.message);
+				return;
+			}
+
+			setChats((prev) => prev.filter((c) => c.id !== chat.id));
+			setIsDeleteChatOpen(false);
+			setIsDrawerOpen(false);
+			message.success(result.message);
+		} catch {
+			message.error("Failed to delete chat.");
+		} finally {
+			setIsDeletingChat(false);
+		}
+	};
 
 	return (
 		<div
@@ -162,7 +198,7 @@ export const MessageWindowHeader = (
 								getContainer={() => headerRef.current || document.body}
 								rootStyle={{ position: "absolute" }}
 							>
-								<div className="flex flex-col gap-4">
+								<div className="h-full flex flex-col justify-end gap-4">
 									<label className="block text-xs font-medium uppercase tracking-wider text-gray-400">
 										Chat Name
 									</label>
@@ -174,7 +210,7 @@ export const MessageWindowHeader = (
 													ref={inputRef}
 													type="text"
 													value={inputTitle}
-													onChange={(e) => setInputTitle(e.target.value)}
+													onChange={e => setInputTitle(e.target.value)}
 													onKeyDown={handleKeyDown}
 													disabled={isSubmitting}
 													placeholder="Enter chat title..."
@@ -193,7 +229,8 @@ export const MessageWindowHeader = (
 													onClick={handleCancelEdit}
 													disabled={isSubmitting}
 													className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-600
-													hover:bg-gray-100 transition disabled:opacity-50">
+													hover:bg-gray-100 transition disabled:opacity-50"
+												>
 													<X size={14} />
 													Cancel
 												</button>
@@ -252,32 +289,83 @@ export const MessageWindowHeader = (
 										))}
 									</div>
 
+									{isAdmin && <>
+                      <button
+                          type="button"
+                          onClick={()=>setIsAddMemberOpen(true)}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2
+                        text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500
+                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 active:scale-[0.98]"
+                      >
+                          <Plus size={16} />
+                          Add member
+                      </button>
+
+                      <button
+                          type="button"
+                          onClick={() => setIsDeleteChatOpen(true)}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm
+                          font-semibold text-white shadow-sm transition-all hover:bg-red-500 active:scale-[0.98]"
+                      >
+                          <Trash size={16} />
+                          Delete chat
+                      </button>
+									</>
+									}
+
                     <button
                         type="button"
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2
-                        text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 focus-visible:outline
-                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 active:scale-[0.98]"
+                        onClick={handleLeave}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm
+                          font-semibold text-white shadow-sm transition-all hover:bg-red-500 active:scale-[0.98]"
                     >
-		                    <Plus size={16} />
-                        Add member
+                        <LogOut size={16} />
+                        Leave group
                     </button>
 
+                    <SelectUsers
+                        token={token}
+                        chatId={chat.id}
+                        existingMemberIds={members.map((u) => u.id)}
+                        isOpen={isAddMemberOpen}
+                        onClose={() => setIsAddMemberOpen(false)}
+                    />
 								</div>
 				      </Drawer>
 
               <Modal
-                  title="Remove member"
+                  title={isLeaving ? "Leave group" : "Remove member"}
                   open={!!userToDelete}
                   onOk={handleConfirmDelete}
                   onCancel={() => setUserToDelete(null)}
-                  okText="Remove"
+                  okText={isLeaving ? "Leave" : "Remove"}
                   okButtonProps={{ danger: true, loading: isDeletingUser }}
                   cancelButtonProps={{ disabled: isDeletingUser }}
                   centered
               >
+	              {isLeaving ? (
+		              <p>Are you sure you want to leave this group?</p>
+	              ) : (
+		              <p>
+			              Are you sure you want to remove{" "}
+			              <span className="font-semibold">{userToDelete?.name}</span> from this group?
+		              </p>
+	              )}
+              </Modal>
+
+              <Modal
+                  title="Delete chat"
+                  open={isDeleteChatOpen}
+                  onOk={handleConfirmDeleteChat}
+                  onCancel={() => setIsDeleteChatOpen(false)}
+                  okText="Delete"
+                  okButtonProps={{ danger: true, loading: isDeletingChat }}
+                  cancelButtonProps={{ disabled: isDeletingChat }}
+                  centered
+              >
                   <p>
-                      Are you sure you want to remove{" "}
-                      <span className="font-semibold">{userToDelete?.name}</span> from this group?
+                      Are you sure you want to permanently delete{" "}
+                      <span className="font-semibold">{displayTitle}</span>? This action cannot be undone.
                   </p>
               </Modal>
 					</>

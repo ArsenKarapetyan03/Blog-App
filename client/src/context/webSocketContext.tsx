@@ -215,6 +215,9 @@ export const WebSocketProvider = (
 						}
 
 						setTypingUsers((prev) => {
+							if (isTyping && prev[senderId]) return prev;
+							if (!isTyping && !prev[senderId]) return prev;
+
 							const updated = { ...prev };
 							if (isTyping) {
 								updated[senderId] = true;

@@ -24,10 +24,12 @@ export default {
         onDelete: "CASCADE",
         onUpdate: "CASCADE",
       },
-      role: {
-        type: Sequelize.STRING,
+      roleId: {
+        type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: "member",
+        references: { model: "Roles", key: "id" },
+        onDelete: "RESTRICT",
+        onUpdate: "CASCADE",
       },
       lastReadAt: {
         type: Sequelize.DATE,

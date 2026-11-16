@@ -1,9 +1,12 @@
 import { ChatList } from "@/components/Messanger/ChatList";
+import { MessageProvider } from "@/context/MessageContext";
 
 const MessagesPage = () => {
 	return (
 		<div>
-			<ChatList />
+			<MessageProvider>
+				<ChatList />
+			</MessageProvider>
 		</div>
 	)
 }

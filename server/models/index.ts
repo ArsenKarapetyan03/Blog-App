@@ -10,6 +10,7 @@ import { Friendship } from "./friendship.js";
 import { Message } from "./message.js";
 import { Chat } from "./chat.js";
 import { ChatMember } from "./chatmember.js";
+import { Role } from "./role.js";
 
 const env = (process.env.NODE_ENV || "development") as keyof typeof configJson;
 const config = configJson[env] as typeof configJson[typeof env] & {
@@ -29,7 +30,8 @@ const models = [
 	Friendship,
 	Message,
 	Chat,
-	ChatMember
+	ChatMember,
+	Role
 ];
 
 models.forEach((model) => model.initialize(sequelize));
@@ -47,6 +49,7 @@ const db = {
 	Message,
 	Chat,
 	ChatMember,
+	Role
 };
 
 export default db;

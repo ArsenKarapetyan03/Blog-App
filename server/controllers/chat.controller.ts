@@ -12,7 +12,7 @@ export const getChats = async (req: Request, res: Response) => {
 		count: chatList.length,
 		data: chatList,
 	});
-}
+};
 
 export const createChat = async (req: Request, res: Response) => {
 	const creatorId = res.locals.user!.id;
@@ -112,7 +112,7 @@ export const addChatMembers = async (	req: Request,	res: Response) => {
 		success: true,
 		message: "Members added successfully."
 	});
-}
+};
 
 export const deleteChatMember = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;
@@ -123,10 +123,34 @@ export const deleteChatMember = async (req: Request, res: Response) => {
 		throw new AppError("Invalid data", 400);
 	}
 
+	if (userId === memberId) {
+		await chatService.leaveChat(userId, chatId);
+
+		return res.status(200).json({
+			success: true,
+			message: "You left the chat successfully",
+		});
+	}
 	await chatService.deleteChatMember(userId, memberId, chatId);
 
 	return res.status(200).json({
 		success: true,
 		message: "Member removed from chat successfully"
 	});
-}
+};
+
+export const deleteChat = async (req: Request, res: Response) => {
+	const userId = res.locals.user!.id;
+	const chatId = Number(req.params.chatId);
+
+	if (!chatId || isNaN(chatId)) {
+		throw new AppError("Invalid chat ID", 400);
+	}
+
+	await chatService.deleteChat(userId, chatId);
+
+	return res.status(200).json({
+		success: true,
+		message: "Chat deleted successfully",
+	});
+};

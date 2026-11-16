@@ -3,12 +3,12 @@
 import React, { useCallback, useEffect, useRef, useState, SubmitEvent } from "react";
 import { X, Pen } from "lucide-react";
 import { getMessages, markMessagesAsRead } from "@/actions/message";
+import { createChat } from "@/actions/chat";
 import { ChatType, MessageType } from "@/types/types";
-import { MessageItem } from "./MessageItem";
 import { useWebSocket } from "@/context/webSocketContext";
 import { useAuth } from "@/context/useAuth";
+import { MessageItem } from "./MessageItem";
 import { HeaderLink } from "@/components/Header/HeaderLink";
-import { createChat } from "@/actions/chat";
 import { MessageWindowHeader } from "@/components/Messanger/MessageWindowHeader";
 
 interface MessageWindowProps {
@@ -16,6 +16,13 @@ interface MessageWindowProps {
 	currentUserId: number;
 	token: string;
 }
+
+const getTypingText = (typingNames: string[]) => {
+	if (typingNames.length === 0) return null;
+	if (typingNames.length === 1) return `${typingNames[0]} is typing...`;
+	if (typingNames.length === 2) return `${typingNames[0]} and ${typingNames[1]} are typing...`;
+	return `${typingNames[0]}, ${typingNames[1]}, and ${typingNames.length - 2} others are typing...`;
+};
 
 const PAGE_SIZE = 10;
 
@@ -413,7 +420,11 @@ export const MessageWindow = (
 		}
 	};
 
-	const typingUsersCount = Object.keys(typingUsers).length;
+	const typingIds = Object.keys(typingUsers).map(Number);
+	const typingUsersCount = typingIds.length;
+	const typingNames = typingIds.map((id) => chat.users.find((p) => p.id === id)?.name || "Someone");
+
+	const typingText = getTypingText(typingNames);
 
 	return (
 		<div ref={headerRef} className="flex h-full flex-1 flex-col relative overflow-hidden bg-white">
@@ -460,11 +471,9 @@ export const MessageWindow = (
 				)}
 			</div>
 
-			{typingUsersCount > 0 && (
+			{typingText && (
 				<span className="px-6 py-1.5 text-zinc-500 text-xs bg-slate-50/50 font-medium animate-pulse border-t border-zinc-100">
-					{typingUsersCount === 1
-						? "Typing..."
-						: `${typingUsersCount} are typing`}
+					{typingText}
 				</span>
 			)}
 

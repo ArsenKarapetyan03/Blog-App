@@ -105,4 +105,17 @@ export const deleteChatMember = async (chatId: number, memberId: number, token: 
 	}
 
 	return {success: true, message: "Member deleted successfully."};
+};
+
+export async function deleteChat(chatId: number, token: string) {
+	const response = await fetch(`${BASE_URL}/chat/${chatId}`, {
+		method: "DELETE",
+		headers: {Authorization: `Bearer ${token}`}
+	});
+
+	if (!response.ok) {
+		return {success: false, message: "Failed to delete chat."};
+	}
+
+	return {success: true, message: "Chat deleted successfully."};
 }

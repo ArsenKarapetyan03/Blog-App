@@ -5,6 +5,18 @@ import { broadcastToUser } from "./active-users.js";
 import { catchAsyncWs } from "@/utils/ErrorHandlers/ws.error.js";
 import { chatService } from "@/services/chat.service.js";
 
+
+const typingTimeouts = new Map();
+
+const clearTypingTimeout = (chatId: number, senderId: number) => {
+	const key = `${chatId}:${senderId}`;
+	if (typingTimeouts.has(key)) {
+		clearTimeout(typingTimeouts.get(key));
+		typingTimeouts.delete(key);
+	}
+};
+
+
 const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) => {
 	const parsedData = JSON.parse(rawData.toString());
 	const senderId = ws.user?.id;
@@ -87,10 +99,23 @@ const socketMessageHandler = async (ws: AuthenticatedWebSocket, rawData: any) =>
 			break;
 		}
 		case "TYPING_START": {
+			clearTypingTimeout(chatId, senderId);
+			const timeout = setTimeout(() => {
+				const stopPayload = { type: "TYPING_STATUS", payload: { senderId, chatId, isTyping: false } };
+				chat.users?.forEach((u) => {
+					if (u.id !== senderId) {
+						broadcastToUser(u.id, stopPayload);
+					}
+				});
+				typingTimeouts.delete(`${chatId}:${senderId}`);
+			}, 5000);
+			typingTimeouts.set(`${chatId}:${senderId}`, timeout);
+
 			responseData = { type: "TYPING_STATUS", payload: { senderId, chatId, isTyping: true } };
 			break;
 		}
 		case "TYPING_END": {
+			clearTypingTimeout(chatId, senderId);
 			responseData = { type: "TYPING_STATUS", payload: { senderId, chatId, isTyping: false } };
 			break;
 		}

@@ -49,7 +49,7 @@ const SearchInput = () => {
 	return (
 		<form
 			onSubmit={(e)=> e.preventDefault()}
-			className="p-2 flex justify-center border border-zinc-400 rounded-2xl transition duration-500 focus-within:border-indigo-500"
+			className="p-2 flex justify-between border border-zinc-400 rounded-2xl transition duration-500 focus-within:border-indigo-500"
 		>
 			<input
 				name="search"
