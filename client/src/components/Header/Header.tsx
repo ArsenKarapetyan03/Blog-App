@@ -14,6 +14,7 @@ export const Header = () => {
 			<div className="flex items-center gap-5">
 				<HeaderLink text="Home" href="/" />
 				<HeaderLink text="Authors" href="/users" />
+				<HeaderLink text="Products" href="/products" />
 				{isAuthenticated && <HeaderLink text="Messages" href="/messages" />}
 			</div>
 

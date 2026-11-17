@@ -9,10 +9,11 @@ import {
 	type Association,
 } from "sequelize";
 import type { Post } from "./post.js";
-import type { Comment } from "@/models/comment.js";
-import type { Message } from "@/models/message.js";
-import type { Chat } from "@/models/chat.js";
-import type { ChatMember } from "@/models/chatmember.js";
+import type { Comment } from "./comment.js";
+import type { Message } from "./message.js";
+import type { Chat } from "./chat.js";
+import type { ChatMember } from "./chatmember.js";
+import type { Order } from "./order.js";
 
 export class User extends Model<
 	InferAttributes<User>,
@@ -22,6 +23,7 @@ export class User extends Model<
 	declare name: string;
 	declare email: string;
 	declare password: string;
+	declare stripeCustomerId: CreationOptional<string | null>;
 
 	declare Posts?: NonAttribute<Post[]>;
 	declare Comments?: NonAttribute<Comment[]>;
@@ -33,6 +35,7 @@ export class User extends Model<
 	declare FriendsAsReceiver?: NonAttribute<User[]>;
 	declare IncomingRequests?: NonAttribute<User[]>;
 	declare OutgoingRequests?: NonAttribute<User[]>;
+	declare Orders?: NonAttribute<Order[]>;
 
 	declare static associations: {
 		Posts: Association<User, Post>;
@@ -45,6 +48,7 @@ export class User extends Model<
 		FriendsAsReceiver: Association<User, User>;
 		IncomingRequests: Association<User, User>;
 		OutgoingRequests: Association<User, User>;
+		Orders: Association<User, Order>;
 	};
 
 	get Friends(): NonAttribute<User[]> {
@@ -71,7 +75,12 @@ export class User extends Model<
 				password: {
 					type: DataTypes.STRING,
 					allowNull: false,
-				}
+				},
+				stripeCustomerId: {
+					type: DataTypes.STRING,
+					allowNull: true,
+					unique: true,
+				},
 			},
 			{sequelize, modelName: "User"}
 		);
@@ -98,6 +107,16 @@ export class User extends Model<
 		this.hasMany(registry.ChatMember as any, {
 			foreignKey: "userId",
 			as: "memberships",
+		});
+
+		this.hasMany(registry.Order as any, {
+			foreignKey: "userId",
+			as: "Orders",
+		});
+
+		this.hasMany(registry.Product as any, {
+			foreignKey: "userId",
+			as: "Products"
 		});
 
 		this.belongsToMany(registry.Chat as any, {

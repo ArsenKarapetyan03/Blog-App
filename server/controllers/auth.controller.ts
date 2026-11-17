@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { userService } from "@/services/user.service.js";
-import { generateToken } from "@/utils/jwt.js";
+import { generateToken } from "@/lib/jwt.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 
 export const signUp = async (req: Request, res: Response) => {
