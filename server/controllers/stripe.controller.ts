@@ -2,10 +2,16 @@ import type { Request, Response } from "express";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { stripeService } from "@/services/stripe.service.js";
 
-export const getUserProducts = async (req: Request, res: Response) => {
+export const getAllProducts = async (req: Request, res: Response) => {
+	const products = await stripeService.getAllProducts();
+
+	return res.status(200).json({	success: true, data: products	});
+};
+
+export const getMyProducts = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;
-	const products = await stripeService.getUserProductsService(userId);
-	return res.json(products);
+	const products = await stripeService.getUserProducts(userId);
+	return res.status(200).json({	success: true, data: products	});
 };
 
 export const createCheckoutSession = async (req: Request, res: Response) => {
@@ -31,7 +37,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 		quantity: parsedQuantity,
 	});
 
-	return res.json({ url });
+	return res.status(200).json({	success: true, url });
 };
 
 export const createProduct = async (req: Request, res: Response) => {
@@ -55,5 +61,29 @@ export const createProduct = async (req: Request, res: Response) => {
 		currency: String(currency).toLowerCase(),
 	});
 
-	return res.status(201).json(result);
+	return res.status(201).json({success: true, data: result});
+};
+
+export const getUserOrders = async (req: Request, res: Response) => {
+	const userId = res.locals.user!.id;
+	const orders = await stripeService.getUserOrders(userId);
+
+	return res.status(200).json({ success: true, data: orders });
+};
+
+export const handleWebhook = async (req: Request, res: Response) => {
+	const signature = req.headers["stripe-signature"];
+
+	if (!signature || typeof signature !== "string") {
+		throw new AppError("Missing stripe-signature header", 400);
+	}
+
+	const rawBody = (req as any).rawBody;
+	if (!rawBody) {
+		throw new AppError("Missing raw request body", 400);
+	}
+
+	await stripeService.handleWebhookEvent(rawBody, signature);
+
+	return res.status(200).json({ received: true });
 };

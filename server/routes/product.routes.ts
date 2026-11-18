@@ -1,12 +1,21 @@
 import { Router } from "express";
 import { authMiddleware } from "@/middleware/authMiddleware.js";
-import { createCheckoutSession, createProduct, getUserProducts } from "@/controllers/stripe.controller.js";
+import {
+	createCheckoutSession,
+	createProduct,
+	getAllProducts,
+	getUserOrders,
+	getMyProducts,
+	handleWebhook
+} from "@/controllers/stripe.controller.js";
 
 const router = Router();
 
-router.get("/", getUserProducts);
+router.get("/", getAllProducts);
+router.get("/my", authMiddleware, getMyProducts);
+router.get("/orders", authMiddleware, getUserOrders);
 router.post("/", authMiddleware, createProduct);
 router.post("/checkout", authMiddleware, createCheckoutSession);
-router.delete("/:id", authMiddleware, );
+router.post("/webhook", handleWebhook);
 
 export default router;

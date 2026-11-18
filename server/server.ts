@@ -9,8 +9,16 @@ import initWebSocketServer from "./sockets/index.js";
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:3000"}));
-app.use(express.json({ limit: "10kb", strict: true }));
+app.use(cors({origin: "http://localhost:3000"}));
+app.use(express.json({
+	limit: "10kb",
+	strict: true,
+	verify: (req: any, _res, buf) => {
+		if (req.originalUrl === "/api/product/webhook") {
+			req.rawBody = buf;
+		}
+	},
+}));
 app.use("/uploads", express.static(uploadsDirectory));
 app.use("/api", routes);
 app.use(errorHandler);

@@ -11,12 +11,14 @@ interface UserPayload extends UserType{
 
 interface AuthContextType {
 	user: UserPayload | null;
+	isAuthenticated: boolean;
 	isLoading: boolean;
 	refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
 	user: null,
+	isAuthenticated: false,
 	isLoading: true,
 	refreshUser: () => {},
 });
@@ -43,19 +45,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 				setUser(decoded);
 			}
 		} catch (error) {
-			console.error("Failed to decode auth token:", error);
+			console.warn("Failed to decode auth token:", error);
 			setUser(null);
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
+	const isAuthenticated = !!user;
+
 	useEffect(() => {
 		refreshUser();
 	}, []);
 
 	return (
-		<AuthContext.Provider value={{ user, isLoading, refreshUser }}>
+		<AuthContext.Provider value={{ user, isAuthenticated, isLoading, refreshUser }}>
 			{children}
 		</AuthContext.Provider>
 	);

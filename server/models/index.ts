@@ -1,16 +1,16 @@
 import { Sequelize } from "sequelize";
 import configJson from "@/config/config.js";
 
-import { User } from "./user.js";
-import { Post } from "./post.js";
-import { Comment } from "./comment.js";
-import { PostLikes } from "./postlikes.js";
-import { Image } from "./image.js";
-import { Friendship } from "./friendship.js";
-import { Message } from "./message.js";
-import { Chat } from "./chat.js";
-import { ChatMember } from "./chatmember.js";
-import { Role } from "./role.js";
+import { User } from "@/models/user.js";
+import { Post } from "@/models/post.js";
+import { Comment } from "@/models/comment.js";
+import { PostLikes } from "@/models/postlikes.js";
+import { Image } from "@/models/image.js";
+import { Friendship } from "@/models/friendship.js";
+import { Message } from "@/models/message.js";
+import { Chat } from "@/models/chat.js";
+import { ChatMember } from "@/models/chatmember.js";
+import { Role } from "@/models/role.js";
 import { Product } from "@/models/product.js";
 import { OrderItem } from "@/models/orderitem.js";
 import { Price } from "@/models/price.js";

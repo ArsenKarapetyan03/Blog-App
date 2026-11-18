@@ -20,7 +20,7 @@ export class Order extends Model<
 > {
 	declare id: CreationOptional<number>;
 	declare userId: ForeignKey<User["id"]>;
-	declare stripeCheckoutSessionId: string;
+	declare stripeCheckoutSessionId: CreationOptional<string | null>;
 	declare stripePaymentIntentId: CreationOptional<string | null>;
 	declare status: CreationOptional<OrderStatus>;
 	declare totalAmount: number;
@@ -48,7 +48,7 @@ export class Order extends Model<
 				},
 				stripeCheckoutSessionId: {
 					type: DataTypes.STRING,
-					allowNull: false,
+					allowNull: true,
 					unique: true,
 				},
 				stripePaymentIntentId: {

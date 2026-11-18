@@ -58,3 +58,11 @@ export interface ChatType {
 	unreadCount: number;
 	updatedAt: string;
 }
+
+export interface Product {
+	id: number | string;
+	name: string;
+	description: string | null;
+	active: boolean;
+	Prices?: Price[];
+}

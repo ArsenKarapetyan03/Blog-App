@@ -22,7 +22,7 @@ export default {
             },
             stripeCheckoutSessionId: {
                 type: Sequelize.STRING,
-                allowNull: false,
+                allowNull: true,
                 unique: true,
             },
             stripePaymentIntentId: {

@@ -9,8 +9,8 @@ import {
 	type NonAttribute,
 	type Association,
 } from "sequelize";
-import type { Product } from "./product.js";
-import type { OrderItem } from "./orderitem.js";
+import type { Product } from "@/models/product.js";
+import type { OrderItem } from "@/models/orderitem.js";
 
 export class Price extends Model<
 	InferAttributes<Price>,

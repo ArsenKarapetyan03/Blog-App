@@ -1,6 +1,7 @@
 "use client";
 
 import { SubmitEvent, useState, useEffect, useCallback } from "react";
+import { notification } from "antd";
 import { cn } from "@/lib/cn";
 import { createChat, addChatMembers } from "@/actions/chat";
 import { fetchAllUsersApi } from "@/actions/user";
@@ -20,21 +21,20 @@ interface SelectUserProps {
 	onClose?: () => void;
 }
 
-export const SelectUsers = (
-	{
-		token,
-		chatId,
-		existingMemberIds = [],
-		isOpen,
-		onClose,
-	}: SelectUserProps
-) => {
+export const SelectUsers = ({
+	                            token,
+	                            chatId,
+	                            existingMemberIds = [],
+	                            isOpen,
+	                            onClose,
+                            }: SelectUserProps) => {
 	const pathname = usePathname();
-	const { replace } = useRouter();
+	const {replace} = useRouter();
 	const searchParams = useSearchParams();
 
-	const { isAddUserModalOpen, setIsAddUserModalOpen } = useMessage();
-	const { chats, setChats, setActiveChatId } = useWebSocket();
+	const {isAddUserModalOpen, setIsAddUserModalOpen} = useMessage();
+	const {chats, setChats, setActiveChatId} = useWebSocket();
+	const [api, contextHolder] = notification.useNotification();
 
 	const modalVisible = isOpen !== undefined ? isOpen : isAddUserModalOpen;
 	const isAddMemberMode = Boolean(chatId);
@@ -49,7 +49,17 @@ export const SelectUsers = (
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [selectedUsers, setSelectedUsers] = useState<UserType[]>([]);
 	const [groupName, setGroupName] = useState("");
-	const [error, setError] = useState<string | null>(null);
+
+	const showNotification = useCallback(
+		(type: "success" | "error", description: string) => {
+			api[type]({
+				title: type === "success" ? "Success" : "Error",
+				description,
+				placement: "topRight",
+			});
+		},
+		[api]
+	);
 
 	const fetchAllUsers = useCallback(
 		async (query: string, page: number) => {
@@ -57,7 +67,7 @@ export const SelectUsers = (
 
 			setIsUsersLoading(true);
 			try {
-				const { users, totalPages } = await fetchAllUsersApi({
+				const {users, totalPages} = await fetchAllUsersApi({
 					query,
 					page,
 					token,
@@ -66,11 +76,12 @@ export const SelectUsers = (
 				setTotalUsersPages(totalPages);
 			} catch (err) {
 				console.error("Failed to fetch users:", err);
+				showNotification("error", "Failed to load users.");
 			} finally {
 				setIsUsersLoading(false);
 			}
 		},
-		[token, modalVisible]
+		[token, modalVisible, showNotification]
 	);
 
 	useEffect(() => {
@@ -87,10 +98,9 @@ export const SelectUsers = (
 		const params = new URLSearchParams(searchParams.toString());
 		params.delete("query");
 		params.delete("page");
-		replace(`${pathname}?${params.toString()}`, { scroll: false });
+		replace(`${pathname}?${params.toString()}`, {scroll: false});
 		setSelectedUsers([]);
 		setGroupName("");
-		setError(null);
 	};
 
 	const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
@@ -101,7 +111,6 @@ export const SelectUsers = (
 		}
 
 		const selectedUserIds = selectedUsers.map((u) => u.id);
-		setError(null);
 
 		if (isAddMemberMode && chatId) {
 			const previousChats: ChatType[] = chats;
@@ -127,9 +136,14 @@ export const SelectUsers = (
 				if (!res.success) {
 					throw new Error(res.message || "Could not add members");
 				}
+
+				showNotification("success", res.message || "Members added successfully.");
 			} catch (err) {
 				setChats(previousChats);
-				console.error("Failed to add members:", err);
+				showNotification(
+					"error",
+					err instanceof Error ? err.message : "Failed to add members."
+				);
 			}
 			return;
 		}
@@ -140,27 +154,34 @@ export const SelectUsers = (
 			const title = isGroup ? groupName.trim() : null;
 
 			const newChat = await createChat(
-				{ participantIds: selectedUserIds, isGroup, title },
+				{participantIds: selectedUserIds, isGroup, title},
 				token
 			);
 
-			if (newChat.success && newChat.data) {
-				setChats((prev) => {
-					const filtered = prev.filter(
-						(c) => !selectedUserIds.includes(Math.abs(c.id)) || c.id > 0
-					);
-					if (filtered.some((c) => c.id === newChat.data.id)) {
-						return filtered;
-					}
-					return [newChat.data, ...filtered];
-				});
-
-				setActiveChatId(newChat.data.id);
-				sessionStorage.setItem("selectedChatId", JSON.stringify(newChat.data.id));
-				handleCloseModal();
+			if (!newChat.success || !newChat.data) {
+				showNotification("error", newChat.message || "Could not create chat room.");
+				return;
 			}
+
+			setChats((prev) => {
+				const filtered = prev.filter(
+					(c) => !selectedUserIds.includes(Math.abs(c.id)) || c.id > 0
+				);
+				if (filtered.some((c) => c.id === newChat.data.id)) {
+					return filtered;
+				}
+				return [newChat.data, ...filtered];
+			});
+
+			setActiveChatId(newChat.data.id);
+			sessionStorage.setItem("selectedChatId", JSON.stringify(newChat.data.id));
+			showNotification("success", newChat.message || "Chat created.");
+			handleCloseModal();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Could not create chat room");
+			showNotification(
+				"error",
+				err instanceof Error ? err.message : "Could not create chat room."
+			);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -178,10 +199,6 @@ export const SelectUsers = (
 		);
 	};
 
-	if (!modalVisible) {
-		return null;
-	}
-
 	const modalTitle = isAddMemberMode
 		? "Add Group Members"
 		: selectedUsers.length > 1
@@ -195,133 +212,134 @@ export const SelectUsers = (
 			: "Start Chat";
 
 	return (
-		<div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-			<form id="select-users-form" onSubmit={handleSubmit} className="hidden" />
+		<>
+			{contextHolder}
 
-			<div className="flex h-140 w-full max-w-md flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl">
-				<div className="flex items-center justify-between border-b border-gray-100 pb-4">
-					<h3 className="text-lg font-bold text-gray-900">{modalTitle}</h3>
-					<button
-						type="button"
-						onClick={handleCloseModal}
-						className="rounded-lg p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-					>
-						<X size={20} />
-					</button>
-				</div>
+			{modalVisible && (
+				<div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+					<form id="select-users-form" onSubmit={handleSubmit} className="hidden"/>
 
-				{error && (
-					<p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
-						{error}
-					</p>
-				)}
-
-				<div className="flex-1 space-y-4 overflow-y-auto py-4">
-					{!isAddMemberMode && selectedUsers.length > 1 && (
-						<div className="space-y-1.5">
-							<label
-								htmlFor="groupName"
-								className="text-xs font-semibold uppercase tracking-wider text-gray-500"
+					<div
+						className="flex h-140 w-full max-w-md flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl">
+						<div className="flex items-center justify-between border-b border-gray-100 pb-4">
+							<h3 className="text-lg font-bold text-gray-900">{modalTitle}</h3>
+							<button
+								type="button"
+								onClick={handleCloseModal}
+								className="rounded-lg p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
 							>
-								Group Name
-							</label>
-							<input
-								id="groupName"
-								type="text"
-								required
-								value={groupName}
-								onChange={(e) => setGroupName(e.target.value)}
-								placeholder="Enter group name..."
-								className="w-full rounded-2xl border border-zinc-400 p-2 hover:placeholder:text-indigo-600 focus:border-indigo-500 focus:outline-none"
-							/>
+								<X size={20}/>
+							</button>
 						</div>
-					)}
 
-					<div className="space-y-1.5">
-						<Search />
-					</div>
-
-					<div className="max-h-60 space-y-1 overflow-y-auto pr-1">
-						{isUsersLoading ? (
-							<div className="flex items-center justify-center py-8">
-								<div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-							</div>
-						) : allUsers.length === 0 ? (
-							<p className="py-6 text-center text-sm text-gray-500">No users found</p>
-						) : (
-							allUsers.map((item) => {
-								const isAlreadyMember = existingMemberIds.includes(item.id);
-								const isSelected = selectedUsers.some((u) => u.id === item.id);
-
-								return (
-									<button
-										key={item.id}
-										type="button"
-										disabled={isAlreadyMember}
-										onClick={() => toggleUserSelection(item)}
-										className={cn(
-											"flex w-full items-center justify-between rounded-xl p-3 text-left transition-colors",
-											isAlreadyMember
-												? "cursor-not-allowed opacity-50"
-												: "hover:bg-gray-50",
-											isSelected && "bg-blue-50/50 hover:bg-blue-50"
-										)}
+						<div className="flex-1 space-y-4 overflow-y-auto py-4">
+							{!isAddMemberMode && selectedUsers.length > 1 && (
+								<div className="space-y-1.5">
+									<label
+										htmlFor="groupName"
+										className="text-xs font-semibold uppercase tracking-wider text-gray-500"
 									>
-										<div className="min-w-0 flex-1">
-											<p className="truncate text-sm font-semibold text-gray-900">
-												{item.name || `User #${item.id}`}
-											</p>
-											<p className="truncate text-xs text-gray-400">
-												{isAlreadyMember ? "Already in group" : `@${item.name}`}
-											</p>
-										</div>
-										<div
-											className={cn(
-												"flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
-												isSelected || isAlreadyMember
-													? "border-blue-600 bg-blue-600 text-white"
-													: "border-gray-300 bg-white"
-											)}
-										>
-											{(isSelected || isAlreadyMember) && (
-												<Check size={14} strokeWidth={3} />
-											)}
-										</div>
-									</button>
-								);
-							})
-						)}
-					</div>
+										Group Name
+									</label>
+									<input
+										id="groupName"
+										type="text"
+										required
+										value={groupName}
+										onChange={(e) => setGroupName(e.target.value)}
+										placeholder="Enter group name..."
+										className="w-full rounded-2xl border border-zinc-400 p-2 hover:placeholder:text-indigo-600 focus:border-indigo-500 focus:outline-none"
+									/>
+								</div>
+							)}
 
-					{!isUsersLoading && allUsers.length > 0 && (
-						<div className="border-t border-gray-50 pt-2 text-lg">
-							<Pagination totalPages={totalUsersPages} currentPage={currentPage} />
+							<div className="space-y-1.5">
+								<Search/>
+							</div>
+
+							<div className="max-h-60 space-y-1 overflow-y-auto pr-1">
+								{isUsersLoading ? (
+									<div className="flex items-center justify-center py-8">
+										<div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"/>
+									</div>
+								) : allUsers.length === 0 ? (
+									<p className="py-6 text-center text-sm text-gray-500">No users found</p>
+								) : (
+									allUsers.map((item) => {
+										const isAlreadyMember = existingMemberIds.includes(item.id);
+										const isSelected = selectedUsers.some((u) => u.id === item.id);
+
+										return (
+											<button
+												key={item.id}
+												type="button"
+												disabled={isAlreadyMember}
+												onClick={() => toggleUserSelection(item)}
+												className={cn(
+													"flex w-full items-center justify-between rounded-xl p-3 text-left transition-colors",
+													isAlreadyMember
+														? "cursor-not-allowed opacity-50"
+														: "hover:bg-gray-50",
+													isSelected && "bg-blue-50/50 hover:bg-blue-50"
+												)}
+											>
+												<div className="min-w-0 flex-1">
+													<p className="truncate text-sm font-semibold text-gray-900">
+														{item.name || `User #${item.id}`}
+													</p>
+													<p className="truncate text-xs text-gray-400">
+														{isAlreadyMember ? "Already in group" : `@${item.name}`}
+													</p>
+												</div>
+												<div
+													className={cn(
+														"flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+														isSelected || isAlreadyMember
+															? "border-blue-600 bg-blue-600 text-white"
+															: "border-gray-300 bg-white"
+													)}
+												>
+													{(isSelected || isAlreadyMember) && (
+														<Check size={14} strokeWidth={3}/>
+													)}
+												</div>
+											</button>
+										);
+									})
+								)}
+							</div>
+
+							{!isUsersLoading && allUsers.length > 0 && (
+								<div className="border-t border-gray-50 pt-2 text-lg">
+									<Pagination totalPages={totalUsersPages} currentPage={currentPage}/>
+								</div>
+							)}
 						</div>
-					)}
-				</div>
 
-				<div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
-					<button
-						type="button"
-						onClick={handleCloseModal}
-						className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-					>
-						Cancel
-					</button>
-					<button
-						type="submit"
-						form="select-users-form"
-						disabled={isSubmitting || selectedUsers.length === 0}
-						className="inline-flex min-w-28 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-					>
-						{isSubmitting ? (
-							<div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-						) : (
-							submitButtonText
-						)}
-					</button>
+						<div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
+							<button
+								type="button"
+								onClick={handleCloseModal}
+								className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+							>
+								Cancel
+							</button>
+							<button
+								type="submit"
+								form="select-users-form"
+								disabled={isSubmitting || selectedUsers.length === 0}
+								className="inline-flex min-w-28 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+							>
+								{isSubmitting ? (
+									<div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"/>
+								) : (
+									submitButtonText
+								)}
+							</button>
+						</div>
+					</div>
 				</div>
-			</div>
-		</div>
+			)}
+		</>
 	);
 };
