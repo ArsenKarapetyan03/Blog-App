@@ -1,12 +1,66 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ShoppingCartMinus } from "lucide-react";
-import { getProducts } from "@/actions/product";
+import { getProducts, cancelOrder } from "@/actions/product";
 import { type Product } from "@/types/types";
 import { useAuth } from "@/context/useAuth";
 import { useCart } from "@/context/CartContext";
+import { useNotification } from "@/context/NotificationProvider";
+
+const CancelCheckoutHandler: React.FC<{
+	onOpenCart: () => void;
+	totalItems: number;
+}> = ({ onOpenCart, totalItems }) => {
+	const searchParams = useSearchParams();
+	const router = useRouter();
+	const notification = useNotification();
+	const hasNotified = useRef(false);
+
+	useEffect(() => {
+		const isCanceled = searchParams.get("cancel") === "true";
+		const orderId = searchParams.get("orderId");
+
+		if (isCanceled && !hasNotified.current) {
+			hasNotified.current = true;
+
+			if (orderId) {
+				cancelOrder(orderId);
+			}
+
+			const key = `cancel-checkout-${Date.now()}`;
+
+			notification.warning({
+				key,
+				title: "Checkout Canceled",
+				description:
+					totalItems > 0
+						? "No payment was processed. Your items are still saved in your cart."
+						: "No payment was processed. You can try checking out again anytime.",
+				placement: "topRight",
+				duration: 6,
+				actions:
+					totalItems > 0 ? (
+						<button
+							onClick={() => {
+								notification.destroy(key);
+								onOpenCart();
+							}}
+							className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-indigo-700"
+						>
+							Open Cart
+						</button>
+					) : undefined,
+			});
+
+			router.replace("/products", { scroll: false });
+		}
+	}, [searchParams, router, notification, onOpenCart, totalItems]);
+
+	return null;
+};
 
 const ProductsPage: React.FC = () => {
 	const { isAuthenticated } = useAuth();
@@ -45,6 +99,10 @@ const ProductsPage: React.FC = () => {
 
 	return (
 		<div className="mx-auto w-full max-w-6xl px-4 py-12">
+			<Suspense fallback={null}>
+				<CancelCheckoutHandler onOpenCart={openCart} totalItems={totalItems} />
+			</Suspense>
+
 			<div className="mb-8 flex flex-col justify-between gap-4 border-b border-gray-200 pb-6 dark:border-gray-800 sm:flex-row sm:items-center">
 				<div>
 					<h2 className="text-base font-semibold text-gray-900 dark:text-white">

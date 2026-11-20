@@ -43,7 +43,7 @@ export default {
                 "statusId",
                 {
                     type: Sequelize.INTEGER,
-                    allowNull: true,
+                    allowNull: false,
                     references: {
                         model: "OrderStatuses",
                         key: "id",
@@ -54,11 +54,13 @@ export default {
                 { transaction }
             );
 
-            await queryInterface.removeColumn("Orders", "status", { transaction });
-            await queryInterface.sequelize.query(
-                'DROP TYPE IF EXISTS "enum_Orders_status";',
-                { transaction }
-            );
+            await queryInterface.addIndex("Orders", ["statusId"], {
+                transaction,
+            });
+
+            await queryInterface.removeColumn("Orders", "status", {
+                transaction,
+            });
         });
     },
 
@@ -68,7 +70,14 @@ export default {
                 "Orders",
                 "status",
                 {
-                    type: Sequelize.ENUM("pending", "paid", "failed", "refunded"),
+                    type: Sequelize.ENUM(
+                        "pending",
+                        "paid",
+                        "failed",
+                        "cancelled",
+                        "expired",
+                        "refunded"
+                    ),
                     allowNull: false,
                     defaultValue: "pending",
                 },

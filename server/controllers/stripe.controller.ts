@@ -31,42 +31,6 @@ export const getMyProducts = async (req: Request, res: Response) => {
 	return res.status(200).json({	success: true, data: products	});
 };
 
-export const createCheckoutSession = async (req: Request, res: Response) => {
-	if (!req.body) {
-		throw new AppError("Invalid request body", 400);
-	}
-
-	const userId = res.locals.user!.id;
-	const { items } = req.body as { items?: CheckoutItem[] };
-
-	if (!Array.isArray(items) || items.length === 0) {
-		throw new AppError("items must be a non-empty array", 400);
-	}
-
-	const validatedItems = items.map((item, index) => {
-		if (!item || (typeof item.priceId !== "string" && typeof item.priceId !== "number") || String(item.priceId).trim() === "") {
-			throw new AppError(`Valid priceId is required for item at index ${index}`, 400);
-		}
-
-		const parsedQuantity = Number(item.quantity ?? 1);
-		if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
-			throw new AppError(`Quantity must be a positive integer for item at index ${index}`, 400);
-		}
-
-		return {
-			priceId: String(item.priceId).trim(),
-			quantity: parsedQuantity,
-		};
-	});
-
-	const url = await stripeService.createCheckoutSession({
-		userId,
-		items: validatedItems,
-	});
-
-	return res.status(200).json({ success: true, url });
-};
-
 export const createProduct = async (req: Request, res: Response) => {
 	if (!req.body) {
 		throw new AppError("Invalid request body", 400);
@@ -112,23 +76,6 @@ export const getUserOrders = async (req: Request, res: Response) => {
 	const orders = await stripeService.getUserOrders(userId);
 
 	return res.status(200).json({ success: true, data: orders });
-};
-
-export const handleWebhook = async (req: Request, res: Response) => {
-	const signature = req.headers["stripe-signature"];
-
-	if (!signature || typeof signature !== "string") {
-		throw new AppError("Missing stripe-signature header", 400);
-	}
-
-	const rawBody = (req as any).rawBody;
-	if (!rawBody) {
-		throw new AppError("Missing raw request body", 400);
-	}
-
-	await stripeService.handleWebhookEvent(rawBody, signature);
-
-	return res.status(200).json({ received: true });
 };
 
 export const updateProduct = async (req: Request, res: Response) => {
@@ -178,4 +125,82 @@ export const updateProduct = async (req: Request, res: Response) => {
 	const result = await stripeService.updateProduct(updateData);
 
 	return res.status(200).json({ success: true, data: result });
+};
+
+export const createCheckoutSession = async (req: Request, res: Response) => {
+	if (!req.body) {
+		throw new AppError("Invalid request body", 400);
+	}
+
+	const userId = res.locals.user!.id;
+	const { items } = req.body as { items?: CheckoutItem[] };
+
+	if (!Array.isArray(items) || items.length === 0) {
+		throw new AppError("items must be a non-empty array", 400);
+	}
+
+	const validatedItems = items.map((item, index) => {
+		if (!item || (typeof item.priceId !== "string" && typeof item.priceId !== "number") || String(item.priceId).trim() === "") {
+			throw new AppError(`Valid priceId is required for item at index ${index}`, 400);
+		}
+
+		const parsedQuantity = Number(item.quantity ?? 1);
+		if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
+			throw new AppError(`Quantity must be a positive integer for item at index ${index}`, 400);
+		}
+
+		return {
+			priceId: String(item.priceId).trim(),
+			quantity: parsedQuantity,
+		};
+	});
+
+	const url = await stripeService.createCheckoutSession({
+		userId,
+		items: validatedItems,
+	});
+
+	return res.status(200).json({ success: true, url });
+};
+
+export const cancelCheckoutSession = async (req: Request, res: Response) => {
+	const userId = res.locals.user!.id;
+	const rawOrderId = req.body?.orderId;
+
+	if (!req.body) {
+		throw new AppError("Invalid request body", 400);
+	}
+
+	if ((typeof rawOrderId !== "string" && typeof rawOrderId !== "number") ||	String(rawOrderId).trim() === "") {
+		throw new AppError("Valid orderId is required", 400);
+	}
+
+	const orderId = String(rawOrderId).trim();
+
+	await stripeService.cancelCheckoutSession({
+		userId,
+		orderId,
+	});
+
+	return res.status(200).json({
+		success: true,
+		message: "Checkout session cancelled successfully",
+	});
+};
+
+export const handleWebhook = async (req: Request, res: Response) => {
+	const signature = req.headers["stripe-signature"];
+
+	if (!signature || typeof signature !== "string") {
+		throw new AppError("Missing stripe-signature header", 400);
+	}
+
+	const rawBody = (req as any).rawBody;
+	if (!rawBody) {
+		throw new AppError("Missing raw request body", 400);
+	}
+
+	await stripeService.handleWebhookEvent(rawBody, signature);
+
+	return res.status(200).json({ received: true });
 };

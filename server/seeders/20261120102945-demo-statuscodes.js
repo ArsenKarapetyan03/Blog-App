@@ -29,9 +29,9 @@ export default {
                     updatedAt: now,
                 },
                 {
-                    code: "canceled",
-                    label: "Canceled",
-                    description: "Order was canceled.",
+                    code: "cancelled",
+                    label: "Cancelled",
+                    description: "Order was cancelled.",
                     createdAt: now,
                     updatedAt: now,
                 },
@@ -56,7 +56,7 @@ export default {
 
     async down(queryInterface) {
         await queryInterface.bulkDelete("OrderStatuses", {
-            code: ["pending", "paid", "failed", "canceled", "expired", "refunded"],
+            code: ["pending", "paid", "failed", "cancelled", "expired", "refunded"],
         });
     },
 };

@@ -14,6 +14,7 @@ import type { Message } from "./message.js";
 import type { Chat } from "./chat.js";
 import type { ChatMember } from "./chatmember.js";
 import type { Order } from "./order.js";
+import type { SellerBalance } from "./sellerbalance.js";
 
 export class User extends Model<
 	InferAttributes<User>,
@@ -36,6 +37,7 @@ export class User extends Model<
 	declare IncomingRequests?: NonAttribute<User[]>;
 	declare OutgoingRequests?: NonAttribute<User[]>;
 	declare Orders?: NonAttribute<Order[]>;
+	declare SellerBalance?: NonAttribute<SellerBalance>;
 
 	declare static associations: {
 		Posts: Association<User, Post>;
@@ -49,6 +51,7 @@ export class User extends Model<
 		IncomingRequests: Association<User, User>;
 		OutgoingRequests: Association<User, User>;
 		Orders: Association<User, Order>;
+		SellerBalance: Association<User, SellerBalance>;
 	};
 
 	get Friends(): NonAttribute<User[]> {
@@ -88,6 +91,11 @@ export class User extends Model<
 
 	static configureAssociations() {
 		const registry = this.sequelize!.models;
+
+		this.hasOne(registry.SellerBalance as any, {
+			foreignKey: "userId",
+			as: "SellerBalance",
+		});
 
 		this.hasMany(registry.Post as any, {
 			foreignKey: "userId",

@@ -14,18 +14,18 @@ export const ORDER_STATUS_CODES = [
 	"pending",
 	"paid",
 	"failed",
-	"canceled",
+	"cancelled",
 	"expired",
 	"refunded",
 ] as const;
 
 export type OrderStatusCode = (typeof ORDER_STATUS_CODES)[number];
 
-const DEFAULT_STATUSES: Array<{ code: OrderStatusCode; label: string }> = [
+export const DEFAULT_STATUSES: Array<{ code: OrderStatusCode; label: string }> = [
 	{ code: "pending", label: "Pending" },
 	{ code: "paid", label: "Paid" },
 	{ code: "failed", label: "Failed" },
-	{ code: "canceled", label: "Canceled" },
+	{ code: "cancelled", label: "Cancelled" },
 	{ code: "expired", label: "Expired" },
 	{ code: "refunded", label: "Refunded" },
 ];
@@ -111,7 +111,11 @@ export class OrderStatus extends Model<
 					allowNull: true,
 				},
 			},
-			{ sequelize, modelName: "OrderStatus" }
+			{
+				sequelize,
+				modelName: "OrderStatus",
+				timestamps: false
+			}
 		);
 	}
 

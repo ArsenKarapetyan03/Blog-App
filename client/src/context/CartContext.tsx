@@ -1,11 +1,12 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Drawer, notification } from "antd";
+import { Drawer } from "antd";
 import { createCheckoutSession } from "@/actions/product";
 import { CartItem, type Price, type Product } from "@/types/types";
 import { SignInModal } from "@/components/ui/SignInModal";
 import { useAuth } from "@/context/useAuth";
+import { useNotification } from "@/context/NotificationProvider";
 
 interface CartContextType {
 	cart: CartItem[];
@@ -13,21 +14,24 @@ interface CartContextType {
 	openCart: () => void;
 	closeCart: () => void;
 	addToCart: (product: Product, selectedPrice?: Price) => void;
+	clearCart: () => void;
 	buyNow: (priceId: number | string, quantity?: number) => Promise<void>;
 	buyingPriceId: number | string | null;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({	children }) => {
 	const { isAuthenticated } = useAuth();
-	const [api, contextHolder] = notification.useNotification();
+	const notification = useNotification();
 
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const [isCartLoaded, setIsCartLoaded] = useState<boolean>(false);
 	const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
 	const [isSignInModalOpen, setIsSignInModalOpen] = useState<boolean>(false);
-	const [buyingPriceId, setBuyingPriceId] = useState<number | string | null>(null);
+	const [buyingPriceId, setBuyingPriceId] = useState<number | string | null>(
+		null
+	);
 	const [isCheckingOutCart, setIsCheckingOutCart] = useState<boolean>(false);
 
 	useEffect(() => {
@@ -53,7 +57,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 	}, [cart, isCartLoaded]);
 
 	const showErrorNotification = (description: string) => {
-		api.error({
+		notification.error({
 			title: "Error",
 			description,
 			placement: "topRight",
@@ -91,12 +95,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 			];
 		});
 
-		api.success({
+		notification.success({
 			title: "Added to Cart",
 			description: `${product.name} has been added to your cart.`,
 			placement: "topRight",
 			duration: 2,
 		});
+	};
+
+	const clearCart = () => {
+		setCart([]);
+		try {
+			localStorage.removeItem("shopping_cart");
+		} catch (e) {
+			console.warn("Failed to clear cart from storage", e);
+		}
 	};
 
 	const buyNow = async (priceId: number | string, quantity: number = 1) => {
@@ -143,8 +156,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 			return;
 		}
 
-		setCart([]);
-		localStorage.removeItem("shopping_cart");
 		window.location.href = result.url;
 	};
 
@@ -187,11 +198,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 				openCart: () => setIsCartOpen(true),
 				closeCart: () => setIsCartOpen(false),
 				addToCart,
+				clearCart,
 				buyNow,
 				buyingPriceId,
 			}}
 		>
-			{contextHolder}
 			{children}
 
 			<Drawer

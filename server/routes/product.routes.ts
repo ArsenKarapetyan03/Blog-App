@@ -8,7 +8,7 @@ import {
 	getMyProducts,
 	handleWebhook,
 	archiveProduct,
-	updateProduct, getProductById
+	updateProduct, getProductById, cancelCheckoutSession
 } from "@/controllers/stripe.controller.js";
 
 const router = Router();
@@ -20,6 +20,7 @@ router.get("/orders", authMiddleware, getUserOrders);
 router.post("/", authMiddleware, createProduct);
 router.post("/checkout", authMiddleware, createCheckoutSession);
 router.post("/webhook", handleWebhook);
+router.post("/cancel", authMiddleware, cancelCheckoutSession);
 router.patch("/:id", authMiddleware, updateProduct);
 router.patch("/:id/archive", authMiddleware, archiveProduct);
 

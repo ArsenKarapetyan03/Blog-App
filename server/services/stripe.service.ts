@@ -3,17 +3,22 @@ import { stripe } from "@/lib/stripe.js";
 import db, { sequelize } from "@/models/index.js";
 import type { Order } from "@/models/order.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
-import type { OrderStatusCode } from "@/models/orderstatus.js";
+import type { Transaction } from "sequelize";
 
 interface CheckoutItemInput {
 	priceId: string;
 	quantity: number;
-}
+};
 
 interface CreateCheckoutParams {
 	userId: number;
 	items: CheckoutItemInput[];
-}
+};
+
+interface CancelCheckoutParams {
+	userId: number;
+	orderId: number;
+};
 
 interface CreateProductParams {
 	userId: number;
@@ -21,12 +26,12 @@ interface CreateProductParams {
 	description?: string;
 	unitAmount: number;
 	currency: string;
-}
+};
 
 interface ArchiveProductParams {
 	productId: number;
 	userId: number;
-}
+};
 
 export interface UpdateProductParams {
 	productId: number;
@@ -35,7 +40,104 @@ export interface UpdateProductParams {
 	description?: string | null;
 	unitAmount?: number;
 	currency?: string;
-}
+};
+
+const PLATFORM_FEE_RATE = 0.10;
+
+const statusMap = await db.OrderStatus.getStatusMap();
+
+const calculateSellerEarningsByUser = async (	orderId: number, transaction: Transaction ): Promise<Map<number, number>> => {
+	const items = await db.OrderItem.findAll({
+		where: { orderId },
+		include: [
+			{
+				model: db.Price,
+				as: "Price",
+				include: [
+					{
+						model: db.Product,
+						as: "Product",
+						attributes: ["id", "userId"],
+					},
+				],
+			},
+		],
+		transaction,
+	});
+
+	const earningsBySeller = new Map<number, number>();
+
+	for (const item of items) {
+		const sellerId = item.Price?.Product?.userId;
+		if (!sellerId) {
+			continue;
+		}
+
+		const itemGrossAmount = item.unitAmount * item.quantity;
+		const platformFee = Math.round(itemGrossAmount * PLATFORM_FEE_RATE);
+		const sellerShare = itemGrossAmount - platformFee;
+
+		if (sellerShare > 0) {
+			earningsBySeller.set(
+				sellerId,
+				(earningsBySeller.get(sellerId) ?? 0) + sellerShare
+			);
+		}
+	}
+
+	return earningsBySeller;
+};
+
+const fulfillOrderAndCreditSeller = async (session: Stripe.Checkout.Session) => {
+	const orderId = Number(session.metadata?.orderId);
+	if (!orderId) {
+		return;
+	}
+
+	const paymentIntentId =
+		typeof session.payment_intent === "string"
+			? session.payment_intent
+			: session.payment_intent?.id ?? null;
+
+	await sequelize.transaction(async (transaction) => {
+		const order = await db.Order.findOne({
+			where: { id: orderId, statusId: statusMap.pending },
+			lock: transaction.LOCK.UPDATE,
+			transaction,
+		});
+
+		if (!order) return;
+
+		await order.update(
+			{
+				statusId: statusMap.paid,
+				stripeCheckoutSessionId: session.id,
+				stripePaymentIntentId: paymentIntentId,
+			},
+			{ transaction }
+		);
+
+		const earningsBySeller = await calculateSellerEarningsByUser(order.id, transaction);
+
+		for (const [sellerId, amountToCredit] of earningsBySeller.entries()) {
+			const [sellerBalance] = await db.SellerBalance.findOrCreate({
+				where: { userId: sellerId },
+				defaults: {
+					userId: sellerId,
+					availableAmount: 0,
+					pendingAmount: 0,
+					currency: order.currency,
+				},
+				transaction,
+			});
+
+			await sellerBalance.increment("pendingAmount", {
+				by: amountToCredit,
+				transaction,
+			});
+		}
+	});
+};
 
 export const stripeService = {
 	getAllProducts: async () => {
@@ -104,120 +206,6 @@ export const stripeService = {
 		});
 	},
 
-	createCheckoutSession: async ({ userId, items }: CreateCheckoutParams): Promise<string> => {
-		const user = await db.User.findByPk(userId);
-		if (!user) {
-			throw new AppError("User not found", 404);
-		}
-
-		const mergedQuantities = new Map<string, number>();
-		for (const item of items) {
-			const currentQty = mergedQuantities.get(item.priceId) ?? 0;
-			mergedQuantities.set(item.priceId, currentQty + item.quantity);
-		}
-
-		const priceIds = Array.from(mergedQuantities.keys());
-		const prices = await db.Price.findAll({
-			where: { id: priceIds },
-		});
-
-		const firstPrice = prices[0];
-		if (!firstPrice || prices.length !== priceIds.length) {
-			throw new AppError("One or more prices were not found", 404);
-		}
-
-		const baseCurrency = firstPrice.currency.toLowerCase();
-		let totalAmount = 0;
-
-		const resolvedItems = prices.map((price) => {
-			if (!price.active) {
-				throw new AppError(`Price ${price.id} is no longer active`, 400);
-			}
-
-			if (price.currency.toLowerCase() !== baseCurrency) {
-				throw new AppError("All items in a checkout session must use the same currency", 400);
-			}
-
-			const quantity = mergedQuantities.get(String(price.id))!;
-			totalAmount += price.unitAmount * quantity;
-
-			return {
-				price,
-				quantity,
-			};
-		});
-
-		let stripeCustomerId = user.stripeCustomerId;
-		if (!stripeCustomerId) {
-			const customer = await stripe.customers.create({
-				email: user.email,
-				name: user.name,
-				metadata: { userId: String(user.id) },
-			});
-			stripeCustomerId = customer.id;
-			await user.update({ stripeCustomerId });
-		}
-
-		const transaction = await sequelize.transaction();
-		let order: Order;
-
-		try {
-			const pendingStatusId = await db.OrderStatus.getIdByCode("pending");
-
-			order = await db.Order.create(
-				{
-					userId: user.id,
-					statusId: pendingStatusId,
-					totalAmount,
-					currency: baseCurrency,
-				},
-				{ transaction }
-			);
-
-			await db.OrderItem.bulkCreate(
-				resolvedItems.map(({ price, quantity }) => ({
-					orderId: order.id,
-					priceId: price.id,
-					quantity,
-					unitAmount: price.unitAmount,
-				})),
-				{ transaction }
-			);
-
-			await transaction.commit();
-		} catch (error) {
-			await transaction.rollback();
-			throw error;
-		}
-
-		const session = await stripe.checkout.sessions.create({
-			customer: stripeCustomerId,
-			mode: "payment",
-			line_items: resolvedItems.map(({ price, quantity }) => ({
-				price: price.stripePriceId,
-				quantity,
-			})),
-			client_reference_id: String(order.id),
-			metadata: {
-				userId: String(user.id),
-				orderId: String(order.id),
-			},
-			success_url: `${process.env.FRONTEND_URL}/orders?orderId=${order.id}`,
-			cancel_url: `${process.env.FRONTEND_URL}/products?cancel=true&orderId=${order.id}`,
-		});
-
-		if (!session.url) {
-			const failedStatusId = await db.OrderStatus.getIdByCode("failed");
-
-			await order.update({ statusId: failedStatusId });
-			throw new AppError("Failed to generate Stripe checkout URL", 500);
-		}
-
-		await order.update({ stripeCheckoutSessionId: session.id });
-
-		return session.url;
-	},
-
 	createProduct: async ({userId, name, description, unitAmount, currency}: CreateProductParams) => {
 		const transaction = await sequelize.transaction();
 		let stripeProduct: Stripe.Product | null = null;
@@ -258,6 +246,17 @@ export const stripeService = {
 				},
 				{transaction}
 			);
+
+			await db.SellerBalance.findOrCreate({
+				where: { userId },
+				defaults: {
+					userId,
+					availableAmount: 0,
+					pendingAmount: 0,
+					currency: stripePrice.currency,
+				},
+				transaction,
+			});
 
 			await transaction.commit();
 
@@ -442,6 +441,168 @@ export const stripeService = {
 		}
 	},
 
+	createCheckoutSession: async ({ userId, items }: CreateCheckoutParams): Promise<string> => {
+		const user = await db.User.findByPk(userId);
+		if (!user) {
+			throw new AppError("User not found", 404);
+		}
+
+		const mergedQuantities = new Map<string, number>();
+		for (const item of items) {
+			const currentQty = mergedQuantities.get(item.priceId) ?? 0;
+			mergedQuantities.set(item.priceId, currentQty + item.quantity);
+		}
+
+		const priceIds = Array.from(mergedQuantities.keys());
+		const prices = await db.Price.findAll({
+			where: { id: priceIds },
+			include: [
+				{
+					model: db.Product,
+					as: "Product",
+					attributes: ["id", "userId", "active"],
+				},
+			],
+		});
+
+		const firstPrice = prices[0];
+		if (!firstPrice || prices.length !== priceIds.length) {
+			throw new AppError("One or more prices were not found", 404);
+		}
+
+		const baseCurrency = firstPrice.currency.toLowerCase();
+		let totalAmount = 0;
+
+		const resolvedItems = prices.map((price) => {
+			if (!price.active || !price.Product?.active) {
+				throw new AppError(`Product or price ${price.id} is no longer active`, 400);
+			}
+
+			if (price.Product.userId === user.id) {
+				throw new AppError("You cannot purchase your own product", 400);
+			}
+
+			if (price.currency.toLowerCase() !== baseCurrency) {
+				throw new AppError("All items in a checkout session must use the same currency", 400);
+			}
+
+			const quantity = mergedQuantities.get(String(price.id))!;
+			if (!Number.isInteger(quantity) || quantity <= 0) {
+				throw new AppError("Quantity must be a positive integer", 400);
+			}
+
+			totalAmount += price.unitAmount * quantity;
+
+			return {
+				price,
+				quantity,
+			};
+		});
+
+		let stripeCustomerId = user.stripeCustomerId;
+		if (!stripeCustomerId) {
+			const customer = await stripe.customers.create({
+				email: user.email,
+				name: user.name,
+				metadata: { userId: String(user.id) },
+			});
+			stripeCustomerId = customer.id;
+			await user.update({ stripeCustomerId });
+		}
+
+		const transaction = await sequelize.transaction();
+		let order: Order;
+
+		try {
+			const pendingStatusId = await db.OrderStatus.getIdByCode("pending");
+
+			order = await db.Order.create(
+				{
+					userId: user.id,
+					statusId: pendingStatusId,
+					totalAmount,
+					currency: baseCurrency,
+				},
+				{ transaction }
+			);
+
+			await db.OrderItem.bulkCreate(
+				resolvedItems.map(({ price, quantity }) => ({
+					orderId: order.id,
+					priceId: price.id,
+					quantity,
+					unitAmount: price.unitAmount,
+				})),
+				{ transaction }
+			);
+
+			await transaction.commit();
+		} catch (error) {
+			await transaction.rollback();
+			throw error;
+		}
+
+		const session = await stripe.checkout.sessions.create({
+			customer: stripeCustomerId,
+			mode: "payment",
+			line_items: resolvedItems.map(({ price, quantity }) => ({
+				price: price.stripePriceId,
+				quantity,
+			})),
+			client_reference_id: String(order.id),
+			metadata: {
+				userId: String(user.id),
+				orderId: String(order.id),
+			},
+			success_url: `${process.env.FRONTEND_URL}/orders?orderId=${order.id}`,
+			cancel_url: `${process.env.FRONTEND_URL}/products?cancel=true&orderId=${order.id}`,
+		});
+
+		if (!session.url) {
+			const failedStatusId = await db.OrderStatus.getIdByCode("failed");
+
+			await order.update({ statusId: failedStatusId });
+			throw new AppError("Failed to generate Stripe checkout URL", 500);
+		}
+
+		await order.update({ stripeCheckoutSessionId: session.id });
+
+		return session.url;
+	},
+
+cancelCheckoutSession: async ({ userId, orderId }: CancelCheckoutParams): Promise<void> => {
+	const order = await db.Order.findOne({
+		where: {
+			id: orderId,
+			userId,
+		},
+	});
+
+	if (!order) {
+		throw new AppError("Order not found", 404);
+	}
+
+	const pendingStatusId = await db.OrderStatus.getIdByCode("pending");
+	if (order.statusId !== pendingStatusId) {
+		throw new AppError("Only pending orders can be cancelled", 400);
+	}
+
+	if (order.stripeCheckoutSessionId) {
+		try {
+			const session = await stripe.checkout.sessions.retrieve(order.stripeCheckoutSessionId);
+
+			if (session.status === "open") {
+				await stripe.checkout.sessions.expire(order.stripeCheckoutSessionId);
+			}
+		} catch (error) {
+			console.error(`Failed to expire Stripe session ${order.stripeCheckoutSessionId}:`, error);
+		}
+	}
+
+	const cancelledStatusId = await db.OrderStatus.getIdByCode("cancelled");
+	await order.update({ statusId: cancelledStatusId });
+},
+
 	handleWebhookEvent: async (rawBody: Buffer, signature: string) => {
 		let event: Stripe.Event;
 
@@ -455,55 +616,20 @@ export const stripeService = {
 			throw new AppError(`Webhook signature verification failed: ${err.message}`, 400);
 		}
 
-		const statusMap = await db.OrderStatus.getStatusMap();
+
 
 		switch (event.type) {
 			case "checkout.session.completed": {
 				const session = event.data.object as Stripe.Checkout.Session;
-				const orderId = Number(session.metadata?.orderId);
-				if (!orderId) {
-					break;
-				}
-
 				if (session.payment_status === "paid") {
-					const paymentIntentId =
-						typeof session.payment_intent === "string"
-							? session.payment_intent
-							: session.payment_intent?.id ?? null;
-
-					await db.Order.update(
-						{
-							statusId: statusMap.paid,
-							stripeCheckoutSessionId: session.id,
-							stripePaymentIntentId: paymentIntentId,
-						},
-						{
-							where: { id: orderId, statusId: statusMap.pending },
-						}
-					);
+					await fulfillOrderAndCreditSeller(session);
 				}
 				break;
 			}
 
 			case "checkout.session.async_payment_succeeded": {
 				const session = event.data.object as Stripe.Checkout.Session;
-				const orderId = Number(session.metadata?.orderId);
-				if (!orderId) {
-					break;
-				}
-
-				const paymentIntentId =
-					typeof session.payment_intent === "string"
-						? session.payment_intent
-						: session.payment_intent?.id ?? null;
-
-				await db.Order.update(
-					{
-						statusId: statusMap.paid,
-						stripePaymentIntentId: paymentIntentId,
-					},
-					{ where: { id: orderId, statusId: statusMap.pending } }
-				);
+				await fulfillOrderAndCreditSeller(session);
 				break;
 			}
 
@@ -538,12 +664,51 @@ export const stripeService = {
 						? charge.payment_intent
 						: charge.payment_intent?.id;
 
-				if (paymentIntentId) {
-					await db.Order.update(
-						{ statusId: statusMap.refunded },
-						{ where: { stripePaymentIntentId: paymentIntentId, statusId: statusMap.paid } }
-					);
+				if (!paymentIntentId) {
+					break;
 				}
+
+				await sequelize.transaction(async (transaction) => {
+					const order = await db.Order.findOne({
+						where: { stripePaymentIntentId: paymentIntentId, statusId: statusMap.paid },
+						lock: transaction.LOCK.UPDATE,
+						transaction,
+					});
+
+					if (!order) {
+						return;
+					}
+
+					await order.update({ statusId: statusMap.refunded }, { transaction });
+
+					const deductionsBySeller = await calculateSellerEarningsByUser(order.id, transaction);
+
+					for (const [sellerId, amountToDeduct] of deductionsBySeller.entries()) {
+						const sellerBalance = await db.SellerBalance.findOne({
+							where: { userId: sellerId },
+							lock: transaction.LOCK.UPDATE,
+							transaction,
+						});
+
+						if (!sellerBalance) continue;
+
+						if (sellerBalance.pendingAmount >= amountToDeduct) {
+							await sellerBalance.decrement("pendingAmount", {
+								by: amountToDeduct,
+								transaction,
+							});
+						} else {
+							const remaining = amountToDeduct - sellerBalance.pendingAmount;
+							await sellerBalance.update(
+								{
+									pendingAmount: 0,
+									availableAmount: Math.max(0, sellerBalance.availableAmount - remaining),
+								},
+								{ transaction }
+							);
+						}
+					}
+				});
 				break;
 			}
 		}

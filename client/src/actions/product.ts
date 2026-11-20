@@ -304,3 +304,38 @@ export const updateProduct = async (
 		};
 	}
 };
+export async function cancelOrder(orderId: string) {
+	try {
+		const response = await fetch(
+			`${BASE_URL}/product/cancel`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...(token && { Authorization: `Bearer ${token}` }),
+				},
+				body: JSON.stringify({ orderId }),
+			}
+		);
+
+		const data = await response.json().catch(() => null);
+
+		if (!response.ok) {
+			return {
+				success: false,
+				message: data?.message || "Failed to cancel order.",
+			};
+		}
+
+		return {
+			success: true,
+			data,
+		};
+	} catch (error) {
+		console.error("Error canceling order:", error);
+		return {
+			success: false,
+			message: "Network error while canceling order.",
+		};
+	}
+};
