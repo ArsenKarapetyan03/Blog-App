@@ -10,9 +10,8 @@ import {
 	type Association,
 } from "sequelize";
 import type { User } from "./user.js";
-import type { OrderItem } from "./orderitem.js";
-
-export type OrderStatus = "pending" | "paid" | "failed" | "refunded";
+import type { OrderItem } from "@/models/orderitem.js";
+import type { OrderStatus } from "@/models/orderstatus.js";
 
 export class Order extends Model<
 	InferAttributes<Order>,
@@ -20,17 +19,19 @@ export class Order extends Model<
 > {
 	declare id: CreationOptional<number>;
 	declare userId: ForeignKey<User["id"]>;
+	declare statusId: ForeignKey<OrderStatus["id"]>;
 	declare stripeCheckoutSessionId: CreationOptional<string | null>;
 	declare stripePaymentIntentId: CreationOptional<string | null>;
-	declare status: CreationOptional<OrderStatus>;
 	declare totalAmount: number;
 	declare currency: string;
 
 	declare User?: NonAttribute<User>;
+	declare Status?: NonAttribute<OrderStatus>;
 	declare Items?: NonAttribute<OrderItem[]>;
 
 	declare static associations: {
 		User: Association<Order, User>;
+		Status: Association<Order, OrderStatus>;
 		Items: Association<Order, OrderItem>;
 	};
 
@@ -46,6 +47,10 @@ export class Order extends Model<
 					type: DataTypes.INTEGER,
 					allowNull: false,
 				},
+				statusId: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+				},
 				stripeCheckoutSessionId: {
 					type: DataTypes.STRING,
 					allowNull: true,
@@ -55,11 +60,6 @@ export class Order extends Model<
 					type: DataTypes.STRING,
 					allowNull: true,
 					unique: true,
-				},
-				status: {
-					type: DataTypes.ENUM("pending", "paid", "failed", "refunded"),
-					allowNull: false,
-					defaultValue: "pending",
 				},
 				totalAmount: {
 					type: DataTypes.INTEGER,
@@ -81,6 +81,11 @@ export class Order extends Model<
 		this.belongsTo(registry.User as any, {
 			foreignKey: "userId",
 			as: "User",
+		});
+
+		this.belongsTo(registry.OrderStatus as any, {
+			foreignKey: "statusId",
+			as: "Status",
 		});
 
 		this.hasMany(registry.OrderItem as any, {

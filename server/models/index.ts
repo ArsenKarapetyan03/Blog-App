@@ -15,6 +15,7 @@ import { Product } from "@/models/product.js";
 import { OrderItem } from "@/models/orderitem.js";
 import { Price } from "@/models/price.js";
 import { Order } from "@/models/order.js";
+import { OrderStatus } from "@/models/orderstatus.js";
 
 const env = (process.env.NODE_ENV || "development") as keyof typeof configJson;
 const config = configJson[env] as typeof configJson[typeof env] & {
@@ -40,6 +41,7 @@ const models = [
 	Price,
 	Order,
 	OrderItem,
+	OrderStatus
 ];
 
 models.forEach((model) => model.initialize(sequelize));
@@ -62,6 +64,9 @@ const db = {
 	Price,
 	Order,
 	OrderItem,
+	OrderStatus
 };
+
+await db.OrderStatus.seedAndWarmCache();
 
 export default db;

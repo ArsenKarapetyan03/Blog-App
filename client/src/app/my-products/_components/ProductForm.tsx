@@ -4,22 +4,32 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNotification } from "@/context/NotificationProvider";
 import { SignInModal } from "@/components/ui/SignInModal";
-import { createProduct } from "@/actions/product";
+import { createProduct, updateProduct } from "@/actions/product";
 import { useAuth } from "@/context/useAuth";
+import { Product } from "@/types/types";
 
-const CreateProductPage = () => {
+interface ProductFormProps {
+	initialData?: Product;
+}
+
+export default function ProductForm({ initialData }: ProductFormProps) {
 	const router = useRouter();
 	const { isAuthenticated } = useAuth();
 	const notification = useNotification();
 
+	const isEditing = Boolean(initialData);
+	const defaultPrice = initialData?.Prices?.[0];
+
 	const [isSignInModalOpen, setIsSignInModalOpen] = useState<boolean>(false);
-	const [name, setName] = useState("");
-	const [description, setDescription] = useState("");
-	const [priceInDollars, setPriceInDollars] = useState("");
-	const [currency, setCurrency] = useState("usd");
+	const [name, setName] = useState(initialData?.name ?? "");
+	const [description, setDescription] = useState(initialData?.description ?? "");
+	const [priceInDollars, setPriceInDollars] = useState(
+		defaultPrice?.unitAmount ? (defaultPrice.unitAmount / 100).toFixed(2) : ""
+	);
+	const [currency, setCurrency] = useState(defaultPrice?.currency ?? "usd");
 	const [submitting, setSubmitting] = useState(false);
 
-	const handleCreateProduct = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
 		if (!isAuthenticated) {
@@ -30,29 +40,41 @@ const CreateProductPage = () => {
 		setSubmitting(true);
 
 		try {
-			const result = await createProduct({
-				name,
-				description,
-				priceInDollars,
-				currency,
-			});
+			const result = isEditing && initialData
+				? await updateProduct(String(initialData.id), {
+					name,
+					description,
+					priceInDollars,
+					currency,
+				})
+				: await createProduct({
+					name,
+					description,
+					priceInDollars,
+					currency,
+				});
 
 			if (!result.success) {
 				notification.error({
 					title: "Error",
-					description: result.message || "Failed to create product.",
+					description:
+						result.message ||
+						`Failed to ${isEditing ? "update" : "create"} product.`,
 					placement: "topRight",
 				});
 				return;
 			}
 
 			notification.success({
-				title: "Product Created",
-				description: `"${name}" has been created successfully.`,
+				title: isEditing ? "Product Updated" : "Product Created",
+				description: `"${name}" has been ${
+					isEditing ? "updated" : "created"
+				} successfully.`,
 				placement: "topRight",
 			});
 
-			router.push("/products");
+			router.push("/my-products");
+			router.refresh();
 		} catch (err) {
 			notification.error({
 				title: "Unexpected Error",
@@ -68,16 +90,16 @@ const CreateProductPage = () => {
 		<div className="w-full">
 			<section className="mb-10 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 				<h2 className="mb-4 text-lg font-semibold text-gray-900">
-					Create New Product
+					{isEditing ? "Edit Product" : "Create New Product"}
 				</h2>
-				<form onSubmit={handleCreateProduct} className="space-y-4">
+				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
 						<label className="mb-1 block text-sm font-medium text-gray-700">
 							Product Name *
 						</label>
 						<input
 							type="text"
-							placeholder="e.g., Pro Plan"
+							placeholder="Required"
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
@@ -131,14 +153,30 @@ const CreateProductPage = () => {
 						</div>
 					</div>
 
-					<div className="pt-2">
+					<div className="flex items-center gap-3 pt-2">
 						<button
 							type="submit"
 							disabled={submitting}
 							className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
 						>
-							{submitting ? "Creating..." : "Create Product"}
+							{submitting
+								? isEditing
+									? "Saving..."
+									: "Creating..."
+								: isEditing
+									? "Save Changes"
+									: "Create Product"}
 						</button>
+
+						{isEditing && (
+							<button
+								type="button"
+								onClick={() => router.back()}
+								className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+							>
+								Cancel
+							</button>
+						)}
 					</div>
 				</form>
 			</section>
@@ -148,6 +186,4 @@ const CreateProductPage = () => {
 			/>
 		</div>
 	);
-};
-
-export default CreateProductPage;
+}

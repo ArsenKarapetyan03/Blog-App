@@ -2,44 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { notification } from "antd";
-import { createCheckoutSession, getProducts } from "@/actions/product";
+import { ShoppingCartMinus } from "lucide-react";
+import { getProducts } from "@/actions/product";
 import { type Product } from "@/types/types";
-import { SignInModal } from "@/components/ui/SignInModal";
 import { useAuth } from "@/context/useAuth";
-
-interface Price {
-	id: number | string;
-	unitAmount: number;
-	currency: string;
-	active: boolean;
-}
+import { useCart } from "@/context/CartContext";
 
 const ProductsPage: React.FC = () => {
-	const {isAuthenticated} = useAuth();
+	const { isAuthenticated } = useAuth();
+	const { totalItems, openCart, addToCart, buyNow, buyingPriceId } = useCart();
 
 	const [products, setProducts] = useState<Product[]>([]);
 	const [loading, setLoading] = useState<boolean>(true);
-	const [api, contextHolder] = notification.useNotification();
-
-	const [buyingPriceId, setBuyingPriceId] = useState<number | string | null>(null);
-	const [isSignInModalOpen, setIsSignInModalOpen] = useState<boolean>(false);
-
-	const showErrorNotification = (description: string) => {
-		api.error({
-			title: "Error",
-			description,
-			placement: "topRight",
-		});
-	};
+	const [error, setError] = useState<string | null>(null);
 
 	const fetchProducts = async () => {
 		setLoading(true);
+		setError(null);
 
 		const result = await getProducts();
 
 		if (!result.success) {
-			showErrorNotification(result.message);
+			setError(result.message);
 		} else {
 			setProducts(result.data);
 		}
@@ -51,129 +35,158 @@ const ProductsPage: React.FC = () => {
 		fetchProducts();
 	}, []);
 
-	const handleCheckout = async (priceId: number | string) => {
-		if (!isAuthenticated) {
-			setIsSignInModalOpen(true);
-			return;
-		}
-
-		setBuyingPriceId(priceId);
-
-		const result = await createCheckoutSession(priceId, 1);
-
-		if (!result.success || !result.url) {
-			showErrorNotification(result.message || "Failed to start checkout.");
-			setBuyingPriceId(null);
-			return;
-		}
-
-		window.location.href = result.url;
-	};
-
-	const formatPrice = (cents: number, curr: string) => {
+	const formatPrice = (amount?: number, currency: string = "usd") => {
+		if (amount === undefined || amount === null) return null;
 		return new Intl.NumberFormat("en-US", {
 			style: "currency",
-			currency: curr.toUpperCase(),
-		}).format(cents / 100);
+			currency: currency.toUpperCase(),
+		}).format(amount / 100);
 	};
 
 	return (
-		<div className="w-full">
-			{contextHolder}
+		<div className="mx-auto w-full max-w-6xl px-4 py-12">
+			<div className="mb-8 flex flex-col justify-between gap-4 border-b border-gray-200 pb-6 dark:border-gray-800 sm:flex-row sm:items-center">
+				<div>
+					<h2 className="text-base font-semibold text-gray-900 dark:text-white">
+						{isAuthenticated ? "Catalog Management" : "Products"}
+					</h2>
+					<p className="text-xs text-gray-500 dark:text-gray-400">
+						{isAuthenticated
+							? "Add new items, update pricing, or shop the catalog."
+							: "Browse available products and add them to your cart."}
+					</p>
+				</div>
 
-			{isAuthenticated && (
-				<div className="mb-6 flex flex-col justify-between gap-4 border-b border-slate-200 py-4 sm:flex-row sm:items-center">
-					<div>
-						<h2 className="text-base font-semibold text-slate-900">
-							Catalog Management
-						</h2>
-						<p className="text-xs text-slate-500">
-							Add new items or update pricing for your store.
-						</p>
-					</div>
-
-					<div className="flex gap-4">
-						<Link
-							href="/products/create"
-							className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-						>
-							<span>+</span>
-							<span>Create product</span>
-						</Link>
-
+				<div className="flex flex-wrap items-center gap-3">
+					{isAuthenticated && (
 						<Link
 							href="/my-products"
-							className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+							className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
 						>
 							My products
 						</Link>
-					</div>
+					)}
+
+					<button
+						onClick={openCart}
+						className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+					>
+						<ShoppingCartMinus size={16} />
+						<span>Cart</span>
+						{totalItems > 0 && (
+							<span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
+								{totalItems}
+							</span>
+						)}
+					</button>
 				</div>
-			)}
+			</div>
 
 			<section>
-				{loading ? (
-					<div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
-						Loading products...
+				{loading && (
+					<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+						{[1, 2, 3].map((skeleton) => (
+							<div
+								key={skeleton}
+								className="h-56 animate-pulse rounded-xl border border-gray-200 bg-gray-100 p-6 dark:border-gray-800 dark:bg-gray-800/50"
+							/>
+						))}
 					</div>
-				) : products.length === 0 ? (
-					<div
-						className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500">
-						You haven&apos;t created any products yet. Click &quot;Create product&quot; above to add your first one.
+				)}
+
+				{!loading && error && (
+					<div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900/50 dark:bg-red-900/20">
+						<p className="font-medium text-red-700 dark:text-red-400">{error}</p>
+						<button
+							onClick={fetchProducts}
+							className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+						>
+							Try Again
+						</button>
 					</div>
-				) : (
-					<div className="space-y-4">
+				)}
+
+				{!loading && !error && products.length === 0 && (
+					<div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 py-16 text-center dark:border-gray-700">
+						<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+							No products found
+						</h3>
+						<p className="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+							You haven&apos;t created any products yet. Click &quot;Create product&quot; above to add your first one.
+						</p>
+					</div>
+				)}
+
+				{!loading && !error && products.length > 0 && (
+					<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{products.map((product) => {
-							const activePrice =
-								product.Prices?.find((p) => p.active) || product.Prices?.[0];
+							const primaryPrice = product.Prices?.[0];
 
 							return (
 								<div
 									key={product.id}
-									className="flex flex-col justify-between gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 sm:flex-row sm:items-center"
+									className="flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
 								>
-									<div className="space-y-1">
-										<div className="flex items-center gap-2.5">
-											<h3 className="text-base font-semibold text-gray-900">
-												{product.name}
-											</h3>
-											{activePrice && (
-												<span
-													className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
-													{formatPrice(activePrice.unitAmount, activePrice.currency)}
-												</span>
-											)}
-										</div>
+									<Link
+										href={`/products/${product.id}`}
+										className="group flex flex-col focus:outline-none"
+									>
+										<h2 className="text-lg font-semibold text-gray-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400 line-clamp-1">
+											{product.name}
+										</h2>
 
 										{product.description && (
-											<p className="text-sm text-gray-600">
+											<p className="mt-1.5 line-clamp-2 text-sm text-gray-600 dark:text-gray-400">
 												{product.description}
 											</p>
 										)}
-									</div>
 
-									{activePrice && (
-										<button
-											onClick={() => handleCheckout(activePrice.id)}
-											disabled={buyingPriceId === activePrice.id}
-											className="shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-										>
-											{buyingPriceId === activePrice.id
-												? "Redirecting..."
-												: "Buy Now"}
-										</button>
-									)}
+										{product.Seller?.name && (
+											<p className="mt-2 text-xs font-medium text-gray-400 dark:text-gray-400">
+												Seller: {product.Seller.name}
+											</p>
+										)}
+									</Link>
+
+									<div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+										<div className="flex flex-wrap gap-2">
+											{product.Prices?.map((price) => (
+												<span
+													key={price.id}
+													className="text-base font-bold text-gray-900 dark:text-white"
+												>
+													{formatPrice(price.unitAmount, price.currency)}
+												</span>
+											))}
+										</div>
+
+										{primaryPrice && (
+											<div className="flex items-center gap-2">
+												<button
+													onClick={() => addToCart(product)}
+													className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+												>
+													Add to Cart
+												</button>
+
+												<button
+													onClick={() => buyNow(primaryPrice.id, 1)}
+													disabled={buyingPriceId === primaryPrice.id}
+													className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+												>
+													{buyingPriceId === primaryPrice.id
+														? "Redirecting..."
+														: "Buy Now"}
+												</button>
+											</div>
+										)}
+									</div>
 								</div>
 							);
 						})}
 					</div>
 				)}
 			</section>
-
-			<SignInModal
-				isOpen={isSignInModalOpen}
-				onClose={() => setIsSignInModalOpen(false)}
-			/>
 		</div>
 	);
 };

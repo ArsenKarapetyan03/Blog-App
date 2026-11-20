@@ -59,10 +59,28 @@ export interface ChatType {
 	updatedAt: string;
 }
 
+export interface Price {
+	id: number;
+	unitAmount: number;
+	currency: string;
+}
+
 export interface Product {
-	id: number | string;
+	id: number;
 	name: string;
 	description: string | null;
 	active: boolean;
-	Prices?: Price[];
+	Seller: UserType;
+	Prices: Price[];
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface CartItem {
+	productId: string | number;
+	priceId: string | number;
+	name: string;
+	unitAmount: number;
+	currency: string;
+	quantity: number;
 }

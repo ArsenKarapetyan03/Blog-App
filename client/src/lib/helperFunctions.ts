@@ -1,4 +1,6 @@
-export const getChatTitle = (chat, currentUserId) => {
+import { ChatType } from "@/types/types";
+
+export const getChatTitle = (chat: ChatType, currentUserId: number) => {
 	if (chat.title) {
 		return chat.title;
 	}
@@ -15,4 +17,12 @@ export const getChatTitle = (chat, currentUserId) => {
 		.join(', ');
 
 	return otherUsers.length > 3 ? `${usersSummary}...` : usersSummary;
-}
+};
+
+export const formatPrice = (unitAmount?: number, currency: string = "usd") => {
+	if (unitAmount === undefined || unitAmount === null) return null;
+	return new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency: currency.toUpperCase(),
+	}).format(unitAmount / 100);
+};

@@ -4,7 +4,7 @@ export default function RootLayout({children}: LayoutProps<"/">) {
 	return (
 		<div className="w-full px-4 py-12">
 			<div className="mb-4">
-				<BackButton href="/products" label="Back to Products" />
+				<BackButton useHistory label="Back to Products" />
 			</div>
 
 			<div className="mb-8 border-b border-slate-200 pb-6">

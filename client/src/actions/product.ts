@@ -2,6 +2,7 @@
 
 import Cookies from "js-cookie";
 import { BASE_URL } from "@/config/api";
+import { Product } from "@/types/types";
 
 const token = Cookies.get("token");
 
@@ -12,10 +13,17 @@ interface CreateProductPayload {
 	currency: string;
 }
 
+interface CheckoutItemPayload {
+	priceId: number | string;
+	quantity?: number;
+}
+
+export type UpdateProductPayload = Partial<Omit<CreateProductPayload, "description">> & {
+	description?: string | null;
+};
+
 export const getProducts = async () => {
 	try {
-		const token = Cookies.get("token");
-
 		const response = await fetch(`${BASE_URL}/product`, {
 			method: "GET",
 			headers: {
@@ -47,6 +55,67 @@ export const getProducts = async () => {
 			data: [],
 		};
 	}
+};
+
+export const getProductById = async (productId: number | string) => {
+	try {
+		if (!productId) {
+			return {
+				success: false,
+				message: "Invalid product ID.",
+			};
+		}
+
+		const response = await fetch(`${BASE_URL}/product/${productId}`, {
+			method: "GET",
+			headers: {
+				...(token && { Authorization: `Bearer ${token}` }),
+				"Content-Type": "application/json",
+			},
+		});
+
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({}));
+			return {
+				success: false,
+				message: errData.message || "Failed to fetch product.",
+			};
+		}
+
+		const data = await response.json().catch(() => ({}));
+
+		return {
+			success: true,
+			data: data.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			message: "Failed to fetch product.",
+		};
+	}
+};
+
+export const getUserProducts = async (): Promise<Product[]> => {
+	const response = await fetch(`${BASE_URL}/product/my`, {
+		method: "GET",
+		headers: {
+			...(token && { Authorization: `Bearer ${token}` }),
+			"Content-Type": "application/json",
+		}
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to load products (${response.status})`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success) {
+		throw new Error(result.message || "Unable to fetch products");
+	}
+
+	return result.data || [];
 };
 
 export const createProduct = async (
@@ -97,13 +166,10 @@ export const createProduct = async (
 	}
 };
 
-export const createCheckoutSession = async (
-	priceId: number | string,
-	quantity: number = 1
-) => {
+export const createCheckoutSession = async (items: CheckoutItemPayload[]) => {
 	try {
-		if (!priceId) {
-			return { success: false, message: "Invalid price ID." };
+		if (!Array.isArray(items) || items.length === 0) {
+			return { success: false, message: "Your cart is empty." };
 		}
 
 		const response = await fetch(`${BASE_URL}/product/checkout/`, {
@@ -113,8 +179,7 @@ export const createCheckoutSession = async (
 				"Content-Type": "application/json",
 			},
 			body: JSON.stringify({
-				priceId,
-				quantity,
+				items,
 			}),
 		});
 
@@ -142,41 +207,100 @@ export const createCheckoutSession = async (
 	}
 };
 
-export interface UserProduct {
-	id: string;
-	name: string;
-	description?: string | null;
-	price?: number;
-	currency?: string;
-	status?: "active" | "canceled" | "past_due" | "paid" | string;
-	imageUrl?: string | null;
-	purchasedAt?: string;
-}
-
-interface ApiResponse {
-	success: boolean;
-	data: UserProduct[];
-	message?: string;
-}
-
-export const getUserProducts = async (): Promise<UserProduct[]> => {
-	const response = await fetch(`${BASE_URL}/product/my`, {
-		method: "GET",
-		headers: {
-			...(token && { Authorization: `Bearer ${token}` }),
-			"Content-Type": "application/json",
+export const archiveProduct = async (productId: number | string) => {
+	try {
+		if (!productId) {
+			return {
+				success: false,
+				message: "Invalid product ID.",
+			};
 		}
-	});
 
-	if (!response.ok) {
-		throw new Error(`Failed to load products (${response.status})`);
+		const response = await fetch(`${BASE_URL}/product/${productId}/archive`, {
+			method: "PATCH",
+			headers: {
+				...(token && { Authorization: `Bearer ${token}` }),
+				"Content-Type": "application/json",
+			},
+		});
+
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({}));
+			return {
+				success: false,
+				message: errData.message || "Failed to archive product.",
+			};
+		}
+
+		const data = await response.json().catch(() => ({}));
+
+		return {
+			success: true,
+			message: data.message || "Product archived successfully!",
+		};
+	} catch (error) {
+		return {
+			success: false,
+			message: "Failed to archive product.",
+		};
 	}
+};
 
-	const result: ApiResponse = await response.json();
+export const updateProduct = async (
+	productId: number | string,
+	payload: UpdateProductPayload
+) => {
+	try {
+		if (!productId) {
+			return {
+				success: false,
+				message: "Invalid product ID.",
+			};
+		}
 
-	if (!result.success) {
-		throw new Error(result.message || "Unable to fetch products");
+		const { priceInDollars, ...rest } = payload;
+
+		const requestBody: Record<string, unknown> = { ...rest };
+
+		if (priceInDollars !== undefined) {
+			const parsedPrice = Number(priceInDollars);
+			if (isNaN(parsedPrice) || parsedPrice <= 0) {
+				return {
+					success: false,
+					message: "Invalid price amount.",
+				};
+			}
+			requestBody.unitAmount = Math.round(parsedPrice * 100);
+		}
+
+		const response = await fetch(`${BASE_URL}/product/${productId}`, {
+			method: "PATCH",
+			headers: {
+				...(token && { Authorization: `Bearer ${token}` }),
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(requestBody),
+		});
+
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({}));
+			return {
+				success: false,
+				message: errData.message || "Failed to update product.",
+			};
+		}
+
+		const data = await response.json().catch(() => ({}));
+
+		return {
+			success: true,
+			message: data.message || "Product updated successfully!",
+			data: data.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			message: "Failed to update product.",
+		};
 	}
-
-	return result.data || [];
 };

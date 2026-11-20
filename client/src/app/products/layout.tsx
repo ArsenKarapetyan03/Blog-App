@@ -1,10 +1,11 @@
+import { CartProvider } from "@/context/CartContext";
 import { BackButton } from "@/components/ui/BackButton";
 
 export default function RootLayout({children}: LayoutProps<"/">) {
 	return (
 		<div className="w-full px-4 py-12">
 			<div className="mb-4">
-				<BackButton label="Back to homepage" />
+				<BackButton label="Back" />
 			</div>
 
 			<div className="mb-8 border-b border-slate-200 pb-6">
@@ -15,7 +16,8 @@ export default function RootLayout({children}: LayoutProps<"/">) {
 					Pick your favorites and add them to your cart.
 				</p>
 			</div>
-			{children}
+
+			<CartProvider>{children}</CartProvider>
 		</div>
 	)
 }
