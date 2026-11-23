@@ -3,24 +3,26 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
-import { signIn } from "@/actions/auth";
+import { type ActionResponse, signIn } from "@/actions/auth";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
+import { useAuth } from "@/context/useAuth";
 
-const initialState = { success: false, message: "" };
+const initialState: ActionResponse = { success: false, message: "" };
 
 const LoginPage = () => {
 	const router = useRouter();
+	const { refreshUser } = useAuth();
 	const [state, formAction, isPending] = useActionState(signIn, initialState);
 
 	useEffect(() => {
 		if (state?.success) {
-			router.push("/");
-			router.refresh();
+			refreshUser();
+			router.replace("/");
 		}
-	}, [state?.success, router]);
+	}, [state?.success, refreshUser, router]);
 
 	return (
-		<main className="h-full w-full bg-white flex items-center justify-center p-6">
+		<main className="min-h-screen w-full bg-white flex items-center justify-center p-6">
 			<div className="w-full max-w-md">
 				<div className="text-center mb-10">
 					<h1 className="text-4xl font-semibold tracking-tight text-gray-900">
@@ -47,6 +49,7 @@ const LoginPage = () => {
 							id="email"
 							type="email"
 							name="email"
+							defaultValue={state?.fields?.email || ""}
 							placeholder="you@example.com"
 							required
 							autoComplete="email"
@@ -72,6 +75,7 @@ const LoginPage = () => {
 							name="password"
 							placeholder="••••••••"
 							required
+							autoComplete="current-password"
 							disabled={isPending}
 							className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition
 							 placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:opacity-60"
@@ -79,7 +83,10 @@ const LoginPage = () => {
 					</div>
 
 					{state?.message && !state.success && (
-						<p className="text-sm text-red-600 font-medium text-center bg-red-50 p-2.5 rounded-lg border border-red-100">
+						<p
+							role="alert"
+							className="text-sm text-red-600 font-medium text-center bg-red-50 p-2.5 rounded-lg border border-red-100"
+						>
 							{state.message}
 						</p>
 					)}
@@ -92,7 +99,7 @@ const LoginPage = () => {
 					>
 						{isPending ? (
 							<>
-								<CustomLoadingSpinner size="sm"/> Wait...
+								<CustomLoadingSpinner size="sm" /> Wait...
 							</>
 						) : (
 							"Sign in"
@@ -100,10 +107,10 @@ const LoginPage = () => {
 					</button>
 				</form>
 
-				<div className="my-6 h-px bg-gray-200" />
+				<hr className="my-6 border-gray-200" />
 
 				<p className="mt-8 text-center text-gray-500">
-					<span>Don't have an account? </span>
+					<span>Don&apos;t have an account? </span>
 					<Link
 						href="/sign-up"
 						className="font-medium text-gray-900 hover:underline"
@@ -114,6 +121,6 @@ const LoginPage = () => {
 			</div>
 		</main>
 	);
-}
+};
 
 export default LoginPage;

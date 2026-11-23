@@ -4,8 +4,6 @@ import Cookies from "js-cookie";
 import { BASE_URL } from "@/config/api";
 import { Product } from "@/types/types";
 
-const token = Cookies.get("token");
-
 interface CreateProductPayload {
 	name: string;
 	description?: string;
@@ -20,6 +18,14 @@ interface CheckoutItemPayload {
 
 export type UpdateProductPayload = Partial<Omit<CreateProductPayload, "description">> & {
 	description?: string | null;
+};
+
+const getAuthHeaders = (): HeadersInit => {
+	const token = Cookies.get("token");
+	return {
+		"Content-Type": "application/json",
+		...(token && { Authorization: `Bearer ${token}` }),
+	};
 };
 
 export const getProducts = async () => {
@@ -68,10 +74,7 @@ export const getProductById = async (productId: number | string) => {
 
 		const response = await fetch(`${BASE_URL}/product/${productId}`, {
 			method: "GET",
-			headers: {
-				...(token && { Authorization: `Bearer ${token}` }),
-				"Content-Type": "application/json",
-			},
+			headers: getAuthHeaders(),
 		});
 
 		if (!response.ok) {
@@ -86,7 +89,7 @@ export const getProductById = async (productId: number | string) => {
 
 		return {
 			success: true,
-			data: data.data,
+			data: data.data ?? data,
 		};
 	} catch (error) {
 		return {
@@ -99,14 +102,12 @@ export const getProductById = async (productId: number | string) => {
 export const getUserProducts = async (): Promise<Product[]> => {
 	const response = await fetch(`${BASE_URL}/product/my`, {
 		method: "GET",
-		headers: {
-			...(token && { Authorization: `Bearer ${token}` }),
-			"Content-Type": "application/json",
-		}
+		headers: getAuthHeaders(),
 	});
 
 	if (!response.ok) {
-		throw new Error(`Failed to load products (${response.status})`);
+		const errData = await response.json().catch(() => ({}));
+		throw new Error(errData.message || `Failed to load products (${response.status})`);
 	}
 
 	const result = await response.json();
@@ -118,14 +119,12 @@ export const getUserProducts = async (): Promise<Product[]> => {
 	return result.data || [];
 };
 
-export const createProduct = async (
-	{
-		name,
-		description,
-		priceInDollars,
-		currency,
-	}: CreateProductPayload
-) => {
+export const createProduct = async ({
+	                                    name,
+	                                    description,
+	                                    priceInDollars,
+	                                    currency,
+                                    }: CreateProductPayload) => {
 	try {
 		const dollarValue = parseFloat(priceInDollars);
 		if (!name.trim() || isNaN(dollarValue) || dollarValue <= 0) {
@@ -139,11 +138,7 @@ export const createProduct = async (
 
 		const response = await fetch(`${BASE_URL}/product`, {
 			method: "POST",
-			headers: {
-				...(token && {Authorization: `Bearer ${token}`}),
-				"Content-Type": "application/json",
-
-			},
+			headers: getAuthHeaders(),
 			body: JSON.stringify({
 				name: name.trim(),
 				description: description?.trim() || undefined,
@@ -160,9 +155,18 @@ export const createProduct = async (
 			};
 		}
 
-		return {success: true, message: "Product created successfully!"};
+		const data = await response.json().catch(() => ({}));
+
+		return {
+			success: true,
+			message: data.message || "Product created successfully!",
+			data: data.data,
+		};
 	} catch (error) {
-		return {success: false, message: "Failed to create product."};
+		return {
+			success: false,
+			message: "Failed to create product.",
+		};
 	}
 };
 
@@ -172,15 +176,10 @@ export const createCheckoutSession = async (items: CheckoutItemPayload[]) => {
 			return { success: false, message: "Your cart is empty." };
 		}
 
-		const response = await fetch(`${BASE_URL}/product/checkout/`, {
+		const response = await fetch(`${BASE_URL}/product/checkout`, {
 			method: "POST",
-			headers: {
-				...(token && { Authorization: `Bearer ${token}` }),
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				items,
-			}),
+			headers: getAuthHeaders(),
+			body: JSON.stringify({ items }),
 		});
 
 		if (!response.ok) {
@@ -218,10 +217,7 @@ export const archiveProduct = async (productId: number | string) => {
 
 		const response = await fetch(`${BASE_URL}/product/${productId}/archive`, {
 			method: "PATCH",
-			headers: {
-				...(token && { Authorization: `Bearer ${token}` }),
-				"Content-Type": "application/json",
-			},
+			headers: getAuthHeaders(),
 		});
 
 		if (!response.ok) {
@@ -258,9 +254,23 @@ export const updateProduct = async (
 			};
 		}
 
-		const { priceInDollars, ...rest } = payload;
+		const { priceInDollars, name, description, ...rest } = payload;
 
 		const requestBody: Record<string, unknown> = { ...rest };
+
+		if (name !== undefined) {
+			if (!name.trim()) {
+				return {
+					success: false,
+					message: "Product name cannot be empty.",
+				};
+			}
+			requestBody.name = name.trim();
+		}
+
+		if (description !== undefined) {
+			requestBody.description = description === null ? null : description.trim();
+		}
 
 		if (priceInDollars !== undefined) {
 			const parsedPrice = Number(priceInDollars);
@@ -275,10 +285,7 @@ export const updateProduct = async (
 
 		const response = await fetch(`${BASE_URL}/product/${productId}`, {
 			method: "PATCH",
-			headers: {
-				...(token && { Authorization: `Bearer ${token}` }),
-				"Content-Type": "application/json",
-			},
+			headers: getAuthHeaders(),
 			body: JSON.stringify(requestBody),
 		});
 
@@ -304,19 +311,21 @@ export const updateProduct = async (
 		};
 	}
 };
-export async function cancelOrder(orderId: string) {
+
+export const cancelOrder = async (orderId: string | number) => {
 	try {
-		const response = await fetch(
-			`${BASE_URL}/product/cancel`,
-			{
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					...(token && { Authorization: `Bearer ${token}` }),
-				},
-				body: JSON.stringify({ orderId }),
-			}
-		);
+		if (!orderId) {
+			return {
+				success: false,
+				message: "Invalid order ID.",
+			};
+		}
+
+		const response = await fetch(`${BASE_URL}/product/cancel`, {
+			method: "POST",
+			headers: getAuthHeaders(),
+			body: JSON.stringify({ orderId }),
+		});
 
 		const data = await response.json().catch(() => null);
 

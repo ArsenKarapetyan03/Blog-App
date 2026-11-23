@@ -4,7 +4,6 @@ import {
 	createCheckoutSession,
 	createProduct,
 	getAllProducts,
-	getUserOrders,
 	getMyProducts,
 	handleWebhook,
 	archiveProduct,
@@ -16,7 +15,6 @@ const router = Router();
 router.get("/", getAllProducts);
 router.get("/my", authMiddleware, getMyProducts);
 router.get("/:id", getProductById);
-router.get("/orders", authMiddleware, getUserOrders);
 router.post("/", authMiddleware, createProduct);
 router.post("/checkout", authMiddleware, createCheckoutSession);
 router.post("/webhook", handleWebhook);

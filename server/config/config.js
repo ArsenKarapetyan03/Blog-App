@@ -1,5 +1,7 @@
 import "dotenv/config";
 
+export const PLATFORM_FEE_RATE = 0.10;
+
 export default {
   "development": {
     "username": process.env.DB_USERNAME,

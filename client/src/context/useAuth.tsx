@@ -1,11 +1,17 @@
-"use client"
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useState,
+} from "react";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
-import { UserType } from "@/types/types";
+import type { UserType } from "@/types/types";
 
-interface UserPayload extends UserType{
+interface UserPayload extends UserType {
 	exp: number;
 }
 
@@ -27,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 	const [user, setUser] = useState<UserPayload | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	const refreshUser = () => {
+	const refreshUser = useCallback(() => {
 		const token = Cookies.get("token");
 		if (!token) {
 			setUser(null);
@@ -46,20 +52,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 			}
 		} catch (error) {
 			console.warn("Failed to decode auth token:", error);
+			Cookies.remove("token", { path: "/" });
 			setUser(null);
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, []);
 
 	const isAuthenticated = !!user;
 
 	useEffect(() => {
 		refreshUser();
-	}, []);
+	}, [refreshUser]);
 
 	return (
-		<AuthContext.Provider value={{ user, isAuthenticated, isLoading, refreshUser }}>
+		<AuthContext.Provider
+			value={{ user, isAuthenticated, isLoading, refreshUser }}
+		>
 			{children}
 		</AuthContext.Provider>
 	);

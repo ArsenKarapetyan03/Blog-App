@@ -71,13 +71,6 @@ export const archiveProduct = async (req: Request, res: Response) => {
 	res.status(200).json({ success: true, message: "Product archived successfully" });
 }
 
-export const getUserOrders = async (req: Request, res: Response) => {
-	const userId = res.locals.user!.id;
-	const orders = await stripeService.getUserOrders(userId);
-
-	return res.status(200).json({ success: true, data: orders });
-};
-
 export const updateProduct = async (req: Request, res: Response) => {
 	if (!req.body) {
 		throw new AppError("Invalid request body", 400);
@@ -165,17 +158,15 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
 export const cancelCheckoutSession = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;
-	const rawOrderId = req.body?.orderId;
+	const orderId = Number(req.body?.orderId);
 
 	if (!req.body) {
 		throw new AppError("Invalid request body", 400);
 	}
 
-	if ((typeof rawOrderId !== "string" && typeof rawOrderId !== "number") ||	String(rawOrderId).trim() === "") {
-		throw new AppError("Valid orderId is required", 400);
+	if (isNaN(orderId)) {
+		throw new AppError("Invalid order ID", 400);
 	}
-
-	const orderId = String(rawOrderId).trim();
 
 	await stripeService.cancelCheckoutSession({
 		userId,

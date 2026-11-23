@@ -7,6 +7,8 @@ import friendshipRoutes from "./friendship.routes.js";
 import messageRoutes from "@/routes/message.routes.js";
 import chatRoutes from "@/routes/chat.routes.js";
 import productRoutes from "@/routes/product.routes.js";
+import orderRoutes from "@/routes/order.routes.js";
+import balanceRoutes from "@/routes/sellerBalance.routes.js";
 
 const router = Router();
 
@@ -18,5 +20,7 @@ router.use("/friend", friendshipRoutes);
 router.use("/message", messageRoutes);
 router.use("/chat", chatRoutes);
 router.use("/product", productRoutes);
+router.use("/order", orderRoutes);
+router.use("/balance", balanceRoutes);
 
 export default router;

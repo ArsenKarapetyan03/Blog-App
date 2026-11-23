@@ -76,7 +76,8 @@ export default {
                         "failed",
                         "cancelled",
                         "expired",
-                        "refunded"
+                        "refunded",
+                        "shipped"
                     ),
                     allowNull: false,
                     defaultValue: "pending",

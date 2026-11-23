@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
-import { signUp } from "@/actions/auth";
+import { type ActionResponse, signUp } from "@/actions/auth";
 import { CustomLoadingSpinner } from "@/components/ui/CustomLoadingSpinner";
 
-const initialState = { success: false, message: "" };
+const initialState: ActionResponse = { success: false, message: "" };
 
 const RegisterPage = () => {
 	const router = useRouter();
@@ -14,16 +14,20 @@ const RegisterPage = () => {
 
 	useEffect(() => {
 		if (state?.success) {
-			router.push("/sign-in");
+			router.replace("/sign-in");
 		}
 	}, [state?.success, router]);
 
 	return (
-		<main className="h-full w-full bg-white flex items-center justify-center p-6">
+		<main className="min-h-screen w-full bg-white flex items-center justify-center p-6">
 			<div className="w-full max-w-md">
 				<div className="text-center mb-10">
-					<h1 className="text-4xl font-semibold tracking-tight text-gray-900">Welcome</h1>
-					<p className="mt-2 text-gray-500">Create an account to continue</p>
+					<h1 className="text-4xl font-semibold tracking-tight text-gray-900">
+						Welcome
+					</h1>
+					<p className="mt-2 text-gray-500">
+						Create an account to continue
+					</p>
 				</div>
 
 				<form
@@ -31,32 +35,42 @@ const RegisterPage = () => {
 					className="space-y-4"
 				>
 					<div>
-						<label htmlFor="name" className="mb-2 block font-medium text-gray-700">
+						<label
+							htmlFor="name"
+							className="mb-2 block font-medium text-gray-700"
+						>
 							Name
 						</label>
 						<input
 							id="name"
 							name="name"
 							type="text"
+							defaultValue={state?.fields?.name || ""}
 							placeholder="Your Name"
 							required
-							disabled={isPending} // Блокируем инпуты во время отправки
+							autoComplete="name"
+							disabled={isPending}
 							className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition
 							 placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:opacity-60"
 						/>
 					</div>
 
 					<div>
-						<label htmlFor="email" className="mb-2 block font-medium text-gray-700">
+						<label
+							htmlFor="email"
+							className="mb-2 block font-medium text-gray-700"
+						>
 							Email
 						</label>
 						<input
 							id="email"
 							name="email"
 							type="email"
+							defaultValue={state?.fields?.email || ""}
 							placeholder="you@example.com"
 							required
-							disabled={isPending} // Блокируем инпуты во время отправки
+							autoComplete="email"
+							disabled={isPending}
 							className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none
 							 transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:opacity-60"
 						/>
@@ -64,7 +78,10 @@ const RegisterPage = () => {
 
 					<div>
 						<div className="mb-2 flex items-center justify-between">
-							<label htmlFor="password" className="font-medium text-gray-700">
+							<label
+								htmlFor="password"
+								className="font-medium text-gray-700"
+							>
 								Password
 							</label>
 						</div>
@@ -74,15 +91,18 @@ const RegisterPage = () => {
 							type="password"
 							placeholder="••••••••"
 							required
-							disabled={isPending} // Блокируем инпуты во время отправки
+							autoComplete="new-password"
+							disabled={isPending}
 							className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none
 							 transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:opacity-60"
 						/>
 					</div>
 
-					{/* Вывод сообщения об ошибке от Express */}
-					{state?.message && (
-						<p className="text-sm text-red-600 font-medium text-center bg-red-50 p-2.5 rounded-lg border border-red-100">
+					{state?.message && !state.success && (
+						<p
+							role="alert"
+							className="text-sm text-red-600 font-medium text-center bg-red-50 p-2.5 rounded-lg border border-red-100"
+						>
 							{state.message}
 						</p>
 					)}
@@ -94,7 +114,7 @@ const RegisterPage = () => {
 					>
 						{isPending ? (
 							<>
-								<CustomLoadingSpinner size="sm"/> Wait...
+								<CustomLoadingSpinner size="sm" /> Wait...
 							</>
 						) : (
 							"Create"
@@ -102,23 +122,28 @@ const RegisterPage = () => {
 					</button>
 				</form>
 
-				<div className="my-6 flex items-center gap-4">
-					<div className="h-px flex-1 bg-gray-200"/>
-					<div className="h-px flex-1 bg-gray-200"/>
-				</div>
+				<hr className="my-6 border-gray-200" />
 
 				<p className="mt-8 text-center text-gray-500">
 					<span>Have an account? </span>
-					<Link href="/sign-in" className="font-medium text-gray-900 hover:underline">
+					<Link
+						href="/sign-in"
+						className="font-medium text-gray-900 hover:underline"
+					>
 						Sign in
 					</Link>
 				</p>
 
 				<p className="mt-6 text-center text-xs leading-5 text-gray-400">
 					<span>By continuing, you agree to our </span>
-					<a href="#" className="underline hover:text-gray-600">Terms</a>
+					<Link href="/terms" className="underline hover:text-gray-600">
+						Terms
+					</Link>
 					<span> and </span>
-					<a href="#" className="underline hover:text-gray-600">Privacy Policy</a>.
+					<Link href="/privacy" className="underline hover:text-gray-600">
+						Privacy Policy
+					</Link>
+					.
 				</p>
 			</div>
 		</main>

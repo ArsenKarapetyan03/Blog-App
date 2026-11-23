@@ -17,6 +17,7 @@ export const ORDER_STATUS_CODES = [
 	"cancelled",
 	"expired",
 	"refunded",
+	"shipped"
 ] as const;
 
 export type OrderStatusCode = (typeof ORDER_STATUS_CODES)[number];
@@ -28,6 +29,7 @@ export const DEFAULT_STATUSES: Array<{ code: OrderStatusCode; label: string }> =
 	{ code: "cancelled", label: "Cancelled" },
 	{ code: "expired", label: "Expired" },
 	{ code: "refunded", label: "Refunded" },
+	{ code: "shipped", label: "Shipped" },
 ];
 
 export class OrderStatus extends Model<

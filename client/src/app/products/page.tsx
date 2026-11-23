@@ -23,11 +23,21 @@ const CancelCheckoutHandler: React.FC<{
 		const isCanceled = searchParams.get("cancel") === "true";
 		const orderId = searchParams.get("orderId");
 
-		if (isCanceled && !hasNotified.current) {
-			hasNotified.current = true;
+		if (!isCanceled || hasNotified.current) {
+			return;
+		}
+		hasNotified.current = true;
 
+		const handleCancel = async () => {
 			if (orderId) {
-				cancelOrder(orderId);
+				const res = await cancelOrder(orderId);
+				if (!res.success) {
+					notification.error({
+						title: "Order Cancellation Issue",
+						description: res.message,
+						placement: "topRight",
+					});
+				}
 			}
 
 			const key = `cancel-checkout-${Date.now()}`;
@@ -56,14 +66,16 @@ const CancelCheckoutHandler: React.FC<{
 			});
 
 			router.replace("/products", { scroll: false });
-		}
+		};
+
+		handleCancel();
 	}, [searchParams, router, notification, onOpenCart, totalItems]);
 
 	return null;
 };
 
 const ProductsPage: React.FC = () => {
-	const { isAuthenticated } = useAuth();
+	const { isAuthenticated, user } = useAuth();
 	const { totalItems, openCart, addToCart, buyNow, buyingPriceId } = useCart();
 
 	const [products, setProducts] = useState<Product[]>([]);
@@ -170,7 +182,7 @@ const ProductsPage: React.FC = () => {
 							No products found
 						</h3>
 						<p className="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
-							You haven&apos;t created any products yet. Click &quot;Create product&quot; above to add your first one.
+							There are no products available right now. Check back later or add items from &quot;My products&quot;.
 						</p>
 					</div>
 				)}
@@ -180,13 +192,19 @@ const ProductsPage: React.FC = () => {
 						{products.map((product) => {
 							const primaryPrice = product.Prices?.[0];
 
+							const isOwnProduct = Boolean(
+								isAuthenticated &&
+								user?.id &&
+								product.Seller?.id === user.id
+							);
+
 							return (
 								<div
 									key={product.id}
 									className="flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
 								>
 									<Link
-										href={`/products/${product.id}`}
+										href={isOwnProduct ? `/my-products/${product.id}` : `/products/${product.id}`}
 										className="group flex flex-col focus:outline-none"
 									>
 										<h2 className="text-lg font-semibold text-gray-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400 line-clamp-1">
@@ -201,7 +219,7 @@ const ProductsPage: React.FC = () => {
 
 										{product.Seller?.name && (
 											<p className="mt-2 text-xs font-medium text-gray-400 dark:text-gray-400">
-												Seller: {product.Seller.name}
+												Seller: {isOwnProduct ? "You" : product.Seller.name}
 											</p>
 										)}
 									</Link>
@@ -220,22 +238,30 @@ const ProductsPage: React.FC = () => {
 
 										{primaryPrice && (
 											<div className="flex items-center gap-2">
-												<button
-													onClick={() => addToCart(product)}
-													className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-												>
-													Add to Cart
-												</button>
+												{isOwnProduct ? (
+													<div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center text-sm font-medium text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
+														Your Product
+													</div>
+												) : (
+													<>
+														<button
+															onClick={() => addToCart(product)}
+															className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+														>
+															Add to Cart
+														</button>
 
-												<button
-													onClick={() => buyNow(primaryPrice.id, 1)}
-													disabled={buyingPriceId === primaryPrice.id}
-													className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-												>
-													{buyingPriceId === primaryPrice.id
-														? "Redirecting..."
-														: "Buy Now"}
-												</button>
+														<button
+															onClick={() => buyNow(primaryPrice.id, 1)}
+															disabled={buyingPriceId === primaryPrice.id}
+															className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+														>
+															{buyingPriceId === primaryPrice.id
+																? "Redirecting..."
+																: "Buy Now"}
+														</button>
+													</>
+												)}
 											</div>
 										)}
 									</div>

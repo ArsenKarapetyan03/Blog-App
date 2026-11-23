@@ -1,71 +1,107 @@
-"use client"
-
 import Cookies from "js-cookie";
 import { BASE_URL } from "@/config/api";
 
-type ActionResponse = {success: boolean; message: string};
+export type ActionResponse = {
+	success: boolean;
+	message: string;
+	fields?: Record<string, string>;
+};
 
-export const signUp = async (prevState: any, formData: FormData): Promise<ActionResponse | void> => {
+export const signUp = async (
+	prevState: ActionResponse,
+	formData: FormData
+): Promise<ActionResponse> => {
+	const plainFormData = Object.fromEntries(formData) as Record<string, string>;
+	const safeFields = {
+		name: plainFormData.name,
+		email: plainFormData.email,
+	};
+
 	try {
-		const plainFormData = Object.fromEntries(formData);
-
 		const response = await fetch(`${BASE_URL}/auth/sign-up`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(plainFormData)
+			body: JSON.stringify(plainFormData),
 		});
 
+		const data = await response.json().catch(() => null);
+
 		if (!response.ok) {
-			const data = await response.json();
-			return { success: false, message: data?.message || "Registration failed." };
+			return {
+				success: false,
+				message: data?.message || "Registration failed.",
+				fields: safeFields,
+			};
 		}
 
-		return {success: true, message: "Signed up successfully."};
+		return {
+			success: true,
+			message: "Signed up successfully.",
+		};
 	} catch (error) {
 		console.error("Registration Error:", error);
-		return { success: false, message: "Server error. Please try again later." };
+		return {
+			success: false,
+			message: "Server error. Please try again later.",
+			fields: safeFields,
+		};
 	}
-}
+};
 
-export const signIn = async (prevState: any, formData: FormData): Promise<ActionResponse | void> => {
+export const signIn = async (
+	prevState: ActionResponse,
+	formData: FormData
+): Promise<ActionResponse> => {
+	const plainFormData = Object.fromEntries(formData) as Record<string, string>;
+
 	try {
-		const plainFormData = Object.fromEntries(formData);
-
 		const response = await fetch(`${BASE_URL}/auth/sign-in`, {
 			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify(plainFormData)
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(plainFormData),
 		});
 
+		const data = await response.json().catch(() => null);
+
 		if (!response.ok) {
-			const data = await response.json();
-			return {success: false, message: data?.message || "Invalid credentials."};
+			return {
+				success: false,
+				message: data?.message || "Invalid credentials.",
+				fields: { email: plainFormData.email },
+			};
 		}
 
-		const data = await response.json();
+		if (!data?.token) {
+			return {
+				success: false,
+				message: "Authentication token was not provided.",
+				fields: { email: plainFormData.email },
+			};
+		}
 
 		Cookies.set("token", data.token, {
-			sameSite: "strict",
+			sameSite: "lax",
 			path: "/",
 			expires: 3,
 			secure: process.env.NODE_ENV === "production"
 		});
 
-		return {success: true, message: "Signed in successfully."};
+		return {
+			success: true,
+			message: "Signed in successfully.",
+		};
 	} catch (error) {
 		console.error("Login Error:", error);
-		return {success: false, message: "Server error. Please try again later."};
+		return {
+			success: false,
+			message: "Server error. Please try again later.",
+			fields: { email: plainFormData.email },
+		};
 	}
-}
+};
 
-export const logout = async () => {
-	const allCookies = Cookies.get();
-	Object.keys(allCookies).forEach(cookieName => {
-		Cookies.remove(cookieName, { path: '' });
-		Cookies.remove(cookieName, { path: '/' });
-	});
-
+export const logout = () => {
+	Cookies.remove("token", { path: "/" });
 	sessionStorage.clear();
-
 	window.location.href = "/sign-in";
-}
+};

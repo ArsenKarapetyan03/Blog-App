@@ -15,7 +15,10 @@ export const Header = () => {
 				<HeaderLink text="Home" href="/" />
 				<HeaderLink text="Authors" href="/users" />
 				<HeaderLink text="Products" href="/products" />
-				{isAuthenticated && <HeaderLink text="Messages" href="/messages" />}
+				{isAuthenticated && <>
+            <HeaderLink text="My orders" href="/orders" />
+						<HeaderLink text="Messages" href="/messages" />
+        </>}
 			</div>
 
 			{!isAuthenticated

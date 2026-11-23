@@ -127,6 +127,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({	children
 			return;
 		}
 
+		sessionStorage.removeItem("checkout_source");
 		window.location.href = result.url;
 	};
 
@@ -156,6 +157,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({	children
 			return;
 		}
 
+		sessionStorage.setItem("checkout_source", "cart");
 		window.location.href = result.url;
 	};
 

@@ -49,6 +49,13 @@ export default {
                     createdAt: now,
                     updatedAt: now,
                 },
+                {
+                    code: "shipped",
+                    label: "Shipped",
+                    description: "Order shipped.",
+                    createdAt: now,
+                    updatedAt: now,
+                }
             ],
             { ignoreDuplicates: true }
         );
@@ -56,7 +63,7 @@ export default {
 
     async down(queryInterface) {
         await queryInterface.bulkDelete("OrderStatuses", {
-            code: ["pending", "paid", "failed", "cancelled", "expired", "refunded"],
+            code: ["pending", "paid", "failed", "cancelled", "expired", "refunded", "shipped"],
         });
     },
 };
