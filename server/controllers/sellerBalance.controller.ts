@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { sellerBalanceService } from "@/services/sellerBalance.service.js";
 
 export const getBalance = async (req: Request, res: Response) => {

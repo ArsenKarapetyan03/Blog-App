@@ -3,21 +3,50 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { getUserProducts } from "@/actions/product";
+import { getBalance, BalanceItem } from "@/actions/balance";
 import { Product } from "@/types/types";
 import { formatPrice } from "@/lib/helperFunctions";
+import { RefreshCcw } from "lucide-react";
 
 const MyProductsPage: React.FC = () => {
 	const [products, setProducts] = useState<Product[]>([]);
+	const [balance, setBalance] = useState<BalanceItem>({
+		availableAmount: 0,
+		pendingAmount: 0,
+		currency: "usd",
+	});
 	const [loading, setLoading] = useState<boolean>(true);
+	const [refreshingBalance, setRefreshingBalance] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const handleRefreshBalance = async () => {
+		try {
+			setRefreshingBalance(true);
+			const balanceRes = await getBalance();
+			if (balanceRes.success && balanceRes.data.length > 0) {
+				setBalance(balanceRes.data[0]);
+			}
+		} finally {
+			setRefreshingBalance(false);
+		}
+	};
+
 	useEffect(() => {
-		const loadProducts = async () => {
+		const loadPageData = async () => {
 			try {
 				setLoading(true);
 				setError(null);
-				const data = await getUserProducts();
-				setProducts(data);
+
+				const [productsData, balanceRes] = await Promise.all([
+					getUserProducts(),
+					getBalance(),
+				]);
+
+				setProducts(productsData);
+
+				if (balanceRes.success && balanceRes.data.length > 0) {
+					setBalance(balanceRes.data[0]);
+				}
 			} catch (err: unknown) {
 				if (err instanceof Error) {
 					setError(err.message);
@@ -29,18 +58,52 @@ const MyProductsPage: React.FC = () => {
 			}
 		};
 
-		loadProducts();
+		loadPageData();
 	}, []);
 
 	return (
 		<div className="mx-auto w-full max-w-6xl px-4 py-12">
-			<div className="mb-8 flex items-center justify-between">
-				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-					My Products
-				</h1>
+			<div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+				<div className="flex flex-wrap items-center gap-6 rounded-xl border border-gray-200 bg-white px-5 py-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+					<div>
+						<p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+							Available Balance
+						</p>
+						<p className="mt-0.5 text-lg font-bold text-emerald-600 dark:text-emerald-400">
+							{loading || refreshingBalance
+								? "..."
+								: formatPrice(balance.availableAmount, balance.currency)}
+						</p>
+					</div>
+
+					<div className="h-8 w-px bg-gray-200 dark:bg-gray-800" />
+
+					<div>
+						<p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+							Pending Balance
+						</p>
+						<p className="mt-0.5 text-lg font-semibold text-amber-600 dark:text-amber-400">
+							{loading || refreshingBalance
+								? "..."
+								: formatPrice(balance.pendingAmount, balance.currency)}
+						</p>
+					</div>
+
+					<button
+						type="button"
+						onClick={handleRefreshBalance}
+						disabled={loading || refreshingBalance}
+						aria-label="Refresh balance"
+						title="Refresh balance"
+						className="ml-auto rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 sm:ml-2"
+					>
+						<RefreshCcw size={18}/>
+					</button>
+				</div>
+
 				<Link
 					href="/my-products/new"
-					className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+					className="self-start rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 sm:self-auto"
 				>
 					+ Add Product
 				</Link>
