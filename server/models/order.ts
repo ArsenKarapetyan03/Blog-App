@@ -12,6 +12,7 @@ import {
 import type { User } from "./user.js";
 import type { OrderItem } from "@/models/orderitem.js";
 import type { OrderStatus } from "@/models/orderstatus.js";
+import type { Subscription } from "@/models/subscription.js";
 
 export class Order extends Model<
 	InferAttributes<Order>,
@@ -24,6 +25,8 @@ export class Order extends Model<
 	declare stripePaymentIntentId: CreationOptional<string | null>;
 	declare totalAmount: number;
 	declare currency: string;
+	declare subscriptionId: CreationOptional<ForeignKey<Subscription["id"]> | null>;
+	declare stripeInvoiceId: CreationOptional<string | null>;
 
 	declare User?: NonAttribute<User>;
 	declare Status?: NonAttribute<OrderStatus>;
@@ -51,6 +54,15 @@ export class Order extends Model<
 					type: DataTypes.INTEGER,
 					allowNull: false,
 				},
+				totalAmount: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+				},
+				currency: {
+					type: DataTypes.STRING(3),
+					allowNull: false,
+					defaultValue: "usd",
+				},
 				stripeCheckoutSessionId: {
 					type: DataTypes.STRING,
 					allowNull: true,
@@ -61,15 +73,16 @@ export class Order extends Model<
 					allowNull: true,
 					unique: true,
 				},
-				totalAmount: {
+				subscriptionId: {
 					type: DataTypes.INTEGER,
-					allowNull: false,
+					allowNull: true,
+					defaultValue: null,
 				},
-				currency: {
-					type: DataTypes.STRING(3),
-					allowNull: false,
-					defaultValue: "usd",
-				},
+				stripeInvoiceId: {
+					type: DataTypes.STRING,
+					allowNull: true,
+					unique: true,
+				}
 			},
 			{ sequelize, modelName: "Order" }
 		);
@@ -86,6 +99,11 @@ export class Order extends Model<
 		this.belongsTo(registry.OrderStatus as any, {
 			foreignKey: "statusId",
 			as: "Status",
+		});
+
+		this.belongsTo(registry.Subscription as any, {
+			foreignKey: "subscriptionId",
+			as: "Subscription",
 		});
 
 		this.hasMany(registry.OrderItem as any, {

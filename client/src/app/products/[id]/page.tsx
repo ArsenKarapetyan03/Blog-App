@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ShoppingCartMinus } from "lucide-react";
 import { getProductById } from "@/actions/product";
-import { type Product } from "@/types/types";
+import { type Product, type Price } from "@/types/types";
 import { useCart } from "@/context/CartContext";
 
 const ProductDetailPage: React.FC = () => {
@@ -46,6 +46,7 @@ const ProductDetailPage: React.FC = () => {
 	const activePrice =
 		product?.Prices?.find((p) => p.id === selectedPriceId) ||
 		product?.Prices?.[0];
+	const isSubscription = activePrice?.type === "recurring";
 
 	const formatPrice = (amount?: number, currency: string = "usd") => {
 		if (amount === undefined || amount === null) return null;
@@ -53,6 +54,12 @@ const ProductDetailPage: React.FC = () => {
 			style: "currency",
 			currency: currency.toUpperCase(),
 		}).format(amount / 100);
+	};
+
+	const formatInterval = (price?: Price) => {
+		if (!price || price.type !== "recurring" || !price.interval) return null;
+		const count = price.intervalCount ?? 1;
+		return count > 1 ? `/ ${count} ${price.interval}s` : `/ ${price.interval}`;
 	};
 
 	return (
@@ -127,50 +134,76 @@ const ProductDetailPage: React.FC = () => {
 							<div className="flex flex-col gap-6">
 								<div>
 									<span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-										Price
+										{isSubscription ? "Plan" : "Price"}
 									</span>
 
-									{product.Prices.length === 1 ? (
+									{product.Prices.length === 1 ?
 										<p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
 											{formatPrice(activePrice?.unitAmount, activePrice?.currency)}
+											{formatInterval(activePrice) && (
+												<span className="ml-1.5 text-base font-normal text-gray-500 dark:text-gray-400">
+													{formatInterval(activePrice)}
+												</span>
+											)}
 										</p>
-									) : (
-										<div className="mt-2 flex flex-wrap gap-2">
-											{product.Prices.map((price) => (
-												<button
-													key={price.id}
-													onClick={() => setSelectedPriceId(price.id)}
-													className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-														selectedPriceId === price.id
-															? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-300"
-															: "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-													}`}
-												>
-													{formatPrice(price.unitAmount, price.currency)}
-												</button>
-											))}
+									 : <div className="mt-2 flex flex-wrap gap-2">
+											{product.Prices.map((price) => {
+												const intervalText = formatInterval(price);
+												return (
+													<button
+														key={price.id}
+														onClick={() => setSelectedPriceId(price.id)}
+														className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+															selectedPriceId === price.id
+																? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-300"
+																: "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+														}`}
+													>
+														{formatPrice(price.unitAmount, price.currency)}
+														{intervalText && (
+															<span className="ml-1 font-normal opacity-80">
+																{intervalText}
+															</span>
+														)}
+													</button>
+												);
+											})}
 										</div>
-									)}
+									}
 								</div>
 
 								{activePrice && (
 									<div className="flex flex-col gap-3 sm:flex-row">
-										<button
-											onClick={() => addToCart(product, activePrice)}
-											className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-										>
-											Add to Cart
-										</button>
+										{isSubscription ? (
+											<button
+												onClick={() => buyNow(activePrice.id, 1)}
+												disabled={buyingPriceId === activePrice.id}
+												className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+											>
+												{buyingPriceId === activePrice.id
+													? "Redirecting..."
+													: "Subscribe"}
+											</button>
+										) : (
+											<>
+												<button
+													onClick={() => addToCart(product, activePrice)}
+													className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+												>
+													Add to Cart
+												</button>
 
-										<button
-											onClick={() => buyNow(activePrice.id, 1)}
-											disabled={buyingPriceId === activePrice.id}
-											className="flex-1 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-										>
-											{buyingPriceId === activePrice.id
-												? "Redirecting..."
-												: "Buy Now"}
-										</button>
+												<button
+													onClick={() => buyNow(activePrice.id, 1)}
+													disabled={buyingPriceId === activePrice.id}
+													className="flex-1 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+												>
+													{buyingPriceId === activePrice.id
+														? "Redirecting..."
+														: "Buy Now"}
+												</button>
+											</>
+										)}
 									</div>
 								)}
 							</div>

@@ -8,31 +8,9 @@ export interface OrderStatusDTO {
 	label: string;
 }
 
-export interface OrderItemDTO {
-	id: number;
-	quantity: number;
-	unitAmount: number;
-	Price?: {
-		id: number;
-		Product?: {
-			name: string;
-			description?: string | null;
-		};
-	};
-}
-
 export interface UpdatedOrderStatusDTO {
 	id: number;
 	Status: OrderStatusDTO;
-}
-
-export interface UserOrderDTO {
-	id: number;
-	totalAmount: number;
-	currency: string;
-	createdAt: Date | string;
-	Status?: OrderStatusDTO;
-	Items?: OrderItemDTO[];
 }
 
 export interface ShippedOrderDTO {
@@ -40,12 +18,39 @@ export interface ShippedOrderDTO {
 	Status: OrderStatusDTO;
 }
 
-export interface OrderService {
-	getUserOrders: (userId: number) => Promise<UserOrderDTO[]>;
-	markAsShipped: (orderId: number, userId: number) => Promise<ShippedOrderDTO>;
-}
+const getOrder = async (orderId: number, userId: number) => {
+	return await db.Order.findOne({
+		where: { id: orderId, userId },
+		include: [
+			{
+				model: db.OrderStatus,
+				as: "Status",
+				attributes: ["id", "code", "label"],
+			},
+			{
+				model: db.OrderItem,
+				as: "Items",
+				attributes: ["id", "quantity", "unitAmount"],
+				include: [
+					{
+						model: db.Price,
+						as: "Price",
+						attributes: ["id", "type"],
+						include: [
+							{
+								model: db.Product,
+								as: "Product",
+								attributes: ["id", "userId"],
+							},
+						],
+					},
+				],
+			},
+		],
+	});
+};
 
-export const orderService: OrderService = {
+export const orderService = {
 	getUserOrders: async (userId: number) => {
 		const orders = await db.Order.findAll({
 			where: { userId },
@@ -64,7 +69,8 @@ export const orderService: OrderService = {
 						{
 							model: db.Price,
 							as: "Price",
-							attributes: ["id"],
+							where: { type: "one_time"},
+							attributes: ["id", "type"],
 							include: [
 								{
 									model: db.Product,
@@ -83,35 +89,7 @@ export const orderService: OrderService = {
 	},
 
 	markAsShipped: async (orderId: number, userId: number): Promise<ShippedOrderDTO> => {
-		const order = await db.Order.findOne({
-			where: { id: orderId, userId },
-			include: [
-				{
-					model: db.OrderStatus,
-					as: "Status",
-					attributes: ["id", "code", "label"],
-				},
-				{
-					model: db.OrderItem,
-					as: "Items",
-					attributes: ["id", "quantity", "unitAmount"],
-					include: [
-						{
-							model: db.Price,
-							as: "Price",
-							attributes: ["id"],
-							include: [
-								{
-									model: db.Product,
-									as: "Product",
-									attributes: ["id", "userId"],
-								},
-							],
-						},
-					],
-				},
-			],
-		});
+		const order = await getOrder(orderId, userId);
 
 		if (!order) {
 			throw new AppError("Order not found", 404);
@@ -180,35 +158,7 @@ export const orderService: OrderService = {
 	},
 
 	refundOrder: async (orderId: number, userId: number): Promise<UpdatedOrderStatusDTO> => {
-		const order = await db.Order.findOne({
-			where: { id: orderId, userId },
-			include: [
-				{
-					model: db.OrderStatus,
-					as: "Status",
-					attributes: ["id", "code", "label"],
-				},
-				{
-					model: db.OrderItem,
-					as: "Items",
-					attributes: ["id", "quantity", "unitAmount"],
-					include: [
-						{
-							model: db.Price,
-							as: "Price",
-							attributes: ["id"],
-							include: [
-								{
-									model: db.Product,
-									as: "Product",
-									attributes: ["id", "userId"],
-								},
-							],
-						},
-					],
-				},
-			],
-		});
+		const order = await getOrder(orderId, userId);
 
 		if (!order) {
 			throw new AppError("Order not found", 404);

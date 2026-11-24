@@ -1,6 +1,12 @@
 import { BackButton } from "@/components/ui/BackButton";
+import { HeaderLink } from "@/components/Header/HeaderLink";
+import { cookies } from "next/headers";
 
-export default function RootLayout({children}: LayoutProps<"/">) {
+export default async function RootLayout({children}: LayoutProps<"/">) {
+	const cookieStore = await cookies();
+	const token = cookieStore.get("token")?.value;
+	const isAuthenticated = !!token;
+
 	return (
 		<div className="w-full px-4 py-12">
 			<div className="mb-4">
@@ -15,7 +21,14 @@ export default function RootLayout({children}: LayoutProps<"/">) {
 					View and manage your purchased items and active subscriptions.
 				</p>
 			</div>
-			{children}
+
+			{isAuthenticated
+				? children
+		 		: <div className="flex flex-col items-center gap-5">
+							<div className="text-3xl font-semibold">Sign in to continue.</div>
+							<HeaderLink text="Sign in" href="/sign-in" />
+				</div>
+			}
 		</div>
 	)
 }

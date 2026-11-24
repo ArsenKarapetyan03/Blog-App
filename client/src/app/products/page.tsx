@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ShoppingCartMinus } from "lucide-react";
 import { getProducts, cancelOrder } from "@/actions/product";
-import { type Product } from "@/types/types";
+import { Price, type Product } from "@/types/types";
 import { useAuth } from "@/context/useAuth";
 import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationProvider";
@@ -73,6 +73,13 @@ const CancelCheckoutHandler: React.FC<{
 
 	return null;
 };
+
+const formatInterval = (price: Price) => {
+	if (price.type !== "recurring" || !price.interval) return null;
+	const count = price.intervalCount ?? 1;
+	return count > 1 ? `/ ${count} ${price.interval}s` : `/ ${price.interval}`;
+};
+
 
 const ProductsPage: React.FC = () => {
 	const { isAuthenticated, user } = useAuth();
@@ -191,6 +198,7 @@ const ProductsPage: React.FC = () => {
 					<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{products.map((product) => {
 							const primaryPrice = product.Prices?.[0];
+							const isSubscription = primaryPrice?.type === "recurring";
 
 							const isOwnProduct = Boolean(
 								isAuthenticated &&
@@ -225,15 +233,23 @@ const ProductsPage: React.FC = () => {
 									</Link>
 
 									<div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-										<div className="flex flex-wrap gap-2">
-											{product.Prices?.map((price) => (
-												<span
-													key={price.id}
-													className="text-base font-bold text-gray-900 dark:text-white"
-												>
-													{formatPrice(price.unitAmount, price.currency)}
-												</span>
-											))}
+										<div className="flex flex-wrap items-baseline gap-2">
+											{product.Prices?.map((price) => {
+												const intervalText = formatInterval(price);
+												return (
+													<span
+														key={price.id}
+														className="text-base font-bold text-gray-900 dark:text-white"
+													>
+														{formatPrice(price.unitAmount, price.currency)}
+														{intervalText && (
+															<span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+																{intervalText}
+															</span>
+														)}
+													</span>
+												);
+											})}
 										</div>
 
 										{primaryPrice && (
@@ -242,6 +258,16 @@ const ProductsPage: React.FC = () => {
 													<div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center text-sm font-medium text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
 														Your Product
 													</div>
+												) : isSubscription ? (
+													<button
+														onClick={() => buyNow(primaryPrice.id, 1)}
+														disabled={buyingPriceId === primaryPrice.id}
+														className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+													>
+														{buyingPriceId === primaryPrice.id
+															? "Redirecting..."
+															: "Subscribe"}
+													</button>
 												) : (
 													<>
 														<button

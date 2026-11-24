@@ -6,6 +6,7 @@ import { getOrders, markOrderAsShipped, refundOrder } from "@/actions/order";
 import { useCart } from "@/context/CartContext";
 import { Modal } from "antd";
 import { useNotification } from "@/context/NotificationProvider";
+import { Order } from "@/types/types";
 
 const CheckoutSuccessHandler: React.FC = () => {
 	const searchParams = useSearchParams();
@@ -47,30 +48,6 @@ const STATUS_STYLES: Record<string, string> = {
 	cancelled: "bg-gray-100 text-gray-800",
 };
 
-interface OrderItem {
-	id: number;
-	quantity: number;
-	unitAmount: number;
-	Price?: {
-		Product?: {
-			name: string;
-			description?: string;
-		};
-	};
-}
-
-interface Order {
-	id: number;
-	totalAmount: number;
-	currency: string;
-	createdAt: string;
-	Status?: {
-		code: string;
-		label: string;
-	};
-	Items: OrderItem[];
-}
-
 const OrdersPage = () => {
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -83,7 +60,11 @@ const OrdersPage = () => {
 			try {
 				setLoading(true);
 				const response = await getOrders();
-				setOrders(response?.data ?? []);
+				const oneTimeOrders = (response?.data ?? []).filter(
+					(order: Order) =>
+						!order.Items?.some((item) => item.Price?.type === "recurring")
+				);
+				setOrders(oneTimeOrders);
 			} catch (error) {
 				console.warn("Failed to fetch orders:", error);
 				setOrders([]);

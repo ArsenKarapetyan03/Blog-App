@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { useNotification } from "@/context/NotificationProvider";
+
 export interface UserType {
 	id: number;
 	name: string;
@@ -37,14 +40,14 @@ export interface PostType {
 }
 
 export interface MessageType {
-	id: number,
-	messageText: string,
-	isRead: boolean,
+	id: number;
+	messageText: string;
+	isRead: boolean;
 	isDeleted: boolean;
 	chatId: number;
-	senderId: number,
-	createdAt: string,
-	updatedAt: string,
+	senderId: number;
+	createdAt: string;
+	updatedAt: string;
 	clientSideId?: string;
 }
 
@@ -52,9 +55,9 @@ export interface ChatType {
 	id: number;
 	title: string;
 	isGroup: boolean;
-	users: UserType[],
+	users: UserType[];
 	adminId?: number;
-	lastMessage: MessageType,
+	lastMessage: MessageType;
 	unreadCount: number;
 	updatedAt: string;
 }
@@ -63,6 +66,10 @@ export interface Price {
 	id: number;
 	unitAmount: number;
 	currency: string;
+	type?: "recurring" | "one_time";
+	interval?: "day" | "week" | "month" | "year" | null;
+	intervalCount?: number | null | undefined;
+	Product?: Product;
 }
 
 export interface Product {
@@ -83,4 +90,43 @@ export interface CartItem {
 	unitAmount: number;
 	currency: string;
 	quantity: number;
+}
+
+export interface OrderItem {
+	id: number;
+	quantity: number;
+	unitAmount: number;
+	Price?: Partial<Price>;
+}
+
+export interface Order {
+	id: number;
+	totalAmount: number;
+	currency: string;
+	createdAt: string;
+	Status?: {
+		code: string;
+		label: string;
+	};
+	Items: OrderItem[];
+}
+
+export type SubscriptionStatus =
+	| "incomplete"
+	| "incomplete_expired"
+	| "trialing"
+	| "active"
+	| "past_due"
+	| "canceled"
+	| "unpaid"
+	| "paused";
+
+export interface Subscription {
+	id: number;
+	status: SubscriptionStatus;
+	currentPeriodStart: string;
+	currentPeriodEnd: string;
+	cancelAtPeriodEnd: boolean;
+	canceledAt: string | null;
+	Price?: Price;
 }

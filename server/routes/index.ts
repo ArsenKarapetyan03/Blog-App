@@ -9,6 +9,7 @@ import chatRoutes from "@/routes/chat.routes.js";
 import productRoutes from "@/routes/product.routes.js";
 import orderRoutes from "@/routes/order.routes.js";
 import balanceRoutes from "@/routes/sellerBalance.routes.js";
+import subscriptionRoutes from "@/routes/subscription.routes.js";
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use("/chat", chatRoutes);
 router.use("/product", productRoutes);
 router.use("/order", orderRoutes);
 router.use("/balance", balanceRoutes);
+router.use("/subscription", subscriptionRoutes);
 
 export default router;

@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { authMiddleware } from "@/middleware/authMiddleware.js";
+import { getAllProducts, getMyProducts, getProductById } from "@/controllers/product.controller.js";
 import {
 	createCheckoutSession,
 	createProduct,
-	getAllProducts,
-	getMyProducts,
 	handleWebhook,
 	archiveProduct,
-	updateProduct, getProductById, cancelCheckoutSession
+	updateProduct,
+	cancelCheckoutSession
 } from "@/controllers/stripe.controller.js";
 
 const router = Router();

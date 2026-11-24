@@ -1,35 +1,15 @@
 import type { Request, Response } from "express";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { stripeService, type UpdateProductParams } from "@/services/stripe.service.js";
+import type { PriceInterval } from "@/models/price.js";
 
 interface CheckoutItem {
 	priceId: string | number;
 	quantity?: number;
 }
 
-export const getAllProducts = async (req: Request, res: Response) => {
-	const products = await stripeService.getAllProducts();
-
-	return res.status(200).json({	success: true, data: products	});
-};
-
-export const getProductById = async (req: Request, res: Response) => {
-	const productId = Number(req.params.id);
-
-	if (isNaN(productId)) {
-		throw new AppError("Invalid product ID", 400);
-	}
-
-	const product = await stripeService.getProductById(productId);
-
-	return res.status(200).json({ success: true, data: product });
-};
-
-export const getMyProducts = async (req: Request, res: Response) => {
-	const userId = res.locals.user!.id;
-	const products = await stripeService.getUserProducts(userId);
-	return res.status(200).json({	success: true, data: products	});
-};
+const VALID_PRICE_TYPES = ["one_time", "recurring"] as const;
+const VALID_INTERVALS = ["day", "week", "month", "year"] as const;
 
 export const createProduct = async (req: Request, res: Response) => {
 	if (!req.body) {
@@ -37,19 +17,52 @@ export const createProduct = async (req: Request, res: Response) => {
 	}
 
 	const userId = res.locals.user!.id;
-	const { name, description, unitAmount, currency = "usd" } = req.body;
+	const {
+		name,
+		description,
+		unitAmount,
+		currency = "usd",
+		type = "one_time",
+		interval = null,
+		intervalCount = null,
+	} = req.body;
 
 	const parsedAmount = Number(unitAmount);
-	if (!name || typeof name !== "string" || !Number.isInteger(parsedAmount) || parsedAmount <= 0) {
+	if (!name || typeof name !== "string" || !name.trim() || !Number.isInteger(parsedAmount) || parsedAmount <= 0) {
 		throw new AppError("Valid name and positive integer unitAmount (in cents) are required", 400);
+	}
+
+	if (!VALID_PRICE_TYPES.includes(type)) {
+		throw new AppError("type must be either 'one_time' or 'recurring'", 400);
+	}
+
+	let normalizedInterval: PriceInterval | null = null;
+	let parsedIntervalCount: number | null = null;
+
+	if (type === "recurring") {
+		if (!interval || !VALID_INTERVALS.includes(interval)) {
+			throw new AppError("Recurring products require a valid interval ('day', 'week', 'month', or 'year')", 400);
+		}
+
+		normalizedInterval = interval;
+		parsedIntervalCount = intervalCount == null ? 1 : Number(intervalCount);
+
+		if (!Number.isInteger(parsedIntervalCount) || parsedIntervalCount < 1) {
+			throw new AppError("intervalCount must be a positive integer", 400);
+		}
+	} else if (interval != null || intervalCount != null) {
+		throw new AppError("One-time products cannot specify interval or intervalCount", 400);
 	}
 
 	const result = await stripeService.createProduct({
 		userId,
 		name: name.trim(),
-		description,
+		description: typeof description === "string" ? description.trim() : undefined,
 		unitAmount: parsedAmount,
 		currency: String(currency).toLowerCase(),
+		type,
+		interval: normalizedInterval,
+		intervalCount: parsedIntervalCount,
 	});
 
 	return res.status(201).json({ success: true, data: result });
