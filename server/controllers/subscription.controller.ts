@@ -3,8 +3,14 @@ import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { subscriptionService } from "@/services/subscription.service.js";
 
 export const getSubscriptions = async (req: Request, res: Response) => {
+	const subscriptions = await subscriptionService.getSubscriptions();
+
+	return res.status(200).json({ success: true, data: subscriptions });
+};
+
+export const getMySubscriptions = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;
-	const subscriptions = await subscriptionService.getUserSubscriptions(userId);
+	const subscriptions = await subscriptionService.getMySubscriptions(userId);
 
 	return res.status(200).json({ success: true, data: subscriptions });
 };

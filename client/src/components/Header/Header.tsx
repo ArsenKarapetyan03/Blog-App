@@ -16,7 +16,8 @@ export const Header = () => {
 				<HeaderLink text="Authors" href="/users" />
 				<HeaderLink text="Products" href="/products" />
 				{isAuthenticated && <>
-            <HeaderLink text="My orders" href="/orders" />
+            <HeaderLink text="Subscriptions" href="/subscriptions" />
+						<HeaderLink text="My Orders" href="/orders" />
 						<HeaderLink text="Messages" href="/messages" />
         </>}
 			</div>

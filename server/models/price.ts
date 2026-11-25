@@ -13,7 +13,7 @@ import type { Product } from "@/models/product.js";
 import type { OrderItem } from "@/models/orderitem.js";
 
 export type PriceType = "one_time" | "recurring";
-export type PriceInterval = "day" | "week" | "month" | "year";
+export type PriceInterval = "day" | "month" | "year";
 
 export class Price extends Model<
 	InferAttributes<Price>,
@@ -76,7 +76,7 @@ export class Price extends Model<
 					allowNull: true,
 					defaultValue: null,
 					validate: {
-						isIn: [["day", "week", "month", "year"]],
+						isIn: [["day", "month", "year"]],
 					},
 				},
 				intervalCount: {

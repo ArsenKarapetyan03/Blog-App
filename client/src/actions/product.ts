@@ -4,11 +4,19 @@ import Cookies from "js-cookie";
 import { BASE_URL } from "@/config/api";
 import { Product } from "@/types/types";
 
+interface RecurringPricesDollars {
+	day: string;
+	month: string;
+	year: string;
+}
+
 interface CreateProductPayload {
 	name: string;
 	description?: string;
 	priceInDollars: string;
 	currency: string;
+	allowRecurring: boolean;
+	recurringPrices?: RecurringPricesDollars;
 }
 
 interface CheckoutItemPayload {
@@ -119,12 +127,15 @@ export const getUserProducts = async (): Promise<Product[]> => {
 	return result.data || [];
 };
 
-export const createProduct = async ({
-	                                    name,
-	                                    description,
-	                                    priceInDollars,
-	                                    currency,
-                                    }: CreateProductPayload) => {
+export const createProduct = async (
+	{
+		name,
+		description,
+		priceInDollars,
+		currency,
+		allowRecurring,
+		recurringPrices,
+	}: CreateProductPayload) => {
 	try {
 		const dollarValue = parseFloat(priceInDollars);
 		if (!name.trim() || isNaN(dollarValue) || dollarValue <= 0) {
@@ -135,6 +146,35 @@ export const createProduct = async ({
 		}
 
 		const unitAmount = Math.round(dollarValue * 100);
+		let recurringAmounts:
+			| { day: number; month: number; year: number }
+			| undefined;
+
+		if (allowRecurring && recurringPrices) {
+			const dayVal = parseFloat(recurringPrices.day || priceInDollars);
+			const monthVal = parseFloat(recurringPrices.month || priceInDollars);
+			const yearVal = parseFloat(recurringPrices.year || priceInDollars);
+
+			if (
+				isNaN(dayVal) ||
+				dayVal <= 0 ||
+				isNaN(monthVal) ||
+				monthVal <= 0 ||
+				isNaN(yearVal) ||
+				yearVal <= 0
+			) {
+				return {
+					success: false,
+					message: "All subscription interval prices must be positive numbers.",
+				};
+			}
+
+			recurringAmounts = {
+				day: Math.round(dayVal * 100),
+				month: Math.round(monthVal * 100),
+				year: Math.round(yearVal * 100),
+			};
+		}
 
 		const response = await fetch(`${BASE_URL}/product`, {
 			method: "POST",
@@ -144,6 +184,8 @@ export const createProduct = async ({
 				description: description?.trim() || undefined,
 				unitAmount,
 				currency,
+				allowRecurring: Boolean(allowRecurring),
+				...(recurringAmounts && {recurringAmounts}),
 			}),
 		});
 
@@ -254,7 +296,8 @@ export const updateProduct = async (
 			};
 		}
 
-		const { priceInDollars, name, description, ...rest } = payload;
+		const { priceInDollars, recurringPrices, name, description, ...rest } =
+			payload;
 
 		const requestBody: Record<string, unknown> = { ...rest };
 
@@ -269,7 +312,8 @@ export const updateProduct = async (
 		}
 
 		if (description !== undefined) {
-			requestBody.description = description === null ? null : description.trim();
+			requestBody.description =
+				description === null ? null : description.trim();
 		}
 
 		if (priceInDollars !== undefined) {
@@ -281,6 +325,26 @@ export const updateProduct = async (
 				};
 			}
 			requestBody.unitAmount = Math.round(parsedPrice * 100);
+		}
+
+		if (recurringPrices !== undefined) {
+			const recurringAmounts: Record<string, number> = {};
+
+			for (const interval of ["day", "month", "year"] as const) {
+				const rawVal = recurringPrices[interval];
+				if (rawVal !== undefined && rawVal.trim() !== "") {
+					const parsed = Number(rawVal);
+					if (isNaN(parsed) || parsed <= 0) {
+						return {
+							success: false,
+							message: `Invalid ${interval} subscription price.`,
+						};
+					}
+					recurringAmounts[interval] = Math.round(parsed * 100);
+				}
+			}
+
+			requestBody.recurringAmounts = recurringAmounts;
 		}
 
 		const response = await fetch(`${BASE_URL}/product/${productId}`, {

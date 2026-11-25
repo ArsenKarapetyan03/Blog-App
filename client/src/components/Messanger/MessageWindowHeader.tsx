@@ -3,7 +3,7 @@
 import { RefObject, useState, useEffect, useRef, type SubmitEvent, type KeyboardEvent } from "react";
 import { Ellipsis, Pencil, Check, X, Loader2, Trash, Plus, LogOut } from "lucide-react";
 import { Drawer, notification, Modal } from "antd";
-import { getChatTitle } from "@/lib/helperFunctions";
+import { getChatTitle } from "@/lib/chatHelpers";
 import { ChatType, UserType } from "@/types/types";
 import { deleteChatMember, updateChatTitle, deleteChat } from "@/actions/chat";
 import { InfoRow } from "@/components/ui/InfoRow";

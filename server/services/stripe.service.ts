@@ -3,7 +3,8 @@ import { stripe } from "@/lib/stripe.js";
 import db, { sequelize } from "@/models/index.js";
 import type { Order } from "@/models/order.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
-import type { PriceInterval, PriceType } from "@/models/price.js";
+import type { PriceInterval, PriceType, Price } from "@/models/price.js";
+import type { Product } from "@/models/product.js";
 import {
 	fulfillOrderAndCreditSeller,
 	handleChargeRefunded,
@@ -29,15 +30,19 @@ interface CancelCheckoutParams {
 	orderId: number;
 }
 
+export type RecurringIntervalKey = "day" | "month" | "year";
+export type RecurringAmounts = Partial<Record<RecurringIntervalKey, number>>;
+
+const RECURRING_INTERVALS: RecurringIntervalKey[] = ["day", "month", "year"];
+
 interface CreateProductParams {
 	userId: number;
 	name: string;
 	description?: string | undefined;
 	unitAmount: number;
 	currency: string;
-	type?: PriceType | undefined;
-	interval?: PriceInterval | null | undefined;
-	intervalCount?: number | null | undefined;
+	allowRecurring?: boolean;
+	recurringAmounts?: RecurringAmounts | undefined;
 }
 
 interface ArchiveProductParams {
@@ -52,50 +57,57 @@ export interface UpdateProductParams {
 	description?: string | null;
 	unitAmount?: number;
 	currency?: string;
+	allowRecurring?: boolean;
+	recurringAmounts?: RecurringAmounts;
 }
 
 const statusMap = await db.OrderStatus.getStatusMap();
 
 export const stripeService = {
-	createProduct: async ({ userId, name, description, unitAmount, currency, type = "one_time", interval = null, intervalCount = null }: CreateProductParams) => {
-		const isRecurring = type === "recurring";
-		const resolvedIntervalCount = isRecurring ? (intervalCount ?? 1) : null;
-
-		if (isRecurring && !interval) {
-			throw new AppError("Recurring products must specify a billing interval", 400);
-		}
-
-		if (!isRecurring && (interval != null || intervalCount != null)) {
-			throw new AppError("One-time products cannot have an interval or intervalCount", 400);
-		}
-
-		if (resolvedIntervalCount != null && (!Number.isInteger(resolvedIntervalCount) || resolvedIntervalCount < 1)) {
-			throw new AppError("intervalCount must be a positive integer", 400);
-		}
-
+	createProduct: async (
+		{
+			userId,
+			name,
+			description,
+			unitAmount,
+			currency,
+			allowRecurring = false,
+			recurringAmounts,
+		}: CreateProductParams
+	): Promise<{ product: Product; prices: Price[] }> => {
 		const transaction = await sequelize.transaction();
 		let stripeProduct: Stripe.Product | null = null;
 
 		try {
 			stripeProduct = await stripe.products.create({
 				name,
-				...(description ? { description } : {}),
+				...(description ? {description} : {}),
 				metadata: {
 					userId: String(userId),
 				},
 			});
 
-			const stripePrice = await stripe.prices.create({
+			const oneTimeStripePrice = await stripe.prices.create({
 				product: stripeProduct.id,
 				unit_amount: unitAmount,
 				currency,
-				...(isRecurring && {
-					recurring: {
-						interval: interval!,
-						interval_count: resolvedIntervalCount!,
-					},
-				}),
 			});
+
+			const recurringStripePrices = allowRecurring
+				? await Promise.all(
+					RECURRING_INTERVALS.map((interval) =>
+						stripe.prices.create({
+							product: stripeProduct!.id,
+							unit_amount: recurringAmounts?.[interval] ?? unitAmount,
+							currency,
+							recurring: {
+								interval,
+								interval_count: 1,
+							},
+						})
+					)
+				)
+				: [];
 
 			const product = await db.Product.create(
 				{
@@ -105,44 +117,57 @@ export const stripeService = {
 					description: description ?? null,
 					active: true,
 				},
-				{ transaction }
+				{transaction}
 			);
 
-			const price = await db.Price.create(
+			const pricePayloads = [
 				{
 					productId: product.id,
-					stripePriceId: stripePrice.id,
-					unitAmount: stripePrice.unit_amount!,
-					currency: stripePrice.currency,
-					type,
-					interval: isRecurring ? interval : null,
-					intervalCount: resolvedIntervalCount,
+					stripePriceId: oneTimeStripePrice.id,
+					unitAmount: oneTimeStripePrice.unit_amount!,
+					currency: oneTimeStripePrice.currency,
+					type: "one_time" as PriceType,
+					interval: null,
+					intervalCount: null,
 					active: true,
 				},
-				{ transaction }
-			);
+				...recurringStripePrices.map((sp) => ({
+					productId: product.id,
+					stripePriceId: sp.id,
+					unitAmount: sp.unit_amount!,
+					currency: sp.currency,
+					type: "recurring" as PriceType,
+					interval: sp.recurring!.interval as PriceInterval,
+					intervalCount: sp.recurring!.interval_count ?? 1,
+					active: true,
+				})),
+			];
+
+			const prices = await db.Price.bulkCreate(pricePayloads, {transaction});
 
 			await db.SellerBalance.findOrCreate({
-				where: { userId },
+				where: {userId},
 				defaults: {
 					userId,
 					availableAmount: 0,
 					pendingAmount: 0,
-					currency: stripePrice.currency,
+					currency: oneTimeStripePrice.currency,
 				},
 				transaction,
 			});
 
 			await transaction.commit();
 
-			return { product, price };
+			return {product, prices};
 		} catch (error) {
 			await transaction.rollback();
 
 			if (stripeProduct) {
 				await stripe.products
 					.update(stripeProduct.id, {active: false})
-					.catch((err) => console.error("Failed to archive orphaned Stripe product:", err));
+					.catch((err) =>
+						console.error("Failed to archive orphaned Stripe product:", err)
+					);
 			}
 
 			throw error;
@@ -203,16 +228,25 @@ export const stripeService = {
 		}
 	},
 
-	updateProduct: async (productParams: UpdateProductParams) => {
-		const {productId, userId, name, description, unitAmount, currency} = productParams;
+	updateProduct: async (productParams: UpdateProductParams): Promise<{ product: Product; prices: Price[] }> => {
+		const {
+			productId,
+			userId,
+			name,
+			description,
+			unitAmount,
+			currency,
+			allowRecurring,
+			recurringAmounts,
+		} = productParams;
 
 		const product = await db.Product.findOne({
-			where: {id: productId, userId},
+			where: { id: productId, userId },
 			include: [
 				{
 					model: db.Price,
 					as: "Prices",
-					where: {active: true},
+					where: { active: true },
 					required: false,
 				},
 			],
@@ -226,91 +260,198 @@ export const stripeService = {
 			throw new AppError("Cannot update an archived product", 400);
 		}
 
-		const activePrices = product.Prices || [];
-		const currentPrice = activePrices[0];
+		const activePrices: Price[] = product.Prices || [];
+		const currentOneTime =
+			activePrices.find((p) => p.type === "one_time") ?? activePrices[0];
+		const currentRecurring = activePrices.filter((p) => p.type === "recurring");
 
-		const targetAmount = unitAmount ?? currentPrice?.unitAmount;
-		const targetCurrency = currency ?? currentPrice?.currency ?? "usd";
+		const currentlyAllowsRecurring = currentRecurring.length > 0;
+		const targetAllowRecurring = allowRecurring ?? currentlyAllowsRecurring;
 
-		const isPriceChanged =
-			(unitAmount !== undefined && unitAmount !== currentPrice?.unitAmount) ||
-			(currency !== undefined && currency !== currentPrice?.currency);
+		const targetOneTimeAmount = unitAmount ?? currentOneTime?.unitAmount;
+		const targetCurrency = currency ?? currentOneTime?.currency ?? "usd";
+
+		if (!targetOneTimeAmount) {
+			throw new AppError(
+				"unitAmount is required when updating product pricing",
+				400
+			);
+		}
 
 		const isProductInfoChanged =
 			(name !== undefined && name !== product.name) ||
 			(description !== undefined && description !== product.description);
 
-		if (!isPriceChanged && !isProductInfoChanged) {
-			return {product, price: currentPrice ?? null};
+		const isOneTimeChanged =
+			!currentOneTime ||
+			targetOneTimeAmount !== currentOneTime.unitAmount ||
+			targetCurrency !== currentOneTime.currency;
+
+		const desiredRecurringByInterval = new Map<
+			RecurringIntervalKey,
+			{ amount: number; currency: string; existing?: Price }
+		>();
+
+		if (targetAllowRecurring) {
+			for (const interval of RECURRING_INTERVALS) {
+				const existing = currentRecurring.find((p) => p.interval === interval);
+				const desiredAmount =
+					recurringAmounts?.[interval] ??
+					existing?.unitAmount ??
+					targetOneTimeAmount;
+
+				desiredRecurringByInterval.set(interval, {
+					amount: desiredAmount,
+					currency: targetCurrency,
+					...(existing ? { existing } : {}),
+				});
+			}
+		}
+
+		const hasRecurringChanges =
+			targetAllowRecurring !== currentlyAllowsRecurring ||
+			RECURRING_INTERVALS.some((interval) => {
+				const desired = desiredRecurringByInterval.get(interval);
+				const existing = currentRecurring.find((p) => p.interval === interval);
+				if (!desired && !existing) return false;
+				if (!desired || !existing) return true;
+				return (
+					desired.amount !== existing.unitAmount ||
+					desired.currency !== existing.currency
+				);
+			});
+
+		if (!isProductInfoChanged && !isOneTimeChanged && !hasRecurringChanges) {
+			return { product, prices: activePrices };
 		}
 
 		const transaction = await sequelize.transaction();
-		let newStripePrice: Stripe.Price | null = null;
+		const createdStripePrices: Stripe.Price[] = [];
 
 		try {
 			if (isProductInfoChanged) {
 				await stripe.products.update(product.stripeProductId, {
-					...(name !== undefined ? {name} : {}),
-					...(description !== undefined ? {description: description ?? ""} : {}),
+					...(name !== undefined ? { name } : {}),
+					...(description !== undefined ? { description: description ?? "" } : {}),
 				});
 
 				await product.update(
 					{
-						...(name !== undefined ? {name} : {}),
-						...(description !== undefined ? {description} : {}),
+						...(name !== undefined ? { name } : {}),
+						...(description !== undefined ? { description } : {}),
 					},
-					{transaction}
+					{ transaction }
 				);
 			}
 
-			let activePriceRecord = currentPrice ?? null;
+			const pricesToArchive: Price[] = [];
+			const newPricePayloads: any[] = [];
+			const keptPrices: Price[] = [];
 
-			if (isPriceChanged) {
-				if (!targetAmount) {
-					throw new AppError("unitAmount is required when creating a new price", 400);
+			if (isOneTimeChanged) {
+				if (currentOneTime) {
+					pricesToArchive.push(currentOneTime);
 				}
 
-				newStripePrice = await stripe.prices.create({
+				const newOneTimeStripe = await stripe.prices.create({
 					product: product.stripeProductId,
-					unit_amount: targetAmount,
+					unit_amount: targetOneTimeAmount,
 					currency: targetCurrency,
 				});
+				createdStripePrices.push(newOneTimeStripe);
 
-				if (activePrices.length > 0) {
-					await Promise.all(
-						activePrices.map((p: any) =>
-							stripe.prices.update(p.stripePriceId, {active: false})
-						)
-					);
+				newPricePayloads.push({
+					productId: product.id,
+					stripePriceId: newOneTimeStripe.id,
+					unitAmount: newOneTimeStripe.unit_amount!,
+					currency: newOneTimeStripe.currency,
+					type: "one_time" as PriceType,
+					interval: null,
+					intervalCount: null,
+					active: true,
+				});
+			} else if (currentOneTime) {
+				keptPrices.push(currentOneTime);
+			}
 
-					await db.Price.update(
-						{active: false},
-						{where: {productId: product.id, active: true}, transaction}
-					);
+			if (!targetAllowRecurring) {
+				pricesToArchive.push(...currentRecurring);
+			} else {
+				for (const interval of RECURRING_INTERVALS) {
+					const desired = desiredRecurringByInterval.get(interval)!;
+					const existing = desired.existing;
+
+					if (
+						existing &&
+						existing.unitAmount === desired.amount &&
+						existing.currency === desired.currency
+					) {
+						keptPrices.push(existing);
+					} else {
+						if (existing) {
+							pricesToArchive.push(existing);
+						}
+
+						const newRecurringStripe = await stripe.prices.create({
+							product: product.stripeProductId,
+							unit_amount: desired.amount,
+							currency: desired.currency,
+							recurring: { interval, interval_count: 1 },
+						});
+						createdStripePrices.push(newRecurringStripe);
+
+						newPricePayloads.push({
+							productId: product.id,
+							stripePriceId: newRecurringStripe.id,
+							unitAmount: newRecurringStripe.unit_amount!,
+							currency: newRecurringStripe.currency,
+							type: "recurring" as PriceType,
+							interval,
+							intervalCount: 1,
+							active: true,
+						});
+					}
 				}
+			}
 
-				activePriceRecord = await db.Price.create(
+			if (pricesToArchive.length > 0) {
+				await Promise.all(
+					pricesToArchive.map((p) =>
+						stripe.prices.update(p.stripePriceId, { active: false })
+					)
+				);
+
+				await db.Price.update(
+					{ active: false },
 					{
-						productId: product.id,
-						stripePriceId: newStripePrice.id,
-						unitAmount: newStripePrice.unit_amount!,
-						currency: newStripePrice.currency,
-						active: true,
-					},
-					{transaction}
+						where: { id: pricesToArchive.map((p) => p.id) },
+						transaction,
+					}
 				);
 			}
+
+			const createdPriceRecords =
+				newPricePayloads.length > 0
+					? await db.Price.bulkCreate(newPricePayloads, { transaction })
+					: [];
 
 			await transaction.commit();
 
-			return {product, price: activePriceRecord};
+			const finalPrices: Price[] = [...keptPrices, ...createdPriceRecords];
+			return { product, prices: finalPrices };
 		} catch (error) {
 			await transaction.rollback();
 
-			if (newStripePrice) {
-				await stripe.prices
-					.update(newStripePrice.id, {active: false})
-					.catch((err) => console.error("Failed to archive orphaned Stripe price:", err));
+			if (createdStripePrices.length > 0) {
+				await Promise.all(
+					createdStripePrices.map((sp) =>
+						stripe.prices
+							.update(sp.id, { active: false })
+							.catch((err) =>
+								console.error("Failed to archive orphaned Stripe price:", err)
+							)
+					)
+				);
 			}
 
 			throw error;
@@ -340,7 +481,7 @@ export const stripeService = {
 		}
 	},
 
-	createCheckoutSession: async ({ userId, items }: CreateCheckoutParams): Promise<string> => {
+	createCheckoutSession: async ({userId, items}: CreateCheckoutParams): Promise<string> => {
 		const user = await db.User.findByPk(userId);
 		if (!user) {
 			throw new AppError("User not found", 404);
@@ -359,7 +500,7 @@ export const stripeService = {
 
 		const priceIds = Array.from(mergedQuantities.keys());
 		const prices = await db.Price.findAll({
-			where: { id: priceIds },
+			where: {id: priceIds},
 			include: [
 				{
 					model: db.Product,
@@ -436,10 +577,10 @@ export const stripeService = {
 			const customer = await stripe.customers.create({
 				email: user.email,
 				name: user.name,
-				metadata: { userId: String(user.id) },
+				metadata: {userId: String(user.id)},
 			});
 			stripeCustomerId = customer.id;
-			await user.update({ stripeCustomerId });
+			await user.update({stripeCustomerId});
 		}
 
 		const transaction = await sequelize.transaction();
@@ -453,17 +594,17 @@ export const stripeService = {
 					totalAmount,
 					currency: baseCurrency,
 				},
-				{ transaction }
+				{transaction}
 			);
 
 			await db.OrderItem.bulkCreate(
-				resolvedItems.map(({ price, quantity }) => ({
+				resolvedItems.map(({price, quantity}) => ({
 					orderId: order.id,
 					priceId: price.id,
 					quantity,
 					unitAmount: price.unitAmount,
 				})),
-				{ transaction }
+				{transaction}
 			);
 
 			await transaction.commit();
@@ -480,7 +621,7 @@ export const stripeService = {
 		const session = await stripe.checkout.sessions.create({
 			customer: stripeCustomerId,
 			mode: hasRecurring ? "subscription" : "payment",
-			line_items: resolvedItems.map(({ price, quantity }) => ({
+			line_items: resolvedItems.map(({price, quantity}) => ({
 				price: price.stripePriceId,
 				quantity,
 			})),
@@ -498,11 +639,11 @@ export const stripeService = {
 		});
 
 		if (!session.url) {
-			await order.update({ statusId: statusMap.failed });
+			await order.update({statusId: statusMap.failed});
 			throw new AppError("Failed to generate Stripe checkout URL", 500);
 		}
 
-		await order.update({ stripeCheckoutSessionId: session.id });
+		await order.update({stripeCheckoutSessionId: session.id});
 
 		return session.url;
 	},

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Modal } from "antd";
 import { useNotification } from "@/context/NotificationProvider";
-import { getSubscriptions, cancelSubscription } from "@/actions/subscription";
+import { getMySubscriptions, cancelSubscription } from "@/actions/subscription";
 import { type Subscription } from "@/types/types";
 
 const SubscriptionSuccessHandler: React.FC<{
@@ -54,7 +54,7 @@ const SubscriptionsPage = () => {
 	const fetchSubscriptions = async () => {
 		try {
 			setLoading(true);
-			const response = await getSubscriptions();
+			const response = await getMySubscriptions();
 			setSubscriptions(response?.data ?? []);
 		} catch (error) {
 			console.warn("Failed to fetch subscriptions:", error);
@@ -159,15 +159,6 @@ const SubscriptionsPage = () => {
 			</Suspense>
 
 			<div className="mx-auto w-full max-w-6xl p-6">
-				<div className="mb-6 border-b border-gray-200 pb-4">
-					<h1 className="text-xl font-semibold text-gray-900">
-						My Subscriptions
-					</h1>
-					<p className="text-sm text-gray-500">
-						Manage your active plans and billing cycles.
-					</p>
-				</div>
-
 				{loading ? (
 					<p className="text-gray-500">Loading your subscriptions...</p>
 				) : subscriptions.length === 0 ? (

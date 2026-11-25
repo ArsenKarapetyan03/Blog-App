@@ -64,6 +64,7 @@ export const orderService = {
 				{
 					model: db.OrderItem,
 					as: "Items",
+					required: true,
 					attributes: ["id", "quantity", "unitAmount"],
 					include: [
 						{

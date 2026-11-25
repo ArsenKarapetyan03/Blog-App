@@ -3,7 +3,38 @@ import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { stripe } from "@/lib/stripe.js";
 
 export const subscriptionService = {
-	getUserSubscriptions: async (userId: number) => {
+	getSubscriptions: async () => {
+		return  await db.Product.findAll({
+			where: { active: true },
+			attributes: ["id", "name", "description"],
+			include: [
+				{
+					model: db.Price,
+					as: "Prices",
+					where: { active: true, type: "recurring" },
+					required: true,
+					attributes: [
+						"id",
+						"unitAmount",
+						"currency",
+						"interval",
+						"intervalCount",
+					],
+				},
+				{
+					model: db.User,
+					as: "Seller",
+					attributes: ["id", "name"],
+				}
+			],
+			order: [
+				["createdAt", "DESC"],
+				[{ model: db.Price, as: "Prices" }, "unitAmount", "ASC"]
+			],
+		});
+	},
+
+	getMySubscriptions: async (userId: number) => {
 		return await db.Subscription.findAll({
 			where: { userId },
 			attributes: { exclude: ["stripeSubscriptionId", "updatedAt"] },

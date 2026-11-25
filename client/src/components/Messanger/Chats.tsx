@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ChatType, UserType } from "@/types/types";
 import { InfoRow } from "@/components/ui/InfoRow";
 import { cn } from "@/lib/cn";
-import { getChatTitle } from "@/lib/helperFunctions";
+import { getChatTitle } from "@/lib/chatHelpers";
 
 interface ChatsProps {
 	chats: ChatType[];

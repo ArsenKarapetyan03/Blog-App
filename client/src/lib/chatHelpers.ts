@@ -18,11 +18,3 @@ export const getChatTitle = (chat: ChatType, currentUserId: number) => {
 
 	return otherUsers.length > 3 ? `${usersSummary}...` : usersSummary;
 };
-
-export const formatPrice = (unitAmount?: number, currency: string = "usd") => {
-	if (unitAmount === undefined || unitAmount === null) return null;
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency: currency.toUpperCase(),
-	}).format(unitAmount / 100);
-};

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getUserProducts } from "@/actions/product";
 import { getBalance, BalanceItem } from "@/actions/balance";
 import { Product } from "@/types/types";
-import { formatPrice } from "@/lib/helperFunctions";
+import { formatPrice } from "@/lib/pricing";
 import { RefreshCcw } from "lucide-react";
 
 const MyProductsPage: React.FC = () => {

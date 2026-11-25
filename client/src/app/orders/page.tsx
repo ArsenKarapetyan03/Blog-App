@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { getOrders, markOrderAsShipped, refundOrder } from "@/actions/order";
-import { useCart } from "@/context/CartContext";
+import { CartProvider, useCart } from "@/context/CartContext";
 import { Modal } from "antd";
 import { useNotification } from "@/context/NotificationProvider";
 import { Order } from "@/types/types";

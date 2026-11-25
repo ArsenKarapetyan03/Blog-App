@@ -4,18 +4,28 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ShoppingCartMinus } from "lucide-react";
 import { getProductById } from "@/actions/product";
-import { type Product, type Price } from "@/types/types";
+import { type Product } from "@/types/types";
+import { useAuth } from "@/context/useAuth";
 import { useCart } from "@/context/CartContext";
+import {
+	formatPrice,
+	formatInterval,
+	getPriceOptionLabel,
+	getDefaultPrice,
+} from "@/lib/pricing";
 
 const ProductDetailPage: React.FC = () => {
 	const params = useParams();
 	const router = useRouter();
 	const id = params?.id as string;
 
+	const { isAuthenticated, user } = useAuth();
 	const { totalItems, openCart, addToCart, buyNow, buyingPriceId } = useCart();
 
 	const [product, setProduct] = useState<Product | null>(null);
-	const [selectedPriceId, setSelectedPriceId] = useState<number | string | null>(null);
+	const [selectedPriceId, setSelectedPriceId] = useState<number | string | null>(
+		null
+	);
 	const [loading, setLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -31,8 +41,9 @@ const ProductDetailPage: React.FC = () => {
 			setError(result.message || "Failed to fetch product.");
 		} else {
 			setProduct(result.data);
-			if (result.data.Prices && result.data.Prices.length > 0) {
-				setSelectedPriceId(result.data.Prices[0].id);
+			const defaultPrice = getDefaultPrice(result.data.Prices);
+			if (defaultPrice) {
+				setSelectedPriceId(defaultPrice.id);
 			}
 		}
 
@@ -44,42 +55,15 @@ const ProductDetailPage: React.FC = () => {
 	}, [id]);
 
 	const activePrice =
-		product?.Prices?.find((p) => p.id === selectedPriceId) ||
-		product?.Prices?.[0];
+		product?.Prices?.find((p) => p.id === selectedPriceId) ??
+		getDefaultPrice(product?.Prices);
 	const isSubscription = activePrice?.type === "recurring";
-
-	const formatPrice = (amount?: number, currency: string = "usd") => {
-		if (amount === undefined || amount === null) return null;
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency.toUpperCase(),
-		}).format(amount / 100);
-	};
-
-	const formatInterval = (price?: Price) => {
-		if (!price || price.type !== "recurring" || !price.interval) return null;
-		const count = price.intervalCount ?? 1;
-		return count > 1 ? `/ ${count} ${price.interval}s` : `/ ${price.interval}`;
-	};
+	const isOwnProduct = Boolean(
+		isAuthenticated && user?.id && product?.Seller?.id === user.id
+	);
 
 	return (
 		<div className="mx-auto w-full max-w-4xl px-4 py-12">
-			<div className="mb-8 flex items-center justify-end gap-4 border-b border-gray-200 pb-6 dark:border-gray-800">
-
-				<button
-					onClick={openCart}
-					className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-				>
-					<ShoppingCartMinus size={16} />
-					<span>Cart</span>
-					{totalItems > 0 && (
-						<span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
-							{totalItems}
-						</span>
-					)}
-				</button>
-			</div>
-
 			{loading && (
 				<div className="h-80 animate-pulse rounded-2xl border border-gray-200 bg-gray-100 p-8 dark:border-gray-800 dark:bg-gray-800/50" />
 			)}
@@ -115,7 +99,7 @@ const ProductDetailPage: React.FC = () => {
 
 						{product.Seller?.name && (
 							<p className="mt-2 text-sm font-medium text-gray-500 dark:text-gray-400">
-								Seller: {product.Seller.name}
+								Seller: {isOwnProduct ? "You" : product.Seller.name}
 							</p>
 						)}
 					</div>
@@ -134,47 +118,60 @@ const ProductDetailPage: React.FC = () => {
 							<div className="flex flex-col gap-6">
 								<div>
 									<span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-										{isSubscription ? "Plan" : "Price"}
+										{isSubscription ? "Subscription Plan" : "Purchase Option"}
 									</span>
 
-									{product.Prices.length === 1 ?
-										<p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
-											{formatPrice(activePrice?.unitAmount, activePrice?.currency)}
-											{formatInterval(activePrice) && (
-												<span className="ml-1.5 text-base font-normal text-gray-500 dark:text-gray-400">
-													{formatInterval(activePrice)}
-												</span>
-											)}
-										</p>
-									 : <div className="mt-2 flex flex-wrap gap-2">
-											{product.Prices.map((price) => {
-												const intervalText = formatInterval(price);
-												return (
-													<button
-														key={price.id}
-														onClick={() => setSelectedPriceId(price.id)}
-														className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-															selectedPriceId === price.id
-																? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-300"
-																: "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-														}`}
-													>
-														{formatPrice(price.unitAmount, price.currency)}
-														{intervalText && (
-															<span className="ml-1 font-normal opacity-80">
-																{intervalText}
+									<p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
+										{formatPrice(activePrice?.unitAmount, activePrice?.currency)}
+										{formatInterval(activePrice) && (
+											<span className="ml-1.5 text-base font-normal text-gray-500 dark:text-gray-400">
+												{formatInterval(activePrice)}
+											</span>
+										)}
+									</p>
+
+									{product.Prices.length > 1 && (
+										<div className="mt-4">
+											<label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+												Choose Purchase Option
+											</label>
+											<div className="flex flex-wrap gap-2">
+												{product.Prices.map((price) => {
+													const intervalText = formatInterval(price);
+													return (
+														<button
+															key={price.id}
+															type="button"
+															onClick={() => setSelectedPriceId(price.id)}
+															className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+																activePrice?.id === price.id
+																	? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-300"
+																	: "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+															}`}
+														>
+															<span>{getPriceOptionLabel(price)}</span>
+															<span className="ml-1.5 font-normal opacity-80">
+																({formatPrice(price.unitAmount, price.currency)}
+																{intervalText ? ` ${intervalText}` : ""})
 															</span>
-														)}
-													</button>
-												);
-											})}
+														</button>
+													);
+												})}
+											</div>
 										</div>
-									}
+									)}
 								</div>
 
 								{activePrice && (
 									<div className="flex flex-col gap-3 sm:flex-row">
-										{isSubscription ? (
+										{isOwnProduct ? (
+											<button
+												onClick={() => router.push(`/my-products/${product.id}`)}
+												className="w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+											>
+												Manage Your Product
+											</button>
+										) : isSubscription ? (
 											<button
 												onClick={() => buyNow(activePrice.id, 1)}
 												disabled={buyingPriceId === activePrice.id}
@@ -182,7 +179,7 @@ const ProductDetailPage: React.FC = () => {
 											>
 												{buyingPriceId === activePrice.id
 													? "Redirecting..."
-													: "Subscribe"}
+													: `Subscribe (${getPriceOptionLabel(activePrice)})`}
 											</button>
 										) : (
 											<>

@@ -1,15 +1,13 @@
 import type { Request, Response } from "express";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
-import { stripeService, type UpdateProductParams } from "@/services/stripe.service.js";
-import type { PriceInterval } from "@/models/price.js";
+import { stripeService, type RecurringAmounts, type UpdateProductParams } from "@/services/stripe.service.js";
 
 interface CheckoutItem {
 	priceId: string | number;
 	quantity?: number;
 }
 
-const VALID_PRICE_TYPES = ["one_time", "recurring"] as const;
-const VALID_INTERVALS = ["day", "week", "month", "year"] as const;
+const VALID_INTERVALS = ["day", "month", "year"] as const;
 
 export const createProduct = async (req: Request, res: Response) => {
 	if (!req.body) {
@@ -22,36 +20,50 @@ export const createProduct = async (req: Request, res: Response) => {
 		description,
 		unitAmount,
 		currency = "usd",
-		type = "one_time",
-		interval = null,
-		intervalCount = null,
+		allowRecurring = false,
+		recurringAmounts,
 	} = req.body;
 
 	const parsedAmount = Number(unitAmount);
-	if (!name || typeof name !== "string" || !name.trim() || !Number.isInteger(parsedAmount) || parsedAmount <= 0) {
-		throw new AppError("Valid name and positive integer unitAmount (in cents) are required", 400);
+	if (
+		!name ||
+		typeof name !== "string" ||
+		!name.trim() ||
+		!Number.isInteger(parsedAmount) ||
+		parsedAmount <= 0
+	) {
+		throw new AppError(
+			"Valid name and positive integer unitAmount (in cents) are required",
+			400
+		);
 	}
 
-	if (!VALID_PRICE_TYPES.includes(type)) {
-		throw new AppError("type must be either 'one_time' or 'recurring'", 400);
+	if (typeof allowRecurring !== "boolean") {
+		throw new AppError("allowRecurring must be a boolean", 400);
 	}
 
-	let normalizedInterval: PriceInterval | null = null;
-	let parsedIntervalCount: number | null = null;
+	let validatedRecurringAmounts: RecurringAmounts | undefined;
 
-	if (type === "recurring") {
-		if (!interval || !VALID_INTERVALS.includes(interval)) {
-			throw new AppError("Recurring products require a valid interval ('day', 'week', 'month', or 'year')", 400);
+	if (allowRecurring && recurringAmounts !== undefined) {
+		if (typeof recurringAmounts !== "object" || recurringAmounts === null) {
+			throw new AppError("recurringAmounts must be an object", 400);
 		}
 
-		normalizedInterval = interval;
-		parsedIntervalCount = intervalCount == null ? 1 : Number(intervalCount);
+		validatedRecurringAmounts = {};
 
-		if (!Number.isInteger(parsedIntervalCount) || parsedIntervalCount < 1) {
-			throw new AppError("intervalCount must be a positive integer", 400);
+		for (const interval of VALID_INTERVALS) {
+			const rawVal = recurringAmounts[interval];
+			if (rawVal !== undefined && rawVal !== null) {
+				const parsedIntervalAmount = Number(rawVal);
+				if (!Number.isInteger(parsedIntervalAmount) || parsedIntervalAmount <= 0) {
+					throw new AppError(
+						`recurringAmounts.${interval} must be a positive integer (in cents)`,
+						400
+					);
+				}
+				validatedRecurringAmounts[interval] = parsedIntervalAmount;
+			}
 		}
-	} else if (interval != null || intervalCount != null) {
-		throw new AppError("One-time products cannot specify interval or intervalCount", 400);
 	}
 
 	const result = await stripeService.createProduct({
@@ -60,9 +72,8 @@ export const createProduct = async (req: Request, res: Response) => {
 		description: typeof description === "string" ? description.trim() : undefined,
 		unitAmount: parsedAmount,
 		currency: String(currency).toLowerCase(),
-		type,
-		interval: normalizedInterval,
-		intervalCount: parsedIntervalCount,
+		allowRecurring,
+		recurringAmounts: validatedRecurringAmounts,
 	});
 
 	return res.status(201).json({ success: true, data: result });
@@ -96,7 +107,15 @@ export const updateProduct = async (req: Request, res: Response) => {
 		throw new AppError("Invalid product ID", 400);
 	}
 
-	const { name, description, unitAmount, currency } = req.body;
+	const {
+		name,
+		description,
+		unitAmount,
+		currency,
+		allowRecurring,
+		recurringAmounts,
+	} = req.body;
+
 	const updateData: UpdateProductParams = { productId, userId };
 
 	if (name !== undefined) {
@@ -126,6 +145,37 @@ export const updateProduct = async (req: Request, res: Response) => {
 			throw new AppError("Currency must be a valid string", 400);
 		}
 		updateData.currency = currency.trim().toLowerCase();
+	}
+
+	if (allowRecurring !== undefined) {
+		if (typeof allowRecurring !== "boolean") {
+			throw new AppError("allowRecurring must be a boolean", 400);
+		}
+		updateData.allowRecurring = allowRecurring;
+	}
+
+	if (recurringAmounts !== undefined) {
+		if (typeof recurringAmounts !== "object" || recurringAmounts === null) {
+			throw new AppError("recurringAmounts must be an object", 400);
+		}
+
+		const validatedRecurringAmounts: RecurringAmounts = {};
+
+		for (const interval of ["day", "month", "year"] as const) {
+			const rawVal = recurringAmounts[interval];
+			if (rawVal !== undefined && rawVal !== null) {
+				const parsed = Number(rawVal);
+				if (!Number.isInteger(parsed) || parsed <= 0) {
+					throw new AppError(
+						`recurringAmounts.${interval} must be a positive integer (in cents)`,
+						400
+					);
+				}
+				validatedRecurringAmounts[interval] = parsed;
+			}
+		}
+
+		updateData.recurringAmounts = validatedRecurringAmounts;
 	}
 
 	const result = await stripeService.updateProduct(updateData);

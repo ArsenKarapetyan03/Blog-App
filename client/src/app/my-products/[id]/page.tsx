@@ -7,7 +7,7 @@ import { Modal } from "antd";
 import { useNotification } from "@/context/NotificationProvider";
 import { archiveProduct, getProductById } from "@/actions/product";
 import { Product } from "@/types/types";
-import { formatPrice } from "@/lib/helperFunctions";
+import { formatPrice } from "@/lib/pricing";
 
 const ProductPage = ({ params }: { params: Promise<{ id: string }> }) => {
 	const { id } = use(params);
@@ -114,7 +114,7 @@ const ProductPage = ({ params }: { params: Promise<{ id: string }> }) => {
 					href="/my-products"
 					className="inline-block mt-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-800 transition"
 				>
-					&larr; Back to My Products
+					Back to My Products
 				</Link>
 			</div>
 		);

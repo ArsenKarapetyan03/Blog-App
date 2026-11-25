@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import { useNotification } from "@/context/NotificationProvider";
-
 export interface UserType {
 	id: number;
 	name: string;

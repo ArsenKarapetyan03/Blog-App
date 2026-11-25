@@ -12,7 +12,7 @@ export const productService = {
 					model: db.Price,
 					as: "Prices",
 					where: {active: true},
-					required: false,
+					required: true,
 					attributes: ["id", "unitAmount", "currency", "type", "interval", "intervalCount"],
 				},
 				{
