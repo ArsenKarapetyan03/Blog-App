@@ -64,13 +64,11 @@ export const orderService = {
 				{
 					model: db.OrderItem,
 					as: "Items",
-					required: true,
 					attributes: ["id", "quantity", "unitAmount"],
 					include: [
 						{
 							model: db.Price,
 							as: "Price",
-							where: { type: "one_time"},
 							attributes: ["id", "type"],
 							include: [
 								{
@@ -163,6 +161,14 @@ export const orderService = {
 
 		if (!order) {
 			throw new AppError("Order not found", 404);
+		}
+
+		const isSubscriptionOrder =
+			Boolean(order.subscriptionId) ||
+			Boolean(order.Items?.some((item) => item.Price?.type === "recurring"));
+
+		if (isSubscriptionOrder) {
+			throw new AppError("Subscription orders cannot be refunded.", 400);
 		}
 
 		const currentCode = order.Status?.code;

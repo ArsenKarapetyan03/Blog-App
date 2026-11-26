@@ -7,7 +7,7 @@ interface CheckoutItem {
 	quantity?: number;
 }
 
-const VALID_INTERVALS = ["day", "month", "year"] as const;
+const VALID_INTERVALS = ["day", "week", "month", "year"] as const;
 
 export const createProduct = async (req: Request, res: Response) => {
 	if (!req.body) {
@@ -21,6 +21,7 @@ export const createProduct = async (req: Request, res: Response) => {
 		unitAmount,
 		currency = "usd",
 		allowRecurring = false,
+		shippingInterval,
 		recurringAmounts,
 	} = req.body;
 
@@ -113,6 +114,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 		unitAmount,
 		currency,
 		allowRecurring,
+		shippingInterval,
 		recurringAmounts,
 	} = req.body;
 
@@ -161,7 +163,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 		const validatedRecurringAmounts: RecurringAmounts = {};
 
-		for (const interval of ["day", "month", "year"] as const) {
+		for (const interval of ["day", "week", "month", "year"] as const) {
 			const rawVal = recurringAmounts[interval];
 			if (rawVal !== undefined && rawVal !== null) {
 				const parsed = Number(rawVal);

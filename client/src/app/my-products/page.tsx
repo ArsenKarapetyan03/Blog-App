@@ -171,14 +171,9 @@ const MyProductsPage: React.FC = () => {
 
 							<div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
 								<div className="flex flex-wrap gap-2">
-									{product.Prices?.map((price) => (
-										<span
-											key={price.id}
-											className="text-base font-bold text-gray-900 dark:text-white"
-										>
-											{formatPrice(price.unitAmount, price.currency)}
-										</span>
-									))}
+									<span className="text-base font-bold text-gray-900 dark:text-white">
+										{formatPrice(product.Prices?.[0].unitAmount, product.Prices?.[0].currency)}
+									</span>
 								</div>
 
 								<span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">

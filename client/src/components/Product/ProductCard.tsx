@@ -5,6 +5,7 @@ import { Price, Product } from "@/types/types";
 import {
 	formatInterval,
 	formatPrice,
+	formatPriceInterval,
 	getDefaultPrice,
 	getPriceOptionLabel,
 } from "@/lib/pricing";
@@ -73,9 +74,9 @@ export const ProductCard: React.FC<ProductCardProps> = (
 							<span className="text-lg font-bold text-gray-900 dark:text-white">
 								{formatPrice(defaultPrice.unitAmount, defaultPrice.currency)}
 							</span>
-							{formatInterval(defaultPrice) && (
+							{formatPriceInterval(defaultPrice) && (
 								<span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-									{formatInterval(defaultPrice)}
+									{formatPriceInterval(defaultPrice)}
 								</span>
 							)}
 						</div>

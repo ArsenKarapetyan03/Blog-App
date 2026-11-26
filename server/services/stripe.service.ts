@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe.js";
+import { Op } from "sequelize";
 import db, { sequelize } from "@/models/index.js";
 import type { Order } from "@/models/order.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
@@ -30,10 +31,10 @@ interface CancelCheckoutParams {
 	orderId: number;
 }
 
-export type RecurringIntervalKey = "day" | "month" | "year";
+export type RecurringIntervalKey = "day" | "week" | "month" | "year";
 export type RecurringAmounts = Partial<Record<RecurringIntervalKey, number>>;
 
-const RECURRING_INTERVALS: RecurringIntervalKey[] = ["day", "month", "year"];
+const RECURRING_INTERVALS: RecurringIntervalKey[] = ["day", "week", "month", "year"];
 
 interface CreateProductParams {
 	userId: number;
@@ -43,11 +44,6 @@ interface CreateProductParams {
 	currency: string;
 	allowRecurring?: boolean;
 	recurringAmounts?: RecurringAmounts | undefined;
-}
-
-interface ArchiveProductParams {
-	productId: number;
-	userId: number;
 }
 
 export interface UpdateProductParams {
@@ -61,11 +57,16 @@ export interface UpdateProductParams {
 	recurringAmounts?: RecurringAmounts;
 }
 
+interface ArchiveProductParams {
+	productId: number;
+	userId: number;
+}
+
 const statusMap = await db.OrderStatus.getStatusMap();
 
 export const stripeService = {
-	createProduct: async (
-		{
+	createProduct: async (productParams: CreateProductParams): Promise<{ product: Product; prices: Price[] }> => {
+		const {
 			userId,
 			name,
 			description,
@@ -73,8 +74,8 @@ export const stripeService = {
 			currency,
 			allowRecurring = false,
 			recurringAmounts,
-		}: CreateProductParams
-	): Promise<{ product: Product; prices: Price[] }> => {
+		} = productParams;
+
 		const transaction = await sequelize.transaction();
 		let stripeProduct: Stripe.Product | null = null;
 
@@ -533,13 +534,24 @@ export const stripeService = {
 			const existingSub = await db.Subscription.findOne({
 				where: {
 					userId: user.id,
-					priceId: firstPrice.id,
 					status: ["active", "trialing", "past_due"],
+					currentPeriodEnd: { [Op.gt]: new Date() },
 				},
+				include: [
+					{
+						model: db.Price,
+						as: "Price",
+						where: { productId: firstPrice.productId },
+						required: true,
+					},
+				],
 			});
 
 			if (existingSub) {
-				throw new AppError("You already have an active subscription for this plan", 400);
+				throw new AppError(
+					"You have an active subscription for this product, please wait until the current period ends",
+					400
+				);
 			}
 		}
 

@@ -6,6 +6,7 @@ import { Product } from "@/types/types";
 
 interface RecurringPricesDollars {
 	day: string;
+	week: string;
 	month: string;
 	year: string;
 }
@@ -25,6 +26,7 @@ interface CheckoutItemPayload {
 }
 
 export type UpdateProductPayload = Partial<Omit<CreateProductPayload, "description">> & {
+	productId: number | string,
 	description?: string | null;
 };
 
@@ -127,16 +129,16 @@ export const getUserProducts = async (): Promise<Product[]> => {
 	return result.data || [];
 };
 
-export const createProduct = async (
-	{
-		name,
-		description,
-		priceInDollars,
-		currency,
-		allowRecurring,
-		recurringPrices,
-	}: CreateProductPayload) => {
+export const createProduct = async (payload: CreateProductPayload) => {
 	try {
+		const {
+			name,
+			description,
+			priceInDollars,
+			currency,
+			allowRecurring,
+			recurringPrices,
+		} = payload;
 		const dollarValue = parseFloat(priceInDollars);
 		if (!name.trim() || isNaN(dollarValue) || dollarValue <= 0) {
 			return {
@@ -147,17 +149,20 @@ export const createProduct = async (
 
 		const unitAmount = Math.round(dollarValue * 100);
 		let recurringAmounts:
-			| { day: number; month: number; year: number }
+			| { day: number; week: number; month: number; year: number }
 			| undefined;
 
 		if (allowRecurring && recurringPrices) {
 			const dayVal = parseFloat(recurringPrices.day || priceInDollars);
+			const weekVal = parseFloat(recurringPrices.week || priceInDollars);
 			const monthVal = parseFloat(recurringPrices.month || priceInDollars);
 			const yearVal = parseFloat(recurringPrices.year || priceInDollars);
 
 			if (
 				isNaN(dayVal) ||
 				dayVal <= 0 ||
+				isNaN(weekVal) ||
+				weekVal <= 0 ||
 				isNaN(monthVal) ||
 				monthVal <= 0 ||
 				isNaN(yearVal) ||
@@ -171,6 +176,7 @@ export const createProduct = async (
 
 			recurringAmounts = {
 				day: Math.round(dayVal * 100),
+				week: Math.round(weekVal * 100),
 				month: Math.round(monthVal * 100),
 				year: Math.round(yearVal * 100),
 			};
@@ -185,7 +191,7 @@ export const createProduct = async (
 				unitAmount,
 				currency,
 				allowRecurring: Boolean(allowRecurring),
-				...(recurringAmounts && {recurringAmounts}),
+				...(recurringAmounts && { recurringAmounts }),
 			}),
 		});
 
@@ -208,6 +214,94 @@ export const createProduct = async (
 		return {
 			success: false,
 			message: "Failed to create product.",
+		};
+	}
+};
+
+export const updateProduct = async (payload: UpdateProductPayload) => {
+	try {
+		const { productId, priceInDollars, recurringPrices, name, description, ...rest } =	payload;
+
+		if (!productId) {
+			return {
+				success: false,
+				message: "Invalid product ID.",
+			};
+		}
+
+		const requestBody: Record<string, unknown> = { ...rest };
+
+		if (name !== undefined) {
+			if (!name.trim()) {
+				return {
+					success: false,
+					message: "Product name cannot be empty.",
+				};
+			}
+			requestBody.name = name.trim();
+		}
+
+		if (description !== undefined) {
+			requestBody.description =
+				description === null ? null : description.trim();
+		}
+
+		if (priceInDollars !== undefined) {
+			const parsedPrice = Number(priceInDollars);
+			if (isNaN(parsedPrice) || parsedPrice <= 0) {
+				return {
+					success: false,
+					message: "Invalid price amount.",
+				};
+			}
+			requestBody.unitAmount = Math.round(parsedPrice * 100);
+		}
+
+		if (recurringPrices !== undefined) {
+			const recurringAmounts: Record<string, number> = {};
+
+			for (const interval of ["day", "week", "month", "year"] as const) {
+				const rawVal = recurringPrices[interval];
+				if (rawVal !== undefined && rawVal.trim() !== "") {
+					const parsed = Number(rawVal);
+					if (isNaN(parsed) || parsed <= 0) {
+						return {
+							success: false,
+							message: `Invalid ${interval} subscription price.`,
+						};
+					}
+					recurringAmounts[interval] = Math.round(parsed * 100);
+				}
+			}
+
+			requestBody.recurringAmounts = recurringAmounts;
+		}
+
+		const response = await fetch(`${BASE_URL}/product/${productId}`, {
+			method: "PATCH",
+			headers: getAuthHeaders(),
+			body: JSON.stringify(requestBody),
+		});
+
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({}));
+			return {
+				success: false,
+				message: errData.message || "Failed to update product.",
+			};
+		}
+
+		const data = await response.json().catch(() => ({}));
+
+		return {
+			success: true,
+			message: data.message || "Product updated successfully!",
+			data: data.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			message: "Failed to update product.",
 		};
 	}
 };
@@ -280,98 +374,6 @@ export const archiveProduct = async (productId: number | string) => {
 		return {
 			success: false,
 			message: "Failed to archive product.",
-		};
-	}
-};
-
-export const updateProduct = async (
-	productId: number | string,
-	payload: UpdateProductPayload
-) => {
-	try {
-		if (!productId) {
-			return {
-				success: false,
-				message: "Invalid product ID.",
-			};
-		}
-
-		const { priceInDollars, recurringPrices, name, description, ...rest } =
-			payload;
-
-		const requestBody: Record<string, unknown> = { ...rest };
-
-		if (name !== undefined) {
-			if (!name.trim()) {
-				return {
-					success: false,
-					message: "Product name cannot be empty.",
-				};
-			}
-			requestBody.name = name.trim();
-		}
-
-		if (description !== undefined) {
-			requestBody.description =
-				description === null ? null : description.trim();
-		}
-
-		if (priceInDollars !== undefined) {
-			const parsedPrice = Number(priceInDollars);
-			if (isNaN(parsedPrice) || parsedPrice <= 0) {
-				return {
-					success: false,
-					message: "Invalid price amount.",
-				};
-			}
-			requestBody.unitAmount = Math.round(parsedPrice * 100);
-		}
-
-		if (recurringPrices !== undefined) {
-			const recurringAmounts: Record<string, number> = {};
-
-			for (const interval of ["day", "month", "year"] as const) {
-				const rawVal = recurringPrices[interval];
-				if (rawVal !== undefined && rawVal.trim() !== "") {
-					const parsed = Number(rawVal);
-					if (isNaN(parsed) || parsed <= 0) {
-						return {
-							success: false,
-							message: `Invalid ${interval} subscription price.`,
-						};
-					}
-					recurringAmounts[interval] = Math.round(parsed * 100);
-				}
-			}
-
-			requestBody.recurringAmounts = recurringAmounts;
-		}
-
-		const response = await fetch(`${BASE_URL}/product/${productId}`, {
-			method: "PATCH",
-			headers: getAuthHeaders(),
-			body: JSON.stringify(requestBody),
-		});
-
-		if (!response.ok) {
-			const errData = await response.json().catch(() => ({}));
-			return {
-				success: false,
-				message: errData.message || "Failed to update product.",
-			};
-		}
-
-		const data = await response.json().catch(() => ({}));
-
-		return {
-			success: true,
-			message: data.message || "Product updated successfully!",
-			data: data.data,
-		};
-	} catch (error) {
-		return {
-			success: false,
-			message: "Failed to update product.",
 		};
 	}
 };

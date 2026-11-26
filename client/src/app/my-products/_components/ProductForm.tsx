@@ -12,9 +12,9 @@ interface ProductFormProps {
 	initialData?: Product;
 }
 
-export default function ProductForm({ initialData }: ProductFormProps) {
+export default function ProductForm({initialData}: ProductFormProps) {
 	const router = useRouter();
-	const { isAuthenticated } = useAuth();
+	const {isAuthenticated} = useAuth();
 	const notification = useNotification();
 
 	const isEditing = Boolean(initialData);
@@ -22,17 +22,12 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 	const oneTimePrice =
 		initialData?.Prices?.find((p) => p.type === "one_time") ??
 		initialData?.Prices?.[0];
-	const dailyPrice = initialData?.Prices?.find(
-		(p) => p.type === "recurring" && p.interval === "day"
-	);
-	const monthlyPrice = initialData?.Prices?.find(
-		(p) => p.type === "recurring" && p.interval === "month"
-	);
-	const yearlyPrice = initialData?.Prices?.find(
-		(p) => p.type === "recurring" && p.interval === "year"
-	);
+	const dailyPrice = initialData?.Prices?.find((p) => p.type === "recurring" && p.interval === "day");
+	const weeklyPrice = initialData?.Prices?.find((p) => p.type === "recurring" && p.interval === "week");
+	const monthlyPrice = initialData?.Prices?.find((p) => p.type === "recurring" && p.interval === "month");
+	const yearlyPrice = initialData?.Prices?.find((p) => p.type === "recurring" && p.interval === "year");
 
-	const hasExistingRecurring = Boolean(dailyPrice || monthlyPrice || yearlyPrice);
+	const hasExistingRecurring = Boolean(dailyPrice || weeklyPrice || monthlyPrice || yearlyPrice);
 
 	const formatCents = (cents?: number) =>
 		cents !== undefined ? (cents / 100).toFixed(2) : "";
@@ -40,25 +35,15 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 	const [isSignInModalOpen, setIsSignInModalOpen] = useState<boolean>(false);
 	const [name, setName] = useState(initialData?.name ?? "");
 	const [description, setDescription] = useState(initialData?.description ?? "");
-	const [priceInDollars, setPriceInDollars] = useState(
-		formatCents(oneTimePrice?.unitAmount)
-	);
+	const [priceInDollars, setPriceInDollars] = useState(formatCents(oneTimePrice?.unitAmount));
 	const [currency, setCurrency] = useState(oneTimePrice?.currency ?? "usd");
-	const [allowRecurring, setAllowRecurring] =
-		useState<boolean>(hasExistingRecurring);
-
-	// Custom recurring prices (optional per interval; falls back to priceInDollars if empty)
-	const [dailyPriceInDollars, setDailyPriceInDollars] = useState(
-		formatCents(dailyPrice?.unitAmount)
-	);
-	const [monthlyPriceInDollars, setMonthlyPriceInDollars] = useState(
-		formatCents(monthlyPrice?.unitAmount)
-	);
-	const [yearlyPriceInDollars, setYearlyPriceInDollars] = useState(
-		formatCents(yearlyPrice?.unitAmount)
-	);
-
+	const [allowRecurring, setAllowRecurring] = useState<boolean>(hasExistingRecurring);
 	const [submitting, setSubmitting] = useState(false);
+
+	const [dailyPriceInDollars, setDailyPriceInDollars] = useState(formatCents(dailyPrice?.unitAmount));
+	const [weeklyPriceInDollars, setWeeklyPriceInDollars] = useState(formatCents(weeklyPrice?.unitAmount));
+	const [monthlyPriceInDollars, setMonthlyPriceInDollars] = useState(formatCents(monthlyPrice?.unitAmount));
+	const [yearlyPriceInDollars, setYearlyPriceInDollars] = useState(formatCents(yearlyPrice?.unitAmount));
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -71,6 +56,7 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 		setSubmitting(true);
 
 		const payload = {
+			...(isEditing && initialData && { productId: String(initialData.id) }),
 			name,
 			description,
 			priceInDollars,
@@ -79,6 +65,7 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 			...(allowRecurring && {
 				recurringPrices: {
 					day: dailyPriceInDollars.trim() || priceInDollars,
+					week: weeklyPriceInDollars.trim() || priceInDollars,
 					month: monthlyPriceInDollars.trim() || priceInDollars,
 					year: yearlyPriceInDollars.trim() || priceInDollars,
 				},
@@ -88,7 +75,7 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 		try {
 			const result =
 				isEditing && initialData
-					? await updateProduct(String(initialData.id), payload)
+					? await updateProduct(payload)
 					: await createProduct(payload);
 
 			if (!result.success) {
@@ -122,7 +109,6 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 			setSubmitting(false);
 		}
 	};
-
 	return (
 		<div className="w-full">
 			<section className="mb-10 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -190,7 +176,6 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 						</div>
 					</div>
 
-					{/* Seller Opt-in + Custom Interval Pricing */}
 					<div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
 						<label className="flex cursor-pointer items-start gap-3">
 							<input
@@ -204,13 +189,13 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 									Allow recurring subscriptions
 								</span>
 								<span className="block text-xs text-gray-500">
-									Set custom prices for daily, monthly, and yearly plans, or leave blank to use the one-time price.
+									Set custom prices for daily, weekly, monthly, and yearly plans, or leave blank to use the one-time price.
 								</span>
 							</div>
 						</label>
 
 						{allowRecurring && (
-							<div className="grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 sm:grid-cols-3">
+							<div className="grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 sm:grid-cols-2 lg:grid-cols-4">
 								<div>
 									<label className="mb-1 block text-xs font-medium text-gray-700">
 										Daily Price (/ day)
@@ -228,13 +213,32 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 
 								<div>
 									<label className="mb-1 block text-xs font-medium text-gray-700">
+										Weekly Price (/ week)
+									</label>
+									<input
+										type="number"
+										step="0.01"
+										min="0.50"
+										placeholder={
+											priceInDollars ? `${Number(priceInDollars) * 5}` : "20.00"
+										}
+										value={weeklyPriceInDollars}
+										onChange={(e) => setWeeklyPriceInDollars(e.target.value)}
+										className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600"
+									/>
+								</div>
+
+								<div>
+									<label className="mb-1 block text-xs font-medium text-gray-700">
 										Monthly Price (/ month)
 									</label>
 									<input
 										type="number"
 										step="0.01"
 										min="0.50"
-										placeholder={priceInDollars || "20.00"}
+										placeholder={
+											priceInDollars ? `${Number(priceInDollars) * 20}` : "20.00"
+										}
 										value={monthlyPriceInDollars}
 										onChange={(e) => setMonthlyPriceInDollars(e.target.value)}
 										className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600"
@@ -249,7 +253,9 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 										type="number"
 										step="0.01"
 										min="0.50"
-										placeholder={priceInDollars || "20.00"}
+										placeholder={
+											priceInDollars ? `${Number(priceInDollars) * 200}` : "20.00"
+										}
 										value={yearlyPriceInDollars}
 										onChange={(e) => setYearlyPriceInDollars(e.target.value)}
 										className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600"

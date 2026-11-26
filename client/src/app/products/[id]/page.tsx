@@ -2,17 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ShoppingCartMinus } from "lucide-react";
 import { getProductById } from "@/actions/product";
 import { type Product } from "@/types/types";
 import { useAuth } from "@/context/useAuth";
 import { useCart } from "@/context/CartContext";
-import {
-	formatPrice,
-	formatInterval,
-	getPriceOptionLabel,
-	getDefaultPrice,
-} from "@/lib/pricing";
+import { formatPrice,	formatInterval,	getPriceOptionLabel, getDefaultPrice } from "@/lib/pricing";
 
 const ProductDetailPage: React.FC = () => {
 	const params = useParams();
@@ -20,12 +14,10 @@ const ProductDetailPage: React.FC = () => {
 	const id = params?.id as string;
 
 	const { isAuthenticated, user } = useAuth();
-	const { totalItems, openCart, addToCart, buyNow, buyingPriceId } = useCart();
+	const { addToCart, buyNow, buyingPriceId } = useCart();
 
 	const [product, setProduct] = useState<Product | null>(null);
-	const [selectedPriceId, setSelectedPriceId] = useState<number | string | null>(
-		null
-	);
+	const [selectedPriceId, setSelectedPriceId] = useState<number | string | null>(null);
 	const [loading, setLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 

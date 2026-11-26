@@ -37,12 +37,21 @@ export const subscriptionService = {
 	getMySubscriptions: async (userId: number) => {
 		return await db.Subscription.findAll({
 			where: { userId },
-			attributes: { exclude: ["stripeSubscriptionId", "updatedAt"] },
+			attributes: { exclude: ["priceId", "stripeSubscriptionId", "updatedAt", "createdAt"] },
 			include: [
 				{
 					model: db.Price,
 					as: "Price",
-					include: [{ model: db.Product, as: "Product" }]
+					attributes: ["currency", "unitAmount", "interval", "intervalCount"],
+					include: [
+						{
+							model: db.Product,
+							as: "Product",
+							where: { active: true },
+							required: true,
+							attributes: ["id", "name", "description"],
+						}
+					]
 				},
 			],
 			order: [["createdAt", "DESC"]],

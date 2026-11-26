@@ -73,9 +73,9 @@ export interface Product {
 	id: number;
 	name: string;
 	description: string | null;
-	active: boolean;
-	Seller: UserType;
-	Prices: Price[];
+	active?: boolean;
+	Seller?: UserType;
+	Prices?: Price[];
 	createdAt: string;
 	updatedAt: string;
 }

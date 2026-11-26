@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe.js";
 import { PLATFORM_FEE_RATE } from "@/config/config.js";
 import type { Transaction } from "sequelize";
 import type { SubscriptionStatus } from "@/models/subscription.js";
+import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 
 const statusMap = await db.OrderStatus.getStatusMap();
 
@@ -20,7 +21,9 @@ const extractPeriodDates = (stripeSub: Stripe.Subscription) => {
 
 const extractSubscriptionIdFromInvoice = (invoice: Stripe.Invoice): string | null => {
 	const sub = invoice.parent?.subscription_details?.subscription;
-	if (!sub) return null;
+	if (!sub) {
+		return null;
+	}
 	return typeof sub === "string" ? sub : sub.id;
 }
 
@@ -171,7 +174,9 @@ export const initializeSubscriptionFromCheckout = async (session: Stripe.Checkou
 	]);
 
 	const userId = order?.userId ?? Number(session.metadata?.userId);
-	if (!price || !userId) return;
+	if (!price || !userId) {
+		return;
+	}
 
 	const { currentPeriodStart, currentPeriodEnd } = extractPeriodDates(stripeSub);
 
@@ -214,15 +219,16 @@ export const handleSubscriptionInvoicePaid = async (invoice: Stripe.Invoice) => 
 
 	const firstPayment = fullInvoice.payments?.data[0]?.payment;
 	const rawPi = firstPayment?.payment_intent;
-	const paymentIntentId =
-		typeof rawPi === "string" ? rawPi : rawPi?.id ?? null;
+	const paymentIntentId = typeof rawPi === "string" ? rawPi : rawPi?.id ?? null;
 
 	await sequelize.transaction(async (transaction) => {
 		const existingOrder = await db.Order.findOne({
 			where: { stripeInvoiceId: invoice.id },
 			transaction,
 		});
-		if (existingOrder) return;
+		if (existingOrder) {
+			return;
+		}
 
 		const subscription = await db.Subscription.findOne({
 			where: { stripeSubscriptionId: stripeSubId },
@@ -232,7 +238,7 @@ export const handleSubscriptionInvoicePaid = async (invoice: Stripe.Invoice) => 
 		});
 
 		if (!subscription || !subscription.Price) {
-			throw new Error(`Subscription not found for renewal invoice ${invoice.id}`);
+			throw new AppError(`Subscription not found for renewal invoice ${invoice.id}`, 404);
 		}
 
 		const renewalOrder = await db.Order.create(
@@ -258,13 +264,26 @@ export const handleSubscriptionInvoicePaid = async (invoice: Stripe.Invoice) => 
 			{ transaction }
 		);
 
+		const linePeriodEnd = invoice.lines?.data?.[0]?.period?.end;
+
+		await subscription.update(
+			{
+				status: "active",
+				...(linePeriodEnd && { currentPeriodEnd: new Date(linePeriodEnd * 1000) }),
+			},
+			{ transaction }
+		);
+
+
 		await creditSellersForOrder(renewalOrder.id, invoice.currency, transaction);
 	});
 };
 
 export const handleSubscriptionInvoiceFailed = async (invoice: Stripe.Invoice) => {
 	const stripeSubId = extractSubscriptionIdFromInvoice(invoice);
-	if (!stripeSubId) return;
+	if (!stripeSubId) {
+		return;
+	}
 
 	await db.Subscription.update(
 		{ status: "past_due" },

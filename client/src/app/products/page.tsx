@@ -1,77 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { getProducts, cancelOrder } from "@/actions/product";
-import { Price, type Product } from "@/types/types";
+import { getProducts,  } from "@/actions/product";
+import { type Product } from "@/types/types";
 import { useAuth } from "@/context/useAuth";
 import { useCart } from "@/context/CartContext";
 import { ProductCard } from "@/components/Product/ProductCard";
-import { useNotification } from "@/context/NotificationProvider";
-
-const CancelCheckoutHandler: React.FC<{
-	onOpenCart: () => void;
-	totalItems: number;
-}> = ({ onOpenCart, totalItems }) => {
-	const searchParams = useSearchParams();
-	const router = useRouter();
-	const notification = useNotification();
-	const hasNotified = useRef(false);
-
-	useEffect(() => {
-		const isCanceled = searchParams.get("cancel") === "true";
-		const orderId = searchParams.get("orderId");
-
-		if (!isCanceled || hasNotified.current) {
-			return;
-		}
-		hasNotified.current = true;
-
-		const handleCancel = async () => {
-			if (orderId) {
-				const res = await cancelOrder(orderId);
-				if (!res.success) {
-					notification.error({
-						title: "Order Cancellation Issue",
-						description: res.message,
-						placement: "topRight",
-					});
-				}
-			}
-
-			const key = `cancel-checkout-${Date.now()}`;
-
-			notification.warning({
-				key,
-				title: "Checkout Canceled",
-				description:
-					totalItems > 0
-						? "No payment was processed. Your items are still saved in your cart."
-						: "No payment was processed. You can try checking out again anytime.",
-				placement: "topRight",
-				duration: 6,
-				actions:
-					totalItems > 0 ? (
-						<button
-							onClick={() => {
-								notification.destroy(key);
-								onOpenCart();
-							}}
-							className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-indigo-700"
-						>
-							Open Cart
-						</button>
-					) : undefined,
-			});
-
-			router.replace("/products", { scroll: false });
-		};
-
-		handleCancel();
-	}, [searchParams, router, notification, onOpenCart, totalItems]);
-
-	return null;
-};
+import { CancelCheckoutHandler } from "@/components/Product/CancelCheckoutHandler";
 
 const ProductsPage: React.FC = () => {
 	const { isAuthenticated, user } = useAuth();

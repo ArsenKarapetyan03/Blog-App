@@ -8,10 +8,17 @@ export const formatPrice = (amount?: number, currency: string = "usd") => {
 	}).format(amount / 100);
 };
 
-export const formatInterval = (price?: Price) => {
-	if (!price || price.type !== "recurring" || !price.interval) return null;
-	const count = price.intervalCount ?? 1;
-	return count > 1 ? `/ ${count} ${price.interval}s` : `/ ${price.interval}`;
+export const formatInterval = (interval?: string | null, count?: number | null): string => {
+	if (!interval) return "";
+	const n = count ?? 1;
+	return n > 1 ? `/ ${n} ${interval}s` : `/ ${interval}`;
+};
+
+export const formatPriceInterval = (price?: Partial<Price> | null): string => {
+	if (!price) return "";
+	if (price.type && price.type !== "recurring") return "";
+
+	return formatInterval(price.interval, price.intervalCount);
 };
 
 export const getPriceOptionLabel = (price: Price) => {

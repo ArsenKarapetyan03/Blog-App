@@ -6,7 +6,7 @@ export const productService = {
 	getAllProducts: async () => {
 		return await db.Product.findAll({
 			where: {active: true},
-			attributes: ["id", "name", "description"],
+			attributes: {exclude: ["stripeProductId"]},
 			include: [
 				{
 					model: db.Price,
@@ -37,6 +37,11 @@ export const productService = {
 					required: false,
 					attributes: {exclude: ["stripePriceId"]},
 				},
+				{
+					model: db.User,
+					as: "Seller",
+					attributes: ["id", "name"],
+				}
 			],
 		});
 

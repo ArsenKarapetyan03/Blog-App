@@ -8,11 +8,13 @@ import { CartProvider, useCart } from "@/context/CartContext";
 import { Modal } from "antd";
 import { useNotification } from "@/context/NotificationProvider";
 import { Order } from "@/types/types";
+import { LoadingComponent } from "@/components/ui/LoadingComponent";
+import { formatPrice } from "@/lib/pricing";
 
 const CheckoutSuccessHandler: React.FC = () => {
 	const searchParams = useSearchParams();
 	const router = useRouter();
-	const { clearCart } = useCart();
+	const {clearCart} = useCart();
 	const notification = useNotification();
 	const hasHandled = useRef(false);
 
@@ -33,7 +35,7 @@ const CheckoutSuccessHandler: React.FC = () => {
 				placement: "topRight",
 			});
 
-			router.replace("/orders", { scroll: false });
+			router.replace("/orders", {scroll: false});
 		}
 	}, [searchParams, clearCart, notification, router]);
 
@@ -61,11 +63,7 @@ const OrdersPage = () => {
 			try {
 				setLoading(true);
 				const response = await getOrders();
-				const oneTimeOrders = (response?.data ?? []).filter(
-					(order: Order) =>
-						!order.Items?.some((item) => item.Price?.type === "recurring")
-				);
-				setOrders(oneTimeOrders);
+				setOrders(response?.data ?? []);
 			} catch (error) {
 				console.warn("Failed to fetch orders:", error);
 				setOrders([]);
@@ -140,12 +138,6 @@ const OrdersPage = () => {
 		});
 	};
 
-	const formatMoney = (amountInCents: number, currency = "usd") => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency.toUpperCase(),
-		}).format(amountInCents / 100);
-	};
 
 	const formatDate = (isoString: string) => {
 		return new Date(isoString).toLocaleDateString("en-US", {
@@ -158,23 +150,21 @@ const OrdersPage = () => {
 	return (
 		<>
 			<Suspense fallback={null}>
-				<CheckoutSuccessHandler />
+				<CheckoutSuccessHandler/>
 			</Suspense>
 
-			{loading ?
-					<div className="w-full p-6">
-						<p className="text-gray-500">Loading your orders...</p>
-					</div>
-				 : <div className="w-full p-6">
+			{loading
+				? <LoadingComponent/>
+				: <div>
 					{orders.length === 0 ? (
 						<p className="text-gray-500">No orders found.</p>
 					) : (
 						<div className="space-y-6">
 							{orders.map((order) => {
 								const statusCode = order.Status?.code || "unknown";
-								const badgeStyle =
-									STATUS_STYLES[statusCode] || "bg-gray-100 text-gray-800";
+								const badgeStyle = STATUS_STYLES[statusCode] || "bg-gray-100 text-gray-800";
 								const isUpdating = updatingId === order.id;
+								const isSubscriptionOrder = Boolean(order.Items?.some((item) => item.Price?.type === "recurring"));
 
 								return (
 									<div
@@ -199,7 +189,7 @@ const OrdersPage = () => {
 												<div>
 													<span className="text-gray-500 block">Total</span>
 													<span className="font-medium text-gray-900">
-												{formatMoney(order.totalAmount, order.currency)}
+												{formatPrice(order.totalAmount, order.currency)}
 											</span>
 												</div>
 											</div>
@@ -221,15 +211,16 @@ const OrdersPage = () => {
 													</button>
 												)}
 
-												{(statusCode === "paid" || statusCode === "shipped") && (
-													<button
-														onClick={() => showRefundConfirm(order.id)}
-														disabled={isUpdating}
-														className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-													>
-														{isUpdating ? "Processing..." : "Refund"}
-													</button>
-												)}
+												{!isSubscriptionOrder &&
+													(statusCode === "paid" || statusCode === "shipped") && (
+														<button
+															onClick={() => showRefundConfirm(order.id)}
+															disabled={isUpdating}
+															className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+														>
+															{isUpdating ? "Processing..." : "Refund"}
+														</button>
+													)}
 											</div>
 										</div>
 
@@ -254,7 +245,12 @@ const OrdersPage = () => {
 													</div>
 
 													<div className="font-medium text-gray-900">
-														{formatMoney(item.unitAmount, order.currency)}
+														{item.Price?.type === "recurring"
+															? <span
+																className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-600/15">
+																	Included in subscription
+																</span>
+															: formatPrice(item.unitAmount, order.currency)}
 													</div>
 												</div>
 											))}

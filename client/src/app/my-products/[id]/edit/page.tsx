@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, notFound } from "next/navigation";
-import ProductForm from "../../_components/ProductForm";
+import ProductForm from "@/app/my-products/_components/ProductForm";
 import { getProductById } from "@/actions/product";
 import { Product } from "@/types/types";
 
