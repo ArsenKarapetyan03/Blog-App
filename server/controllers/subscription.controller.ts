@@ -15,7 +15,7 @@ export const getMySubscriptions = async (req: Request, res: Response) => {
 	return res.status(200).json({ success: true, data: subscriptions });
 };
 
-export const cancelSubscription = async (req: Request, res: Response) => {
+export const cancelAtPeriodEndSubscription = async (req: Request, res: Response) => {
 	const userId = res.locals.user!.id;
 	const subscriptionId = Number(req.params.id);
 
@@ -23,7 +23,23 @@ export const cancelSubscription = async (req: Request, res: Response) => {
 		throw new AppError("Invalid subscription ID", 400);
 	}
 
-	const subscription = await subscriptionService.cancelSubscription(
+	const subscription = await subscriptionService.cancelAtPeriodEndSubscription(
+		userId,
+		subscriptionId
+	);
+
+	return res.status(200).json({ success: true, data: subscription });
+};
+
+export const cancelSubscriptionNow = async (req: Request, res: Response) => {
+	const userId = res.locals.user!.id;
+	const subscriptionId = Number(req.params.id);
+
+	if (isNaN(subscriptionId)) {
+		throw new AppError("Invalid subscription ID", 400);
+	}
+
+	const subscription = await subscriptionService.cancelSubscriptionNow(
 		userId,
 		subscriptionId
 	);

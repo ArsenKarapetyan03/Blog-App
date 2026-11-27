@@ -8,21 +8,6 @@ interface ApiResponse<T> {
 	message?: string;
 }
 
-export const getSubscriptions = async (): Promise<ApiResponse<Subscription[]>> => {
-	const res = await fetch(`${BASE_URL}/subscription`, {
-		method: "GET",
-		headers: {"Content-Type": "application/json"},
-	});
-
-	const json = await res.json();
-
-	if (!res.ok) {
-		throw new Error(json.message || "Failed to fetch subscriptions");
-	}
-
-	return json;
-};
-
 export const getMySubscriptions = async (): Promise<ApiResponse<Subscription[]>> => {
 	const token = Cookies.get("token");
 
@@ -43,15 +28,29 @@ export const getMySubscriptions = async (): Promise<ApiResponse<Subscription[]>>
 	return json;
 };
 
-export const cancelSubscription = async (subscriptionId: number): Promise<ApiResponse<Subscription>> => {
+export const cancelSubscriptionAtPeriodEnd = async (subscriptionId: number): Promise<ApiResponse<Subscription>> => {
 	const token = Cookies.get("token");
 
 	const res = await fetch(`${BASE_URL}/subscription/${subscriptionId}/cancel`, {
 		method: "PATCH",
-		headers: {
-			"Content-Type": "application/json",
-			...(token && { Authorization: `Bearer ${token}` }),
-		},
+		headers: {...(token && { Authorization: `Bearer ${token}` })},
+	});
+
+	const json = await res.json();
+
+	if (!res.ok) {
+		throw new Error(json.message || "Failed to cancel subscription");
+	}
+
+	return json;
+};
+
+export const cancelSubscriptionNow = async (subscriptionId: number): Promise<ApiResponse<Subscription>> => {
+	const token = Cookies.get("token");
+
+	const res = await fetch(`${BASE_URL}/subscription/${subscriptionId}/cancel-now`, {
+		method: "PATCH",
+		headers: {...(token && { Authorization: `Bearer ${token}` })},
 	});
 
 	const json = await res.json();

@@ -1,6 +1,7 @@
 import db from "@/models/index.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { stripe } from "@/lib/stripe.js";
+import { cancelAtPeriodEndSubscription, cancelSubscriptionNow } from "@/controllers/subscription.controller.js";
 
 export const subscriptionService = {
 	getSubscriptions: async () => {
@@ -58,7 +59,7 @@ export const subscriptionService = {
 		});
 	},
 
-	cancelSubscription: async (userId: number, subscriptionId: number) => {
+	cancelAtPeriodEndSubscription: async (userId: number, subscriptionId: number) => {
 		const subscription = await db.Subscription.findOne({
 			where: {
 				id: subscriptionId,
@@ -80,6 +81,39 @@ export const subscriptionService = {
 
 		subscription.cancelAtPeriodEnd = true;
 		subscription.canceledAt = new Date();
+		await subscription.save();
+
+		return subscription;
+	},
+
+	cancelSubscriptionNow: async (userId: number, subscriptionId: number) => {
+		const subscription = await db.Subscription.findOne({
+			where: {
+				id: subscriptionId,
+				userId,
+			},
+		});
+
+		if (!subscription) {
+			throw new AppError("Subscription not found", 404);
+		}
+
+		if (subscription.status === "canceled") {
+			throw new AppError("Subscription is already canceled", 400);
+		}
+
+		const stripeSubscription = await stripe.subscriptions.cancel(
+			subscription.stripeSubscriptionId
+		);
+
+		const now = new Date();
+		subscription.status = "canceled";
+		subscription.cancelAtPeriodEnd = false;
+		subscription.canceledAt = stripeSubscription.canceled_at
+			? new Date(stripeSubscription.canceled_at * 1000)
+			: now;
+		subscription.currentPeriodEnd = now;
+
 		await subscription.save();
 
 		return subscription;

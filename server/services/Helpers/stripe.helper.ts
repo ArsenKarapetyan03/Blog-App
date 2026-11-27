@@ -226,6 +226,7 @@ export const handleSubscriptionInvoicePaid = async (invoice: Stripe.Invoice) => 
 			where: { stripeInvoiceId: invoice.id },
 			transaction,
 		});
+
 		if (existingOrder) {
 			return;
 		}
@@ -233,7 +234,10 @@ export const handleSubscriptionInvoicePaid = async (invoice: Stripe.Invoice) => 
 		const subscription = await db.Subscription.findOne({
 			where: { stripeSubscriptionId: stripeSubId },
 			include: [{ model: db.Price, as: "Price" }],
-			lock: transaction.LOCK.UPDATE,
+			lock: {
+				level: transaction.LOCK.UPDATE,
+				of: db.Subscription,
+			},
 			transaction,
 		});
 
@@ -273,7 +277,6 @@ export const handleSubscriptionInvoicePaid = async (invoice: Stripe.Invoice) => 
 			},
 			{ transaction }
 		);
-
 
 		await creditSellersForOrder(renewalOrder.id, invoice.currency, transaction);
 	});

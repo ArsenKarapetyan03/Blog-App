@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, Suspense } from "react
 import { useSearchParams, useRouter } from "next/navigation";
 import { Modal } from "antd";
 import { useNotification } from "@/context/NotificationProvider";
-import { getMySubscriptions, cancelSubscription } from "@/actions/subscription";
+import { getMySubscriptions, cancelSubscriptionAtPeriodEnd, cancelSubscriptionNow } from "@/actions/subscription";
 import { type Subscription } from "@/types/types";
 import { formatInterval, formatPrice } from "@/lib/pricing";
 
@@ -83,10 +83,10 @@ const SubscriptionsPage = () => {
 		fetchSubscriptions();
 	}, [fetchSubscriptions]);
 
-	const handleCancel = async (subscriptionId: number) => {
+	const handleCancelAtPeriodEnd = async (subscriptionId: number) => {
 		try {
 			setCancelingId(subscriptionId);
-			const res = await cancelSubscription(subscriptionId);
+			const res = await cancelSubscriptionAtPeriodEnd(subscriptionId);
 
 			if (!res.success) {
 				notification.error({
@@ -136,7 +136,70 @@ const SubscriptionsPage = () => {
 			okType: "danger",
 			centered: true,
 			async onOk() {
-				await handleCancel(subscriptionId);
+				await handleCancelAtPeriodEnd(subscriptionId);
+			},
+		});
+	};
+
+	const handleCancelNow = async (subscriptionId: number) => {
+		try {
+			setCancelingId(subscriptionId);
+			const res = await cancelSubscriptionNow(subscriptionId);
+
+			if (!res.success) {
+				notification.error({
+					title: "Cancellation Failed",
+					description:
+						res.message || "Could not cancel your subscription. Please try again.",
+				});
+				return;
+			}
+
+			const nowIso = new Date().toISOString();
+
+			setSubscriptions((prev) =>
+				prev.map((sub) =>
+					sub.id === subscriptionId
+						? {
+							...sub,
+							status: res.data?.status ?? "canceled",
+							cancelAtPeriodEnd: false,
+							canceledAt: res.data?.canceledAt ?? nowIso,
+							currentPeriodEnd: res.data?.currentPeriodEnd ?? nowIso,
+						}
+						: sub
+				)
+			);
+
+			notification.success({
+				title: "Subscription Canceled Immediately",
+				description: "Your subscription has ended and access has been revoked.",
+			});
+		} catch (error) {
+			console.error("Failed to cancel subscription immediately:", error);
+			notification.error({
+				title: "Unexpected Error",
+				description:
+					error instanceof Error
+						? error.message
+						: "Something went wrong while canceling your subscription.",
+			});
+		} finally {
+			setCancelingId(null);
+		}
+	};
+
+	const showCancelNowConfirm = (subscriptionId: number, planName?: string) => {
+		Modal.confirm({
+			title: `Cancel ${planName || "Subscription"} Immediately?`,
+			content:
+				"Are you sure you want to end this subscription right now? Your access will be revoked immediately and you will not be refunded for the remaining period.",
+			okText: "Cancel Immediately",
+			cancelText: "Keep Plan",
+			okType: "danger",
+			centered: true,
+			async onOk() {
+				await handleCancelNow(subscriptionId);
 			},
 		});
 	};
@@ -166,9 +229,10 @@ const SubscriptionsPage = () => {
 								: SUB_STATUS_STYLES[status] || "bg-gray-100 text-gray-800";
 
 							const isCanceling = cancelingId === sub.id;
-							const canCancel =
-								["active", "trialing", "past_due"].includes(status) &&
-								!sub.cancelAtPeriodEnd;
+							const isActiveSub = ["active", "trialing", "past_due"].includes(status);
+
+							const canCancelAtPeriodEnd = isActiveSub && !sub.cancelAtPeriodEnd;
+							const canCancelNow = isActiveSub;
 
 							const product = sub.Price?.Product;
 
@@ -200,16 +264,28 @@ const SubscriptionsPage = () => {
 											)}
 										</div>
 
-										{canCancel && (
-											<button
-												onClick={() =>
-													showCancelConfirm(sub.id, product?.name)
-												}
-												disabled={isCanceling}
-												className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-											>
-												{isCanceling ? "Canceling..." : "Cancel Plan"}
-											</button>
+										{(canCancelAtPeriodEnd || canCancelNow) && (
+											<div className="flex items-center gap-2">
+												{canCancelAtPeriodEnd && (
+													<button
+														onClick={() => showCancelConfirm(sub.id, product?.name)}
+														disabled={isCanceling}
+														className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+													>
+														{isCanceling ? "Canceling..." : "Cancel at Period End"}
+													</button>
+												)}
+
+												{canCancelNow && (
+													<button
+														onClick={() => showCancelNowConfirm(sub.id, product?.name)}
+														disabled={isCanceling}
+														className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+													>
+														{isCanceling ? "Canceling..." : "Cancel Now"}
+													</button>
+												)}
+											</div>
 										)}
 									</div>
 
