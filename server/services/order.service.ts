@@ -2,6 +2,14 @@ import db from "@/models/index.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { PLATFORM_FEE_RATE } from "@/config/config.js";
 import { stripeService } from "@/services/stripe.service.js";
+import { Op } from "sequelize";
+
+interface GetOrders {
+	searchString?: string;
+	userId?: number | undefined;
+	limit: number;
+	offset: number;
+}
 
 export interface OrderStatusDTO {
 	code: string;
@@ -51,40 +59,57 @@ const getOrder = async (orderId: number, userId: number) => {
 };
 
 export const orderService = {
-	getUserOrders: async (userId: number) => {
-		const orders = await db.Order.findAll({
-			where: { userId },
-			attributes: ["id", "totalAmount", "currency", "createdAt"],
+	getUserOrders: async ({ userId, searchString, limit, offset }: GetOrders) => {
+		const searchWhere = searchString
+			? {
+				[Op.or]: [
+					{ '$Items.Price.Product.name$': { [Op.iLike]: `%${searchString}%` } },
+					{ '$Items.Price.Product.description$': { [Op.iLike]: `%${searchString}%` } },
+				],
+			}
+			: {};
+
+		const { rows: orders, count } = await db.Order.findAndCountAll({
+			where: {
+				userId,
+				...searchWhere,
+			},
+			attributes: ['id', 'totalAmount', 'currency', 'createdAt'],
 			include: [
 				{
 					model: db.OrderStatus,
-					as: "Status",
-					attributes: ["code", "label"],
+					as: 'Status',
+					attributes: ['code', 'label'],
 				},
 				{
 					model: db.OrderItem,
-					as: "Items",
-					attributes: ["id", "quantity", "unitAmount"],
+					as: 'Items',
+					attributes: ['id', 'quantity', 'unitAmount'],
 					include: [
 						{
 							model: db.Price,
-							as: "Price",
-							attributes: ["id", "type"],
+							as: 'Price',
+							attributes: ['id', 'type'],
 							include: [
 								{
 									model: db.Product,
-									as: "Product",
-									attributes: ["name", "description"],
+									as: 'Product',
+									attributes: ['name', 'description'],
 								},
 							],
 						},
 					],
 				},
 			],
-			order: [["createdAt", "DESC"]],
+			order: [['createdAt', 'DESC']],
+			limit,
+			offset,
+			distinct: true,
+			subQuery: false,
 		});
 
-		return orders.map((order: any) => order.get({ plain: true }));
+
+		return { orders: orders.map((order: any) => order.get({ plain: true })), count };
 	},
 
 	markAsShipped: async (orderId: number, userId: number): Promise<ShippedOrderDTO> => {

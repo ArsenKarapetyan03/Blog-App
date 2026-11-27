@@ -11,9 +11,17 @@ const getAuthHeaders = () => {
 	};
 };
 
-export const getOrders = async () => {
+export const getOrders = async (params?: { page?: number;	limit?: number;	query?: string; }) => {
 	try {
-		const response = await fetch(`${BASE_URL}/order`, {
+		const searchParams = new URLSearchParams();
+		if (params?.page) searchParams.set("page", String(params.page));
+		if (params?.limit) searchParams.set("limit", String(params.limit));
+		if (params?.query) searchParams.set("query", params.query);
+
+		const qs = searchParams.toString();
+		const url = `${BASE_URL}/order${qs ? `?${qs}` : ""}`;
+
+		const response = await fetch(url, {
 			method: "GET",
 			headers: getAuthHeaders(),
 		});
@@ -22,7 +30,7 @@ export const getOrders = async () => {
 			return {
 				success: false,
 				message: "Failed to load orders.",
-				data: [],
+				data: { orders: [], totalPages: 1 },
 			};
 		}
 
@@ -32,18 +40,16 @@ export const getOrders = async () => {
 			throw new Error(result.message || "Failed to load orders.");
 		}
 
-		const orders = Array.isArray(result) ? result : result.data || [];
-
 		return {
 			success: true,
 			message: "Orders loaded successfully!",
-			data: orders,
+			data: result.data,
 		};
 	} catch (error) {
 		return {
 			success: false,
 			message: "Failed to load orders.",
-			data: [],
+			data: { orders: [], totalPages: 1 },
 		};
 	}
 };

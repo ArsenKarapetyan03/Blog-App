@@ -1,11 +1,20 @@
 import type { Request, Response } from "express";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
 import { productService } from "@/services/product.service.js";
+import { getPaginationDirectives } from "@/utils/getPaginationDirective.js";
 
 export const getAllProducts = async (req: Request, res: Response) => {
-	const products = await productService.getAllProducts();
+	const { limit, offset } = getPaginationDirectives(req.query);
+	const searchString = String(req.query.query ?? "").trim();
 
-	return res.status(200).json({	success: true, data: products	});
+	const result = await productService.getAllProducts({ searchString, limit, offset });
+
+	const responseData = {
+		products: result.products,
+		totalPages: Math.ceil(result.count / limit || 1)
+	};
+
+	return res.status(200).json({	success: true, data: responseData	});
 };
 
 export const getProductById = async (req: Request, res: Response) => {

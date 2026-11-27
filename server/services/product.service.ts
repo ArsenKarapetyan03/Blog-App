@@ -1,11 +1,29 @@
 import db from "@/models/index.js";
 import { AppError } from "@/utils/ErrorHandlers/app.error.js";
+import { Op } from "sequelize";
 
+interface GetOrders {
+	searchString?: string;
+	limit: number;
+	offset: number;
+}
 
 export const productService = {
-	getAllProducts: async () => {
-		return await db.Product.findAll({
-			where: {active: true},
+	getAllProducts: async ({searchString, limit, offset}: GetOrders) => {
+		const searchWhere = searchString
+			? {
+				[Op.or]: [
+					{name: {[Op.iLike]: `%${searchString}%`}},
+					{description: {[Op.iLike]: `%${searchString}%`}},
+				],
+			}
+			: {};
+
+		const {rows: products, count} = await db.Product.findAndCountAll({
+			where: {
+				active: true,
+				...searchWhere,
+			},
 			attributes: {exclude: ["stripeProductId"]},
 			include: [
 				{
@@ -19,10 +37,15 @@ export const productService = {
 					model: db.User,
 					as: "Seller",
 					attributes: ["id", "name", "email"],
-				}
+				},
 			],
+			limit,
+			offset,
+			distinct: true,
 			order: [["createdAt", "DESC"]],
 		});
+
+		return {products, count};
 	},
 
 	getProductById: async (productId: number) => {

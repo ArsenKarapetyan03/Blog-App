@@ -38,9 +38,17 @@ const getAuthHeaders = (): HeadersInit => {
 	};
 };
 
-export const getProducts = async () => {
+export const getProducts = async (params?: { page?: number;	limit?: number;	query?: string; }) => {
 	try {
-		const response = await fetch(`${BASE_URL}/product`, {
+		const searchParams = new URLSearchParams();
+		if (params?.page) searchParams.set("page", String(params.page));
+		if (params?.limit) searchParams.set("limit", String(params.limit));
+		if (params?.query) searchParams.set("query", params.query);
+
+		const qs = searchParams.toString();
+		const url = `${BASE_URL}/product${qs ? `?${qs}` : ""}`;
+
+		const response = await fetch(url, {
 			method: "GET",
 			headers: {
 				"Content-Type": "application/json",

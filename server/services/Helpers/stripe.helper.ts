@@ -277,7 +277,7 @@ export const handleSubscriptionInvoicePaid = async (invoice: Stripe.Invoice) => 
 			},
 			{ transaction }
 		);
-
+		console.log("recurring renewed")
 		await creditSellersForOrder(renewalOrder.id, invoice.currency, transaction);
 	});
 };

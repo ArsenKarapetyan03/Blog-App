@@ -1,50 +1,74 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense } from "react";
-import { getProducts,  } from "@/actions/product";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { getProducts } from "@/actions/product";
 import { type Product } from "@/types/types";
 import { useAuth } from "@/context/useAuth";
 import { useCart } from "@/context/CartContext";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { CancelCheckoutHandler } from "@/components/Product/CancelCheckoutHandler";
+import { Search } from "@/components/Search";
+import Pagination from "@/components/Pagination";
+import { LoadingComponent } from "@/components/ui/LoadingComponent";
 
-const ProductsPage: React.FC = () => {
+const PRODUCTS_PER_PAGE = 6;
+
+const ProductsContent: React.FC = () => {
 	const { isAuthenticated, user } = useAuth();
 	const { totalItems, openCart, addToCart, buyNow, buyingPriceId } = useCart();
 
+	const searchParams = useSearchParams();
+	const currentPage = Number(searchParams.get("page")) || 1;
+	const query = searchParams.get("query") || "";
+
 	const [products, setProducts] = useState<Product[]>([]);
+	const [totalPages, setTotalPages] = useState<number>(1);
 	const [loading, setLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchProducts = async () => {
+	const fetchProducts = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 
-		const result = await getProducts();
+		const result = await getProducts({
+			page: currentPage,
+			limit: PRODUCTS_PER_PAGE,
+			query: query || undefined,
+		});
 
 		if (!result.success) {
 			setError(result.message);
+			setProducts([]);
 		} else {
-			setProducts(result.data);
+			const list = Array.isArray(result.data)
+				? result.data
+				: result?.data?.products ?? [];
+			setProducts(list);
+			setTotalPages(result?.data?.totalPages ?? 1);
 		}
 
 		setLoading(false);
-	};
+	}, [currentPage, query]);
 
 	useEffect(() => {
 		fetchProducts();
-	}, []);
+	}, [fetchProducts]);
 
 	return (
-		<div className="mx-auto w-full max-w-6xl px-4 py-12">
+		<div>
 			<Suspense fallback={null}>
 				<CancelCheckoutHandler onOpenCart={openCart} totalItems={totalItems} />
 			</Suspense>
 
+			<div className="mb-6 flex justify-end">
+				<Search />
+			</div>
+
 			<section>
 				{loading && (
 					<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{[1, 2, 3].map((skeleton) => (
+						{[1, 2, 3, 4, 5, 6].map((skeleton) => (
 							<div
 								key={skeleton}
 								className="h-56 animate-pulse rounded-xl border border-gray-200 bg-gray-100 p-6 dark:border-gray-800 dark:bg-gray-800/50"
@@ -71,8 +95,9 @@ const ProductsPage: React.FC = () => {
 							No products found
 						</h3>
 						<p className="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
-							There are no products available right now. Check back later or add
-							items from &quot;My products&quot;.
+							{query
+								? `No products matched "${query}". Try a different search term.`
+								: 'There are no products available right now. Check back later or add items from "My products".'}
 						</p>
 					</div>
 				)}
@@ -93,7 +118,21 @@ const ProductsPage: React.FC = () => {
 					</div>
 				)}
 			</section>
+
+			{totalPages > 1 && (
+				<div className="mt-6">
+					<Pagination currentPage={currentPage} totalPages={totalPages} />
+				</div>
+			)}
 		</div>
+	);
+};
+
+const ProductsPage = () => {
+	return (
+		<Suspense fallback={<LoadingComponent />}>
+			<ProductsContent />
+		</Suspense>
 	);
 };
 

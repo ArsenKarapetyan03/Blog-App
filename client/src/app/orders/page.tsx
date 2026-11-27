@@ -2,14 +2,15 @@
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { getOrders, markOrderAsShipped, refundOrder } from "@/actions/order";
-import { CartProvider, useCart } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { Modal } from "antd";
 import { useNotification } from "@/context/NotificationProvider";
 import { Order } from "@/types/types";
 import { LoadingComponent } from "@/components/ui/LoadingComponent";
 import { formatPrice } from "@/lib/pricing";
+import { Search } from "@/components/Search";
+import Pagination from "@/components/Pagination";
 
 const CheckoutSuccessHandler: React.FC = () => {
 	const searchParams = useSearchParams();
@@ -42,6 +43,8 @@ const CheckoutSuccessHandler: React.FC = () => {
 	return null;
 };
 
+const ORDERS_PER_PAGE = 4;
+
 const STATUS_STYLES: Record<string, string> = {
 	pending: "bg-yellow-100 text-yellow-800",
 	paid: "bg-green-100 text-green-800",
@@ -51,19 +54,30 @@ const STATUS_STYLES: Record<string, string> = {
 	cancelled: "bg-gray-100 text-gray-800",
 };
 
-const OrdersPage = () => {
+const OrdersContent = () => {
+	const searchParams = useSearchParams();
+	const notification = useNotification();
+
+	const currentPage = Number(searchParams.get("page")) || 1;
+	const query = searchParams.get("query") || "";
+
 	const [orders, setOrders] = useState<Order[]>([]);
+	const [totalPages, setTotalPages] = useState<number>(1);
 	const [loading, setLoading] = useState(true);
 	const [updatingId, setUpdatingId] = useState<number | null>(null);
-
-	const notification = useNotification();
 
 	useEffect(() => {
 		const fetchOrders = async () => {
 			try {
 				setLoading(true);
-				const response = await getOrders();
-				setOrders(response?.data ?? []);
+				const response = await getOrders({
+					page: currentPage,
+					limit: ORDERS_PER_PAGE,
+					query: query || undefined,
+				});
+
+				setOrders(response?.data?.orders ?? []);
+				setTotalPages(response?.data?.totalPages ?? 1);
 			} catch (error) {
 				console.warn("Failed to fetch orders:", error);
 				setOrders([]);
@@ -77,7 +91,7 @@ const OrdersPage = () => {
 		};
 
 		fetchOrders();
-	}, [notification]);
+	}, [currentPage, query, notification]);
 
 	const handleStatusChange = async (
 		orderId: number,
@@ -138,7 +152,6 @@ const OrdersPage = () => {
 		});
 	};
 
-
 	const formatDate = (isoString: string) => {
 		return new Date(isoString).toLocaleDateString("en-US", {
 			year: "numeric",
@@ -149,22 +162,29 @@ const OrdersPage = () => {
 
 	return (
 		<>
-			<Suspense fallback={null}>
-				<CheckoutSuccessHandler/>
-			</Suspense>
+			<CheckoutSuccessHandler />
 
-			{loading
-				? <LoadingComponent/>
-				: <div>
+			<div className="mb-6 flex justify-end">
+				<Search />
+			</div>
+
+			{loading ? (
+				<LoadingComponent />
+			) : (
+				<div>
 					{orders.length === 0 ? (
-						<p className="text-gray-500">No orders found.</p>
+						<p className="text-gray-500">
+							{query ? `No orders found matching "${query}".` : "No orders found."}
+						</p>
 					) : (
 						<div className="space-y-6">
 							{orders.map((order) => {
 								const statusCode = order.Status?.code || "unknown";
 								const badgeStyle = STATUS_STYLES[statusCode] || "bg-gray-100 text-gray-800";
 								const isUpdating = updatingId === order.id;
-								const isSubscriptionOrder = Boolean(order.Items?.some((item) => item.Price?.type === "recurring"));
+								const isSubscriptionOrder = Boolean(
+									order.Items?.some((item) => item.Price?.type === "recurring")
+								);
 
 								return (
 									<div
@@ -176,30 +196,28 @@ const OrdersPage = () => {
 											<div className="flex gap-6 text-sm">
 												<div>
 													<span className="text-gray-500 block">Order #</span>
-													<span className="font-medium text-gray-900">
-												{order.id}
-											</span>
+													<span className="font-medium text-gray-900">{order.id}</span>
 												</div>
 												<div>
 													<span className="text-gray-500 block">Date</span>
 													<span className="font-medium text-gray-900">
-												{formatDate(order.createdAt)}
-											</span>
+														{formatDate(order.createdAt)}
+													</span>
 												</div>
 												<div>
 													<span className="text-gray-500 block">Total</span>
 													<span className="font-medium text-gray-900">
-												{formatPrice(order.totalAmount, order.currency)}
-											</span>
+														{formatPrice(order.totalAmount, order.currency)}
+													</span>
 												</div>
 											</div>
 
 											<div className="flex items-center gap-2.5">
-										<span
-											className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}
-										>
-											{order.Status?.label || "Unknown"}
-										</span>
+												<span
+													className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}
+												>
+													{order.Status?.label || "Unknown"}
+												</span>
 
 												{statusCode === "paid" && (
 													<button
@@ -245,12 +263,14 @@ const OrdersPage = () => {
 													</div>
 
 													<div className="font-medium text-gray-900">
-														{item.Price?.type === "recurring"
-															? <span
+														{item.Price?.type === "recurring" ? (
+															<span
 																className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-600/15">
-																	Included in subscription
-																</span>
-															: formatPrice(item.unitAmount, order.currency)}
+																Included in subscription
+															</span>
+														) : (
+															formatPrice(item.unitAmount, order.currency)
+														)}
 													</div>
 												</div>
 											))}
@@ -261,8 +281,22 @@ const OrdersPage = () => {
 						</div>
 					)}
 				</div>
-			}
+			)}
+
+			{totalPages > 1 && (
+				<div className="mt-6">
+					<Pagination currentPage={currentPage} totalPages={totalPages} />
+				</div>
+			)}
 		</>
+	);
+};
+
+const OrdersPage = () => {
+	return (
+		<Suspense fallback={<LoadingComponent />}>
+			<OrdersContent />
+		</Suspense>
 	);
 };
 
